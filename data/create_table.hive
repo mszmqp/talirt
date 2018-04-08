@@ -10,7 +10,7 @@ CREATE TABLE `app_bi.mkt_student_answer_zhenhu` (
     `modify_time` STRING comment "",
     `answerStatus` INT comment "",
     `answerContent` STRING comment "",
-    `levelQuestionId` STRING comment "",
+    `levelQuestionId` STRING comment ""
 )
 COMMENT "计算小超市答题记录"
 PARTITIONED BY (p_month STRING comment "月份")
