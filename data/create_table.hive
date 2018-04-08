@@ -1,0 +1,17 @@
+CREATE TABLE `app_bi.mkt_student_answer_zhenhu` (
+    `id` STRING comment "id",
+    `student_id` STRING comment "",
+    `course_id` STRING comment "",
+    `course_level_id` STRING comment "",
+    `start_time` STRING comment "",
+    `city_code` STRING comment "",
+    `isdeleted` INT comment "",
+    `create_time` STRING comment "",
+    `modify_time` STRING comment "",
+    `answerStatus` INT comment "",
+    `answerContent` STRING comment "",
+    `levelQuestionId` STRING comment "",
+)
+COMMENT "计算小超市答题记录"
+PARTITIONED BY (p_month STRING comment "月份")
+STORED AS PARQUET;
