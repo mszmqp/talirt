@@ -13,6 +13,7 @@ import sys
 import argparse
 import json
 import os
+
 __version__ = 1.0
 
 
@@ -37,8 +38,8 @@ def init_option():
 
 def mapper(options):
     map_input_file = os.environ['map_input_file']
-    map_input_file.split('/')
-    p_month=map_input_file[-2].split('=')[-1]
+    # map_input_file = map_input_file
+    p_month = map_input_file.split('/')[-2].split('=')[-1]
     for line in options.input:
         record = line.rstrip('\r\n').split('\1')
         answer_content_json = record.pop(-1)
@@ -52,7 +53,9 @@ def mapper(options):
                     col: value for col, value in zip(columns, record)
                 }
             )
+
             v['p_month'] = p_month
+            v['isdeleted'] = int(v['isdeleted'])
             print(json.dumps(v))
 
 
