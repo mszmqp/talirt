@@ -38,16 +38,18 @@ def init_option():
 def mapper(options):
     for line in options.input:
         record = line.rstrip('\r\n').split('\1')
-        # _id, student_id, course_id, course_level_id, start_time, city_code, isdeleted, create_time, modify_time, answer_content_json = record
         answer_content_json = record.pop(-1)
+        columns = ['_id', 'student_id', 'course_id', 'course_level_id', 'start_time', 'city_code', 'isdeleted',
+                   'create_time', 'modify_time']
 
         answer_content = json.loads(answer_content_json)
         for v in answer_content.itervalues():
-            print('\t'.join(record + [
-                str(v['answerContent']),
-                str(v['answerStatus']),
-                str(v['levelQuestionId']),
-            ]))
+            v.update(
+                {
+                    col: value for col, value in zip(columns, record)
+                }
+            )
+            print(json.dumps(v))
 
 
 def reducer(options):
