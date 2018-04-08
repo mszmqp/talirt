@@ -77,3 +77,6 @@ if [ $? -ne 0 ]; then
 	echo "$(date +"%Y-%m-%d %H:%M:%S") hadoop error!"
 	exit 1
 fi
+
+
+python json2hive.py -i ${HADOOP_OUTPUT} -o app_bi.mkt_student_answer_zhenhu
