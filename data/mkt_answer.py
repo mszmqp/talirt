@@ -44,10 +44,9 @@ def mapper(options):
         answer_content = json.loads(answer_content_json)
         for v in answer_content.itervalues():
             print('\t'.join(record + [
-
-                v['answerContent'],
-                v['answerStatus'],
-                v['levelQuestionId'],
+                str(v['answerContent']),
+                str(v['answerStatus']),
+                str(v['levelQuestionId']),
             ]))
 
 
