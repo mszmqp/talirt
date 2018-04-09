@@ -26,7 +26,7 @@ from catsim.simulation import Simulator
 import pymc3 as pm
 
 sys.path.append("../")
-from utils.utils import split_data
+from utils.data import split_data
 
 
 def load_logs(cache_file="logs.pickle", from_cache=True):
