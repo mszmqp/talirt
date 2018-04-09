@@ -18,7 +18,7 @@ AUTHOR="zhangzhenhu"
 
 
 
-HADOOP_INPUT="hdfs://iz2ze7u02k402bnxra1j1xz:8020/opt/hive/warehouse/odata.db/ods_mkt_student_answer/p_month=20*/"
+HADOOP_INPUT="hdfs://iz2ze7u02k402bnxra1j1xz:8020/opt/hive/warehouse/odata.db/ods_mkt_student_answer/p_month=2018_*/"
 HADOOP_OUTPUT="/user/app_bi/test/mkt_answer/"
 
 
