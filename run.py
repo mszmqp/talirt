@@ -67,7 +67,19 @@ def load_logs(cache_file="logs.pickle", from_cache=True):
                 and sa.sa_is_fixup=0
                 and sa.sa_answer_status in (1,2)
         """
-
+    _sql = """
+    select
+        lq.exp as item_id,
+        sa.student_id as user_id,
+        sa.answerstatus as answer,
+        sa.start_time,
+        sa.city_code,
+        c.grade
+    from app_bi.mkt_student_answer_zhenhu  sa
+    join odata.ods_mkt_level_question lq  on lq.id = sa.levelquestionid
+    join odata.ods_mkt_course c on c.id = lq.course_id
+    where c.grade='2' and sa.city_code='0851'
+    """
     if from_cache:
         # print >> sys.stderr, "从缓存读取题目画像数据"
         print("从缓存读取题目画像数据", file=sys.stderr)
@@ -102,20 +114,22 @@ def init_option():
 
 
 def main(options):
-    df = load_logs(from_cache=True)
+    df = load_logs(from_cache=False)
     # df.loc[:, 'answer'] = df['answer'] == 1
 
     # from talirt.data import DataBank
     from utils.data import padding
     # data_bank = DataBank(logs=df)
     # print(data_bank)
-    from .model.irt import UIrt2PL
+    from model.irt import UIrt2PL
     # 0：未做
     # 1：正确
     # 2：错误
     # 3：超时
     # 答题结果一定要处理成0-1二元值，否则会出错
-    df.loc[:, 'answer'] = df['answer'] == 1
+    # df.loc[:, 'answer'] = df['answer'] == 1
+    df.loc[df["answer"] != 1, "answer"] = 0
+
     # df_data = df
     # all_users = df['user_id'].unique()
     # df = df[df['user_id'].isin(all_users[-50:])]

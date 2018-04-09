@@ -32,7 +32,7 @@ def padding(response_df: pandas.DataFrame, user_count=2, item_count=2):
         _padding['user_id'].extend(list(_user_ids))
 
     assert len(_padding['user_id']) == len(_padding['item_id']) == len(_padding['answer'])
-    _response_df = pd.concat([_response_df, pandas.DataFrame(_padding)]).sample(frac=1)
+    _response_df = pandas.concat([_response_df, pandas.DataFrame(_padding)]).sample(frac=1)
 
     print('[padding] user:%d item:%d record:%d' % (user_count, item_count, len(_padding['answer'])),
           file=sys.stderr)
@@ -61,7 +61,7 @@ def split_data(df):
     for index, row in df.iterrows():
         user_id = row['user_id']
         item_id = row['item_id']
-        if user_stats[user_id] > item_count * 0.5 \
+        if user_stats[user_id] > item_count * 0.1 \
                 and item_stats[item_id] >= user_count * 0.5:
             # and user_flag.get(user_id, 0) <= 5 \
             # and item_flag.get(item_id, 0) <= 5:
