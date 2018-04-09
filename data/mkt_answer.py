@@ -47,15 +47,18 @@ def mapper(options):
                    'create_time', 'modify_time']
 
         answer_content = json.loads(answer_content_json)
-        for v in answer_content.itervalues():
-            v.update(
-                {
+
+        base_record =  {
                     col: value for col, value in zip(columns, record)
                 }
-            )
+        base_record['isdeleted'] = int(base_record['isdeleted'])
+        if base_record['isdeleted'] != 0:
+            continue
 
-            v['p_month'] = p_month
-            v['isdeleted'] = int(v['isdeleted'])
+        base_record['p_month'] = p_month
+
+        for v in answer_content.itervalues():
+            v.update(base_record)
             print(json.dumps(v))
 
 
