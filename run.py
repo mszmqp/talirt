@@ -139,6 +139,13 @@ def main(options):
     if options.padding:
         df_target = padding(df_target, user_count=40, item_count=40)
 
+    # 删掉作答少的题目
+    hehe = df_target.groupby('item_id').count().sort_values('answer')
+    drop_item = hehe[hehe['answer'] < 10].index
+    df_target = df_target.set_index('item_id').drop(drop_item)
+    len(df_target)
+
+
     train_df, test_df = split_data(df_target)
     # count = len(df_target)
     # train = df_target.iloc[:int(count * 0.7)]

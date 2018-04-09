@@ -62,7 +62,7 @@ def split_data(df):
         user_id = row['user_id']
         item_id = row['item_id']
         if user_stats[user_id] > item_count * 0.08 \
-                and item_stats[item_id] >= user_count * 0.2:
+                and item_stats[item_id] >= user_count * 0.1:
             # and user_flag.get(user_id, 0) <= 5 \
             # and item_flag.get(item_id, 0) <= 5:
             test_selected.append(True)
