@@ -16,7 +16,6 @@ import matplotlib.pyplot as plt
 import sys
 
 
-
 class BaseIrt(object):
 
     def __init__(self, response_df: pd.DataFrame):
