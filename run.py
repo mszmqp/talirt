@@ -106,7 +106,7 @@ def main(options):
     # df.loc[:, 'answer'] = df['answer'] == 1
 
     # from talirt.data import DataBank
-    from utils.utils import padding
+    from utils.data import padding
     # data_bank = DataBank(logs=df)
     # print(data_bank)
     from .model.irt import UIrt2PL
