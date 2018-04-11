@@ -103,6 +103,7 @@ class BaseIrt(object):
         print("mae", error['mae'], file=sys.stderr)
         return error
 
+    @abc.abstractclassmethod
     def plot_prc(self, y_true, y_proba):
         precision, recall, thresholds = metrics.precision_recall_curve(y_true, y_proba)
         print('=' * 20 + 'precision_recall_curve' + "=" * 20, file=sys.stderr)
@@ -118,6 +119,7 @@ class BaseIrt(object):
         plt.xlim([0.0, 1.0])
         return precision, recall, thresholds
 
+    @abc.abstractclassmethod
     def confusion_matrix(self, y_true, y_proba, threshold):
         y_pred = y_proba.copy()
         y_pred[y_pred > threshold] = 1
@@ -129,6 +131,7 @@ class BaseIrt(object):
         print("实真\tFN(%d)\tTP(%d)" % (cm[1][0], cm[1][1]), file=sys.stderr)
         return cm
 
+    @abc.abstractclassmethod
     def classification_report(self, y_true, y_proba, threshold):
         y_pred = y_proba.copy()
         y_pred[y_pred > threshold] = 1
@@ -136,6 +139,7 @@ class BaseIrt(object):
         print('=' * 20 + 'classification_report' + "=" * 20, file=sys.stderr)
         print(metrics.classification_report(y_true, y_pred, target_names=[u'答错', u'答对'], digits=8), file=sys.stderr)
 
+    @abc.abstractclassmethod
     def accuracy_score(self, y_true, y_proba, threshold):
         y_pred = y_proba.copy()
         y_pred[y_pred > threshold] = 1
@@ -280,5 +284,7 @@ class UIrt3PL(UIrt2PL):
         z = item_v['a'].values * (user_v['theta'].values - item_v['b'].values)
         # z = alpha * (theta - beta)
         e = np.exp(z)
-        s = (1 - item_v['c']) * e / (1.0 + e)
+        import scipy
+
+        s = (1 - item_v['c'].values) * e / (1.0 + e) + item_v['c'].values
         return s
