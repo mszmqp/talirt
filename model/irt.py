@@ -60,12 +60,14 @@ class BaseIrt(object):
         self._response = self._response.join(self.user_vector['iloc'].rename('user_iloc'), on='user_id', how='left')
         self._response = self._response.join(self.item_vector['iloc'].rename('item_iloc'), on='item_id', how='left')
         # 统计每个应试者的作答情况
-        user_stat = self._response.groupby('user_id')['answer'].aggregate({'count': np.size, 'right': np.sum})
+        user_stat = self._response.groupby('user_id')['answer'].aggregate(['count', 'sum']).rename(
+            columns={'sum': 'right'})
         self.user_vector = self.user_vector.join(user_stat, how='left')
         self.user_vector.fillna({'count': 0, 'right': 0}, inplace=True)
         self.user_vector['accuracy'] = self.user_vector['right'] / self.user_vector['count']
         # 统计每个项目的作答情况
-        item_stat = self._response.groupby('item_id')['answer'].aggregate({'count': np.size, 'right': np.sum})
+        item_stat = self._response.groupby('item_id')['answer'].aggregate(['count', 'sum']).rename(
+            columns={'sum': 'right'})
         self.item_vector = self.item_vector.join(item_stat, how='left')
         self.item_vector.fillna({'count': 0, 'right': 0}, inplace=True)
         self.item_vector['accuracy'] = self.item_vector['right'] / self.item_vector['count']
@@ -89,10 +91,8 @@ class BaseIrt(object):
     def predict(self, threshold=0.5):
         pass
 
-    def metric_mean_error(self, y_true, y_proba):
-        # y_hat_matrix = self.predict_proba()
-        # y_hat = y_hat_matrix[self._user_response_locs, self._item_response_locs]
-        # y_true = self._response["answer"].values
+    @abc.abstractclassmethod
+    def metric_mean_error(cls, y_true, y_proba):
         assert len(y_proba) == len(y_true)
         error = {
             'mse': metrics.mean_squared_error(y_true, y_proba),
@@ -251,13 +251,14 @@ class UIrt3PL(UIrt2PL):
             # a = pm.Normal("a", mu=1, tau=1, shape=(1, self._item_count))
             a = pm.Lognormal("a", mu=0, tau=1, shape=(1, self._item_count))
             b = pm.Normal("b", mu=2, sd=0.662551, shape=(1, self._item_count))
-            c = pm.Normal("c", mu=2, sd=0.662551, shape=(1, self._item_count))
-            # z = pm.Deterministic(name="z", var=b.repeat(self._user_count, axis=0) - pm.math.dot(theta, a))
+            c = pm.Beta("c", alpha=5, beta=17, shape=(1, self._item_count))
+
             z = pm.Deterministic(name="z", var=a.repeat(self._user_count, axis=0) * (
                     theta.repeat(self._item_count, axis=1) - b.repeat(self._user_count, axis=0)))
 
             irt = pm.Deterministic(name="irt",
-                                   var=(1 - c.repeat(self._user_count, axis=0)) * pm.math.sigmoid(z)+c.repeat(self._user_count, axis=0))
+                                   var=(1 - c.repeat(self._user_count, axis=0)) * pm.math.sigmoid(z) + c.repeat(
+                                       self._user_count, axis=0))
 
             output = pm.Deterministic(name="output",
                                       var=as_tensor_variable(irt)[
@@ -275,7 +276,7 @@ class UIrt3PL(UIrt2PL):
 
     def predict_proba(self, users, items):
         user_v = self.user_vector.loc[users, ['theta']]
-        item_v = self.item_vector.loc[items, ['a', 'b']]
+        item_v = self.item_vector.loc[items, ['a', 'b', 'c']]
         z = item_v['a'].values * (user_v['theta'].values - item_v['b'].values)
         # z = alpha * (theta - beta)
         e = np.exp(z)

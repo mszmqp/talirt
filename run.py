@@ -121,7 +121,7 @@ def main(options):
     from utils.data import padding
     # data_bank = DataBank(logs=df)
     # print(data_bank)
-    from model.irt import UIrt2PL
+    from model.irt import UIrt2PL, UIrt3PL
     # 0：未做
     # 1：正确
     # 2：错误
@@ -145,7 +145,6 @@ def main(options):
     # df_target = df_target.set_index('item_id').drop(drop_item)
     # len(df_target)
 
-
     train_df, test_df = split_data(df_target)
     # count = len(df_target)
     # train = df_target.iloc[:int(count * 0.7)]
@@ -154,49 +153,23 @@ def main(options):
     # test = df_target
     print(len(df), len(train_df), len(test_df))
     print(test_df['answer'].value_counts())
-    #return
-
-    irt0 = UIrt2PL(train_df)
-    print(irt0, file=sys.stderr)
     # return
-    irt0.estimate_mcmc(draws=150, tune=1000, njobs=2)
-    # print(irt0.trace['theta'].shape)
-    # print(irt0.trace['a'].shape)
-    # print(irt0.trace['b'].shape)
+
+    irt2 = UIrt2PL(train_df)
+    irt3 = UIrt3PL(train_df)
+    print(irt2, file=sys.stderr)
+    # return
+    irt3.estimate_mcmc(draws=150, tune=1000, njobs=2)
+
     # pm.df_summary()
-    y0_proba = irt0.predict_proba(list(test_df['user_id'].values), list(test_df['item_id'].values))
+    y0_proba = irt3.predict_proba(list(test_df['user_id'].values), list(test_df['item_id'].values))
     y0_true = test_df['answer'].values
-    irt0.metric_mean_error(y0_true, y0_proba)
-    irt0.confusion_matrix(y0_true, y0_proba, threshold=0.7)
-    irt0.accuracy_score(y0_true, y0_proba, threshold=0.7)
-    irt0.classification_report(y0_true, y0_proba, threshold=0.7)
+    irt2.metric_mean_error(y0_true, y0_proba)
+    irt2.confusion_matrix(y0_true, y0_proba, threshold=0.7)
+    irt2.accuracy_score(y0_true, y0_proba, threshold=0.7)
+    irt2.classification_report(y0_true, y0_proba, threshold=0.7)
     # irt0.plot_prc(y0_true, y0_proba)
     return
-    # v = df.groupby(by=['stu_id', 'item_id']).count().values
-    # print("记录总数", len(df))
-    # print("（学生-题目，次数）")
-    # print(pd.value_counts(v[:, 0]))
-    # stu_ids = df['stu_id'].unique()
-    # item_ids = df['item_id'].unique()
-    # print("学生数量", len(stu_ids))
-    # print("题目数量", len(item_ids))
-
-    # stu_info = pd.DataFrame(stu_ids, columns=['stu_id'])
-    # stu_info.insert(1, 'theta', np.zeros(len(stu_ids)))
-
-    # item_info = pd.DataFrame(item_ids, columns=['stu_id'])
-    # item_info.insert(1, 'alpha', np.zeros(len(item_ids)))
-    # item_info.insert(2, 'beta', np.zeros(len(item_ids)))
-    # item_info.insert(3, 'c', np.zeros(len(item_ids)))
-
-    # item_parameters = generate_item_bank(len(item_ids), itemtype="2PL")
-
-    # initializer = RandomInitializer()
-    # selector = MaxInfoSelector()
-    # estimator = HillClimbingEstimator()
-    # stopper = MaxItemStopper(20)
-
-    # Simulator(item_parameters, len(stu_ids)).simulate(initializer, selector, estimator, stopper)
 
 
 if __name__ == "__main__":
