@@ -57,19 +57,18 @@ class BaseIrt(object):
              'b': np.zeros(self._item_count),
              'c': np.zeros(self._item_count)}, index=self._item_ids)
 
-
         self._response = self._response.join(self.user_vector['iloc'].rename('user_iloc'), on='user_id', how='left')
         self._response = self._response.join(self.item_vector['iloc'].rename('item_iloc'), on='item_id', how='left')
-
+        # 统计每个应试者的作答情况
         user_stat = self._response.groupby('user_id')['answer'].aggregate({'count': np.size, 'right': np.sum})
-        item_stat = self._response.groupby('item_id')['answer'].aggregate({'count': np.size, 'right': np.sum})
         self.user_vector = self.user_vector.join(user_stat, how='left')
-        self.item_vector = self.item_vector.join(item_stat, how='left')
         self.user_vector.fillna({'count': 0, 'right': 0}, inplace=True)
-        self.item_vector.fillna({'count': 0, 'right': 0}, inplace=True)
         self.user_vector['accuracy'] = self.user_vector['right'] / self.user_vector['count']
+        # 统计每个项目的作答情况
+        item_stat = self._response.groupby('item_id')['answer'].aggregate({'count': np.size, 'right': np.sum})
+        self.item_vector = self.item_vector.join(item_stat, how='left')
+        self.item_vector.fillna({'count': 0, 'right': 0}, inplace=True)
         self.item_vector['accuracy'] = self.item_vector['right'] / self.item_vector['count']
-
 
     def __str__(self):
         d = self._response['answer'].value_counts()
@@ -258,7 +257,7 @@ class UIrt3PL(UIrt2PL):
                     theta.repeat(self._item_count, axis=1) - b.repeat(self._user_count, axis=0)))
 
             irt = pm.Deterministic(name="irt",
-                                   var=c + (1 - c) * pm.math.sigmoid(z))
+                                   var=(1 - c.repeat(self._user_count, axis=0)) * pm.math.sigmoid(z)+c.repeat(self._user_count, axis=0))
 
             output = pm.Deterministic(name="output",
                                       var=as_tensor_variable(irt)[
@@ -270,7 +269,6 @@ class UIrt3PL(UIrt2PL):
             self.trace = pm.sample(**kwargs)
 
         self.item_vector['a'] = self.trace['a'].mean(axis=0)[0, :]
-        # self.beta = self.trace['b'].mean(axis=0)[0, :]
         self.item_vector['b'] = self.trace['b'].mean(axis=0)[0, :]
         self.item_vector['c'] = self.trace['c'].mean(axis=0)[0, :]
         self.user_vector['theta'] = self.trace['theta'].mean(axis=0)[:, 0]
