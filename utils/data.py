@@ -61,8 +61,8 @@ def split_data(df):
     for index, row in df.iterrows():
         user_id = row['user_id']
         item_id = row['item_id']
-        if user_stats[user_id] > item_count * 0.8 \
-                and item_stats[item_id] >= user_count * 0.8:
+        if user_stats[user_id] > item_count * 0.9 \
+                and item_stats[item_id] >= user_count * 0.9:
             # and user_flag.get(user_id, 0) <= 5 \
             # and item_flag.get(item_id, 0) <= 5:
             test_selected.append(True)
