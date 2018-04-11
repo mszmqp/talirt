@@ -78,7 +78,7 @@ def load_logs(cache_file="logs.pickle", from_cache=True):
     from app_bi.mkt_student_answer_zhenhu  sa
     join odata.ods_mkt_level_question lq  on lq.id = sa.levelquestionid
     join odata.ods_mkt_course c on c.id = lq.course_id
-    where c.grade='2' and sa.city_code='0851'
+    where c.grade='1' and sa.city_code='0311' and lq.course_id='f75f4fa840484445be3972fe739ed0aa'
     """
     if from_cache:
         # print >> sys.stderr, "从缓存读取题目画像数据"
@@ -140,10 +140,10 @@ def main(options):
         df_target = padding(df_target, user_count=40, item_count=40)
 
     # 删掉作答少的题目
-    hehe = df_target.groupby('item_id').count().sort_values('answer')
-    drop_item = hehe[hehe['answer'] < 10].index
-    df_target = df_target.set_index('item_id').drop(drop_item)
-    len(df_target)
+    # hehe = df_target.groupby('item_id').count().sort_values('answer')
+    # drop_item = hehe[hehe['answer'] < 10].index
+    # df_target = df_target.set_index('item_id').drop(drop_item)
+    # len(df_target)
 
 
     train_df, test_df = split_data(df_target)
@@ -154,10 +154,11 @@ def main(options):
     # test = df_target
     print(len(df), len(train_df), len(test_df))
     print(test_df['answer'].value_counts())
-    return
+    #return
 
     irt0 = UIrt2PL(train_df)
     print(irt0, file=sys.stderr)
+    # return
     irt0.estimate_mcmc(draws=150, tune=1000, njobs=2)
     # print(irt0.trace['theta'].shape)
     # print(irt0.trace['a'].shape)

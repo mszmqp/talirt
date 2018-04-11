@@ -27,56 +27,63 @@ class BaseIrt(object):
         if 'user_id' not in response_df.columns or 'item_id' not in response_df.columns or 'answer' not in response_df.columns:
             raise ValueError("input dataframe have no user_id or item_id  or answer")
 
-        self._response_df = response_df[['user_id', 'item_id', 'answer']]
-
-        self._user_ids = self._response_df['user_id'].unique()
+        self._response = response_df[['user_id', 'item_id', 'answer']]
+        # 被试者id
+        self._user_ids = self._response['user_id'].unique()
         self._user_count = len(self._user_ids)
-        self._item_ids = self._response_df['item_id'].unique()
+        # 项目id
+        self._item_ids = self._response['item_id'].unique()
         self._item_count = len(self._item_ids)
 
         # if padding_item > 0 or padding_user > 0:
         #     self._padding(user_count=padding_user, item_count=padding_item)
-        #     self._user_ids = self._response_df['user_id'].unique()
+        #     self._user_ids = self._response['user_id'].unique()
         #     self._user_count = len(self._user_ids)
-        #     self._item_ids = self._response_df['item_id'].unique()
+        #     self._item_ids = self._response['item_id'].unique()
         #     self._item_count = len(self._item_ids)
+        # 被试id和下标的映射关系 key:id value:iloc
+        # self._user_id_loc = {value: index for index, value in enumerate(self._user_ids)}
+        # self._item_id_loc = {value: index for index, value in enumerate(self._item_ids)}
 
-        self._user_id_loc = {value: index for index, value in enumerate(self._user_ids)}
-        self._item_id_loc = {value: index for index, value in enumerate(self._item_ids)}
+        self.user_vector = pd.DataFrame({
+            'iloc': np.arange(self._user_count),
+            'user_id': self._user_ids,
+            'theta': np.zeros(self._user_count)},
+            index=self._user_ids)
+        self.item_vector = pd.DataFrame(
+            {'iloc': np.arange(self._item_count),
+             'item_id': self._item_ids,
+             'a': np.zeros(self._item_count),
+             'b': np.zeros(self._item_count),
+             'c': np.zeros(self._item_count)}, index=self._item_ids)
 
-        self._user_response_locs = []
-        self._item_response_locs = []
-        for index, row in self._response_df.iterrows():
-            u_loc = self._user_id_loc[row['user_id']]
-            q_loc = self._item_id_loc[row['item_id']]
-            self._user_response_locs.append(u_loc)
-            self._item_response_locs.append(q_loc)
-        self.alpha = None
-        self.beta = None
-        self.c = None
-        self.theta = None
-        self.trace = None
 
-    @staticmethod
-    def p(z):
-        # 回答正确的概率函数
-        e = np.exp(z)
-        p = e / (1.0 + e)
-        return p
+        self._response = self._response.join(self.user_vector['iloc'].rename('user_iloc'), on='user_id', how='left')
+        self._response = self._response.join(self.item_vector['iloc'].rename('item_iloc'), on='item_id', how='left')
+
+        user_stat = self._response.groupby('user_id')['answer'].aggregate({'count': np.size, 'right': np.sum})
+        item_stat = self._response.groupby('item_id')['answer'].aggregate({'count': np.size, 'right': np.sum})
+        self.user_vector = self.user_vector.join(user_stat, how='left')
+        self.item_vector = self.item_vector.join(item_stat, how='left')
+        self.user_vector.fillna({'count': 0, 'right': 0}, inplace=True)
+        self.item_vector.fillna({'count': 0, 'right': 0}, inplace=True)
+        self.user_vector['accuracy'] = self.user_vector['right'] / self.user_vector['count']
+        self.item_vector['accuracy'] = self.item_vector['right'] / self.item_vector['count']
+
 
     def __str__(self):
-        d = self._response_df['answer'].value_counts()
+        d = self._response['answer'].value_counts()
         return '\n'.join([
             u"用户数量：%d" % self._user_count,
             u"项目数量：%d" % self._item_count,
-            u"记录总数：%d" % len(self._response_df),
+            u"记录总数：%d" % len(self._response),
             u'正确数量：%d' % d[1],
             u'错误数量：%d' % d[0],
             u'正确比例：%f%%' % (d[1] * 100.0 / d.sum()),
         ])
 
     @abc.abstractmethod
-    def predict_proba(self):
+    def predict_proba(self, users, items):
         pass
 
     @abc.abstractmethod
@@ -86,7 +93,7 @@ class BaseIrt(object):
     def metric_mean_error(self, y_true, y_proba):
         # y_hat_matrix = self.predict_proba()
         # y_hat = y_hat_matrix[self._user_response_locs, self._item_response_locs]
-        # y_true = self._response_df["answer"].values
+        # y_true = self._response["answer"].values
         assert len(y_proba) == len(y_true)
         error = {
             'mse': metrics.mean_squared_error(y_true, y_proba),
@@ -137,29 +144,6 @@ class BaseIrt(object):
         print('=' * 20 + 'accuracy_score' + "=" * 20, file=sys.stderr)
         print(metrics.accuracy_score(y_true, y_pred), file=sys.stderr)
 
-    def _lik(self, p_val):
-        # 似然函数
-        scores = self.scores
-        loglik_val = np.dot(np.log(p_val + 1e-200), scores.transpose()) + \
-                     np.dot(np.log(1 - p_val + 1e-200), (1 - scores).transpose())
-        return np.exp(loglik_val)
-
-    def _get_theta_dis(self, p_val, weights):
-        # 计算theta的分布人数
-        scores = self.scores
-        lik_wt = self._lik(p_val) * weights
-        # 归一化
-        lik_wt_sum = np.sum(lik_wt, axis=0)
-        _temp = lik_wt / lik_wt_sum
-        # theta的人数分布
-        full_dis = np.sum(_temp, axis=1)
-        # theta下回答正确的人数分布
-        right_dis = np.dot(_temp, scores)
-        full_dis.shape = full_dis.shape[0], 1
-        # 对数似然值
-        print(np.sum(np.log(lik_wt_sum)))
-        return full_dis, right_dis
-
 
 class UIrt2PL(BaseIrt):
     def __init__(self, response_df: pd.DataFrame, beta_bounds=(1, 5),
@@ -175,22 +159,24 @@ class UIrt2PL(BaseIrt):
            :param tol: 精度
            :param gp_size: Gauss–Hermite积分点数
            """
+        #
+        # self._beta_bounds = beta_bounds
+        #
+        # if init_alpha is not None:
+        #     self._init_alpha = init_alpha
+        # else:
+        #     self._init_alpha = np.ones(self._item_count)
+        #     # self._init_alpha.reshape()
+        # if init_beta is not None:
+        #     self._init_beta = init_beta
+        # else:
+        #     self._init_beta = np.linspace(beta_bounds[0], beta_bounds[1] + 1, self._item_count)
+        #
+        # if init_theta is None:
+        #     self._init_theta = np.linspace(beta_bounds[0], beta_bounds[1] + 1, self._user_count)
+        #     # self._init_theta.reshape(self._user_count, 1)
 
-        self._beta_bounds = beta_bounds
-
-        if init_alpha is not None:
-            self._init_alpha = init_alpha
-        else:
-            self._init_alpha = np.ones(self._item_count)
-            # self._init_alpha.reshape()
-        if init_beta is not None:
-            self._init_beta = init_beta
-        else:
-            self._init_beta = np.linspace(beta_bounds[0], beta_bounds[1] + 1, self._item_count)
-
-        if init_theta is None:
-            self._init_theta = np.linspace(beta_bounds[0], beta_bounds[1] + 1, self._user_count)
-            # self._init_theta.reshape(self._user_count, 1)
+        self.trace = None
 
     def estimate_em(self, max_iter=1000, tol=1e-5):
         pass
@@ -217,8 +203,9 @@ class UIrt2PL(BaseIrt):
                                    var=pm.math.sigmoid(z))
 
             output = pm.Deterministic(name="output",
-                                      var=as_tensor_variable(irt)[self._user_response_locs, self._item_response_locs])
-            correct = pm.Bernoulli('correct', p=output, observed=self._response_df["answer"].values)
+                                      var=as_tensor_variable(irt)[
+                                          self._response['user_iloc'], self._response['item_iloc']])
+            correct = pm.Bernoulli('correct', p=output, observed=self._response["answer"].values)
 
             # map_estimate = pm.find_MAP()
             # create a pymc simulation object, including all the above variables
@@ -227,44 +214,19 @@ class UIrt2PL(BaseIrt):
             # run an interactive MCMC sampling session
             # m.isample()
 
-        # trace['a'].shape==(nsamples, 1, item_count)
-        # trace['b'].shape==(nsamples, 1, item_count)
-        self.alpha = self.trace['a'].mean(axis=0)[0, :]
-        self.beta = self.trace['b'].mean(axis=0)[0, :]
-        # trace['theta'].shape=(nsamples, user_count, 1)
-        self.theta = self.trace['theta'].mean(axis=0)[:, 0]
+        # self.alpha = self.trace['a'].mean(axis=0)[0, :]
+        self.item_vector['a'] = self.trace['a'].mean(axis=0)[0, :]
+        # self.beta = self.trace['b'].mean(axis=0)[0, :]
+        self.item_vector['b'] = self.trace['b'].mean(axis=0)[0, :]
+        self.user_vector['theta'] = self.trace['theta'].mean(axis=0)[:, 0]
 
         # print(pm.summary(self.trace))
         # _ = pm.traceplot(trace)
 
     def predict_proba(self, users, items):
-
-        user_locs = [self._user_id_loc[u] for u in users]
-        item_locs = [self._item_id_loc[i] for i in items]
-        theta = np.array([self.theta[loc] for loc in user_locs])
-        alpha = np.array([self.alpha[loc] for loc in item_locs])
-        beta = np.array([self.beta[loc] for loc in item_locs])
-
-        # theta = self.theta.reshape(user_count, 1).repeat(item_count, axis=1)
-        # alpha = self.alpha.reshape(1, item_count).repeat(user_count, axis=0)
-        # beta = self.beta.reshape(1, item_count).repeat(user_count, axis=0)
-
-        z = alpha * (theta - beta)
-        e = np.exp(z)
-        s = e / (1.0 + e)
-        return s
-
-    def _predict_proba2(self):
-
-        user_count = len(self.theta)
-        assert len(self.alpha) == len(self.beta)
-        item_count = len(self.alpha)
-
-        theta = self.theta.reshape(user_count, 1).repeat(item_count, axis=1)
-        alpha = self.alpha.reshape(1, item_count).repeat(user_count, axis=0)
-        beta = self.beta.reshape(1, item_count).repeat(user_count, axis=0)
-
-        z = alpha * (theta - beta)
+        user_v = self.user_vector.loc[users, ['theta']]
+        item_v = self.item_vector.loc[items, ['a', 'b']]
+        z = item_v['a'].values * (user_v['theta'].values - item_v['b'].values)
         e = np.exp(z)
         s = e / (1.0 + e)
         return s
@@ -299,40 +261,25 @@ class UIrt3PL(UIrt2PL):
                                    var=c + (1 - c) * pm.math.sigmoid(z))
 
             output = pm.Deterministic(name="output",
-                                      var=as_tensor_variable(irt)[self._user_response_locs, self._item_response_locs])
-            correct = pm.Bernoulli('correct', p=output, observed=self._response_df["answer"].values)
+                                      var=as_tensor_variable(irt)[
+                                          self._response['user_iloc'], self._response['item_iloc']])
+            correct = pm.Bernoulli('correct', p=output, observed=self._response["answer"].values)
 
             # map_estimate = pm.find_MAP()
             # create a pymc simulation object, including all the above variables
             self.trace = pm.sample(**kwargs)
 
-            # run an interactive MCMC sampling session
-            # m.isample()
-
-        # trace['a'].shape==(nsamples, 1, item_count)
-        # trace['b'].shape==(nsamples, 1, item_count)
-        self.alpha = self.trace['a'].mean(axis=0)[0, :]
-        self.beta = self.trace['b'].mean(axis=0)[0, :]
-        self.c = self.trace['c'].mean(axis=0)[0, :]
-        # trace['theta'].shape=(nsamples, user_count, 1)
-        self.theta = self.trace['theta'].mean(axis=0)[:, 0]
-
-        # print(pm.summary(self.trace))
-        # _ = pm.traceplot(trace)
+        self.item_vector['a'] = self.trace['a'].mean(axis=0)[0, :]
+        # self.beta = self.trace['b'].mean(axis=0)[0, :]
+        self.item_vector['b'] = self.trace['b'].mean(axis=0)[0, :]
+        self.item_vector['c'] = self.trace['c'].mean(axis=0)[0, :]
+        self.user_vector['theta'] = self.trace['theta'].mean(axis=0)[:, 0]
 
     def predict_proba(self, users, items):
-        user_locs = [self._user_id_loc[u] for u in users]
-        item_locs = [self._item_id_loc[i] for i in items]
-        theta = np.array([self.theta[loc] for loc in user_locs])
-        alpha = np.array([self.alpha[loc] for loc in item_locs])
-        beta = np.array([self.beta[loc] for loc in item_locs])
-        c = np.array([self.c[loc] for loc in item_locs])
-
-        # theta = self.theta.reshape(user_count, 1).repeat(item_count, axis=1)
-        # alpha = self.alpha.reshape(1, item_count).repeat(user_count, axis=0)
-        # beta = self.beta.reshape(1, item_count).repeat(user_count, axis=0)
-
-        z = alpha * (theta - beta)
+        user_v = self.user_vector.loc[users, ['theta']]
+        item_v = self.item_vector.loc[items, ['a', 'b']]
+        z = item_v['a'].values * (user_v['theta'].values - item_v['b'].values)
+        # z = alpha * (theta - beta)
         e = np.exp(z)
-        s = (1 - c) * e / (1.0 + e)
+        s = (1 - item_v['c']) * e / (1.0 + e)
         return s
