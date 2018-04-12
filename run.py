@@ -148,6 +148,9 @@ def main(options):
     # 数据切割成训练集和测试机
     train_df, test_df = split_data(df_target)
 
+    train_df = df_target
+    test_df = df_target
+
     print(len(df), len(train_df), len(test_df))
     print(test_df['answer'].value_counts())
     y_true = test_df['answer'].values

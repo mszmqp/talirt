@@ -419,7 +419,7 @@ class MIrt2PLN(MIrt2PL):
         a = a.reshape(1, item_count, self.k).repeat(user_count, axis=0)
         b = b.reshape(1, item_count, self.k).repeat(user_count, axis=0)
         c = c.repeat(user_count, axis=0)
-        z = self.D*a * (theta - b)
+        z = a * (theta - b)
         e = np.exp(z)
         s = e / (1.0 + e)
         return c + (1 - c) * np.prod(s, axis=2)
