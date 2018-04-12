@@ -10,52 +10,42 @@ import pymc3 as pm
 import pandas as pd
 import theano.tensor as tt
 from theano.tensor.basic import as_tensor_variable
-from sklearn import metrics
+
 import abc
-import matplotlib.pyplot as plt
+
 import sys
 
 
 class BaseIrt(object):
 
-    def __init__(self, response_df: pd.DataFrame):
+    def __init__(self, response: pd.DataFrame):
         """
 
-        :param response_df: 必须包含三列 user_id item_id answer
+        :param response_df: 作答数据，必须包含三列 user_id item_id answer
         """
 
-        if 'user_id' not in response_df.columns or 'item_id' not in response_df.columns or 'answer' not in response_df.columns:
+        if 'user_id' not in response.columns or 'item_id' not in response.columns or 'answer' not in response.columns:
             raise ValueError("input dataframe have no user_id or item_id  or answer")
 
-        self._response = response_df[['user_id', 'item_id', 'answer']]
+        self._response = response[['user_id', 'item_id', 'answer']]
         # 被试者id
         self._user_ids = self._response['user_id'].unique()
-        self._user_count = len(self._user_ids)
+        self.user_count = len(self._user_ids)
         # 项目id
         self._item_ids = self._response['item_id'].unique()
-        self._item_count = len(self._item_ids)
-
-        # if padding_item > 0 or padding_user > 0:
-        #     self._padding(user_count=padding_user, item_count=padding_item)
-        #     self._user_ids = self._response['user_id'].unique()
-        #     self._user_count = len(self._user_ids)
-        #     self._item_ids = self._response['item_id'].unique()
-        #     self._item_count = len(self._item_ids)
-        # 被试id和下标的映射关系 key:id value:iloc
-        # self._user_id_loc = {value: index for index, value in enumerate(self._user_ids)}
-        # self._item_id_loc = {value: index for index, value in enumerate(self._item_ids)}
+        self.item_count = len(self._item_ids)
 
         self.user_vector = pd.DataFrame({
-            'iloc': np.arange(self._user_count),
+            'iloc': np.arange(self.user_count),
             'user_id': self._user_ids,
-            'theta': np.zeros(self._user_count)},
+            'theta': np.zeros(self.user_count)},
             index=self._user_ids)
         self.item_vector = pd.DataFrame(
-            {'iloc': np.arange(self._item_count),
+            {'iloc': np.arange(self.item_count),
              'item_id': self._item_ids,
-             'a': np.zeros(self._item_count),
-             'b': np.zeros(self._item_count),
-             'c': np.zeros(self._item_count)}, index=self._item_ids)
+             'a': np.zeros(self.item_count),
+             'b': np.zeros(self.item_count),
+             'c': np.zeros(self.item_count)}, index=self._item_ids)
 
         self._response = self._response.join(self.user_vector['iloc'].rename('user_iloc'), on='user_id', how='left')
         self._response = self._response.join(self.item_vector['iloc'].rename('item_iloc'), on='item_id', how='left')
@@ -72,114 +62,35 @@ class BaseIrt(object):
         self.item_vector.fillna({'count': 0, 'right': 0}, inplace=True)
         self.item_vector['accuracy'] = self.item_vector['right'] / self.item_vector['count']
 
-    def __str__(self):
+        self.trace = None
+
+    def info(self):
         d = self._response['answer'].value_counts()
         return '\n'.join([
-            u"用户数量：%d" % self._user_count,
-            u"项目数量：%d" % self._item_count,
+            u"用户数量：%d" % self.user_count,
+            u"项目数量：%d" % self.item_count,
             u"记录总数：%d" % len(self._response),
             u'正确数量：%d' % d[1],
             u'错误数量：%d' % d[0],
             u'正确比例：%f%%' % (d[1] * 100.0 / d.sum()),
         ])
 
+    def name(self):
+        return type(self).__name__
+
     @abc.abstractmethod
     def predict_proba(self, users, items):
-        pass
+        return np.zeros(len(users))
 
-    @abc.abstractmethod
-    def predict(self, threshold=0.5):
-        pass
-
-    @abc.abstractclassmethod
-    def metric_mean_error(cls, y_true, y_proba):
-        assert len(y_proba) == len(y_true)
-        error = {
-            'mse': metrics.mean_squared_error(y_true, y_proba),
-            'mae': metrics.mean_absolute_error(y_true, y_proba),
-        }
-        print('=' * 20 + 'mean_error' + "=" * 20, file=sys.stderr)
-        print("mse", error['mse'], file=sys.stderr)
-        print("mae", error['mae'], file=sys.stderr)
-        return error
-
-    @abc.abstractclassmethod
-    def plot_prc(self, y_true, y_proba):
-        precision, recall, thresholds = metrics.precision_recall_curve(y_true, y_proba)
-        print('=' * 20 + 'precision_recall_curve' + "=" * 20, file=sys.stderr)
-
-        plt.step(recall, precision, color='b', alpha=0.2,
-                 where='post')
-        plt.fill_between(recall, precision, step='post', alpha=0.2,
-                         color='b')
-
-        plt.xlabel('Recall')
-        plt.ylabel('Precision')
-        plt.ylim([0.0, 1.05])
-        plt.xlim([0.0, 1.0])
-        return precision, recall, thresholds
-
-    @abc.abstractclassmethod
-    def confusion_matrix(self, y_true, y_proba, threshold):
-        y_pred = y_proba.copy()
-        y_pred[y_pred > threshold] = 1
-        y_pred[y_pred <= threshold] = 0
-        cm = metrics.confusion_matrix(y_true, y_pred)
-        print('=' * 20 + 'confusion_matrix' + "=" * 20, file=sys.stderr)
-        print("_\t预假\t预真", file=sys.stderr)
-        print("实假\tTN(%d)\tFP(%d)" % (cm[0][0], cm[0][1]), file=sys.stderr)
-        print("实真\tFN(%d)\tTP(%d)" % (cm[1][0], cm[1][1]), file=sys.stderr)
-        return cm
-
-    @abc.abstractclassmethod
-    def classification_report(self, y_true, y_proba, threshold):
-        y_pred = y_proba.copy()
-        y_pred[y_pred > threshold] = 1
-        y_pred[y_pred <= threshold] = 0
-        print('=' * 20 + 'classification_report' + "=" * 20, file=sys.stderr)
-        print(metrics.classification_report(y_true, y_pred, target_names=[u'答错', u'答对'], digits=8), file=sys.stderr)
-
-    @abc.abstractclassmethod
-    def accuracy_score(self, y_true, y_proba, threshold):
-        y_pred = y_proba.copy()
-        y_pred[y_pred > threshold] = 1
-        y_pred[y_pred <= threshold] = 0
-        print('=' * 20 + 'accuracy_score' + "=" * 20, file=sys.stderr)
-        print(metrics.accuracy_score(y_true, y_pred), file=sys.stderr)
+    @classmethod
+    def predict(cls, users, items, threshold=0.5):
+        proba = cls.predict_proba(users, items)
+        proba[proba >= threshold] = 1
+        proba[proba < threshold] = 0
+        return proba
 
 
 class UIrt2PL(BaseIrt):
-    def __init__(self, response_df: pd.DataFrame, beta_bounds=(1, 5),
-                 init_theta=None, init_alpha=None, init_beta=None,
-                 *args, **kwargs):
-        # print(args)
-        # print(kwargs)
-        super(UIrt2PL, self).__init__(response_df, *args, **kwargs)
-        """
-           :param init_alpha: 斜率，题目参数
-           :param init_beta: 题目难度
-           :param max_iter: EM算法最大迭代次数
-           :param tol: 精度
-           :param gp_size: Gauss–Hermite积分点数
-           """
-        #
-        # self._beta_bounds = beta_bounds
-        #
-        # if init_alpha is not None:
-        #     self._init_alpha = init_alpha
-        # else:
-        #     self._init_alpha = np.ones(self._item_count)
-        #     # self._init_alpha.reshape()
-        # if init_beta is not None:
-        #     self._init_beta = init_beta
-        # else:
-        #     self._init_beta = np.linspace(beta_bounds[0], beta_bounds[1] + 1, self._item_count)
-        #
-        # if init_theta is None:
-        #     self._init_theta = np.linspace(beta_bounds[0], beta_bounds[1] + 1, self._user_count)
-        #     # self._init_theta.reshape(self._user_count, 1)
-
-        self.trace = None
 
     def estimate_em(self, max_iter=1000, tol=1e-5):
         pass
@@ -194,13 +105,12 @@ class UIrt2PL(BaseIrt):
         with basic_model:
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(5, 17)
             # theta (proficiency params) are sampled from a normal distribution
-            theta = pm.Normal("theta", mu=2, sd=0.662551, shape=(self._user_count, 1))
-            # a = pm.Normal("a", mu=1, tau=1, shape=(1, self._item_count))
-            a = pm.Lognormal("a", mu=0, tau=1, shape=(1, self._item_count))
-            b = pm.Normal("b", mu=2, sd=0.662551, shape=(1, self._item_count))
-            # z = pm.Deterministic(name="z", var=b.repeat(self._user_count, axis=0) - pm.math.dot(theta, a))
-            z = pm.Deterministic(name="z", var=a.repeat(self._user_count, axis=0) * (
-                    theta.repeat(self._item_count, axis=1) - b.repeat(self._user_count, axis=0)))
+            theta = pm.Normal("theta", mu=0, sd=1, shape=(self.user_count, 1))
+            # a = pm.Normal("a", mu=1, tau=1, shape=(1, self.item_count))
+            a = pm.Lognormal("a", mu=0, tau=1, shape=(1, self.item_count))
+            b = pm.Normal("b", mu=0, sd=1, shape=(1, self.item_count))
+            z = pm.Deterministic(name="z", var=a.repeat(self.user_count, axis=0) * (
+                    theta.repeat(self.item_count, axis=1) - b.repeat(self.user_count, axis=0)))
 
             irt = pm.Deterministic(name="irt",
                                    var=pm.math.sigmoid(z))
@@ -227,16 +137,16 @@ class UIrt2PL(BaseIrt):
         # _ = pm.traceplot(trace)
 
     def predict_proba(self, users, items):
+        n = len(users)
+        m = len(items)
+        assert n == m, "should length(users)==length(items)"
+
         user_v = self.user_vector.loc[users, ['theta']]
         item_v = self.item_vector.loc[items, ['a', 'b']]
         z = item_v['a'].values * (user_v['theta'].values - item_v['b'].values)
         e = np.exp(z)
         s = e / (1.0 + e)
         return s
-
-    def predict(self, threshold=0.5):
-        proba = self.predict_proba()
-        # proba
 
 
 class UIrt3PL(UIrt2PL):
@@ -249,20 +159,210 @@ class UIrt3PL(UIrt2PL):
         """
         basic_model = pm.Model()
         with basic_model:
-            # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(5, 17)
+            # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c \sim beta(5, 17)
             # theta (proficiency params) are sampled from a normal distribution
-            theta = pm.Normal("theta", mu=2, sd=0.662551, shape=(self._user_count, 1))
-            # a = pm.Normal("a", mu=1, tau=1, shape=(1, self._item_count))
-            a = pm.Lognormal("a", mu=0, tau=1, shape=(1, self._item_count))
-            b = pm.Normal("b", mu=2, sd=0.662551, shape=(1, self._item_count))
-            c = pm.Beta("c", alpha=5, beta=17, shape=(1, self._item_count))
+            theta = pm.Normal("theta", mu=0, sd=1, shape=(self.user_count, 1))
+            # a = pm.Normal("a", mu=1, tau=1, shape=(1, self.item_count))
+            a = pm.Lognormal("a", mu=0, tau=1, shape=(1, self.item_count))
+            b = pm.Normal("b", mu=0, sd=1, shape=(1, self.item_count))
+            c = pm.Beta("c", alpha=5, beta=17, shape=(1, self.item_count))
 
-            z = pm.Deterministic(name="z", var=a.repeat(self._user_count, axis=0) * (
-                    theta.repeat(self._item_count, axis=1) - b.repeat(self._user_count, axis=0)))
+            z = pm.Deterministic(name="z", var=a.repeat(self.user_count, axis=0) * (
+                    theta.repeat(self.item_count, axis=1) - b.repeat(self.user_count, axis=0)))
+            # z = pm.Deterministic(name="z", var=pm.math.dot(theta, a) - b.repeat(self.user_count, axis=0))
 
             irt = pm.Deterministic(name="irt",
-                                   var=(1 - c.repeat(self._user_count, axis=0)) * pm.math.sigmoid(z) + c.repeat(
-                                       self._user_count, axis=0))
+                                   var=(1 - c.repeat(self.user_count, axis=0)) * pm.math.sigmoid(z) + c.repeat(
+                                       self.user_count, axis=0))
+
+            output = pm.Deterministic(name="output",
+                                      var=as_tensor_variable(irt)[
+                                          self._response['user_iloc'], self._response['item_iloc']])
+            correct = pm.Bernoulli('correct', p=output, observed=self._response["answer"].values)
+
+            self.trace = pm.sample(**kwargs)
+
+        self.item_vector['a'] = self.trace['a'].mean(axis=0)[0, :]
+        self.item_vector['b'] = self.trace['b'].mean(axis=0)[0, :]
+        self.item_vector['c'] = self.trace['c'].mean(axis=0)[0, :]
+        self.user_vector['theta'] = self.trace['theta'].mean(axis=0)[:, 0]
+
+    def predict_proba(self, users, items):
+        n = len(users)
+        m = len(items)
+        assert n == m, "should length(users)==length(items)"
+
+        user_v = self.user_vector.loc[users, ['theta']]
+        item_v = self.item_vector.loc[items, ['a', 'b', 'c']]
+        z = item_v['a'].values * (user_v['theta'].values - item_v['b'].values)
+        # z = alpha * (theta - beta)
+        e = np.exp(z)
+        s = (1 - item_v['c'].values) * e / (1.0 + e) + item_v['c'].values
+        return s
+
+
+class MIrt2PL(BaseIrt):
+    """
+    补偿型2参数多维irt模型
+    # :param Q: shape=(k,n_items) ，Q矩阵，用于表示每个项目考察了哪些维度的属性，k代表属性维度数量。
+    # Q[i,j]=1,表示第j个项目考察了第一个维度的属性； Q[i,j]=0,表示没有考察
+
+    """
+
+    #
+    def __init__(self, k: int = 5, *args, **kwargs):
+        super(MIrt2PL, self).__init__(*args, **kwargs)
+        #     self.Q = Q.join(self.item_vector['iloc']).set_index('iloc').sort_index().values
+        #     m, self.k = self.Q.shape
+        #     self.Q = self.Q.reshape(self.k, m)
+        #     assert m == self.item_count
+        self.k = k
+
+    def estimate_mcmc(self, **kwargs):
+        """
+        参数说明参考 http://docs.pymc.io/api/inference.html#module-pymc3.sampling
+        :param kwargs:
+        :return:
+        """
+        basic_model = pm.Model()
+        with basic_model:
+            # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(2, 5)
+            theta = pm.Normal("theta", mu=0, sd=1, shape=(self.user_count, self.k))
+            a = pm.Lognormal("a", mu=0, tau=1, shape=(self.k, self.item_count))
+            b = pm.Normal("b", mu=0, sd=1, shape=(1, self.item_count))
+            # z = pm.Deterministic(name="z", var=pm.math.dot(theta, a * self.Q) - b.repeat(self.user_count, axis=0))
+            z = pm.Deterministic(name="z", var=pm.math.dot(theta, a) - b.repeat(self.user_count, axis=0))
+
+            irt = pm.Deterministic(name="irt",
+                                   var=pm.math.sigmoid(z))
+
+            output = pm.Deterministic(name="output",
+                                      var=as_tensor_variable(irt)[
+                                          self._response['user_iloc'], self._response['item_iloc']])
+            correct = pm.Bernoulli('correct', p=output, observed=self._response["answer"].values)
+
+            # map_estimate = pm.find_MAP()
+            self.trace = pm.sample(**kwargs)
+
+        theta = pd.DataFrame(self.trace['theta'].mean(axis=0),
+                             columns=['theta_%d' % i for i in range(self.k)])
+
+        # a = pd.DataFrame(self.trace['a'].mean(axis=0).T * self.Q.T,
+        a = pd.DataFrame(self.trace['a'].mean(axis=0).T,
+                         columns=['a_%d' % i for i in range(self.k)])
+
+        self.user_vector = self.user_vector.join(theta, on="iloc", how='left')
+        self.item_vector = self.item_vector.join(a, on="iloc", how='left')
+        self.item_vector['b'] = self.trace['b'].mean(axis=0)[0, :]
+
+    def predict_proba(self, users, items):
+        n = len(users)
+        m = len(items)
+        assert n == m, "should length(users)==length(items)"
+
+        user_v = self.user_vector.loc[users, ['theta_%d' % i for i in range(self.k)]]
+        item_a = self.item_vector.loc[items, ['a_%d' % i for i in range(self.k)]]
+        item_b = self.item_vector.loc[items, ['b']].values.flatten()
+        z = (user_v.values * item_a.values).sum(axis=1) - item_b
+        e = np.exp(z)
+        s = e / (1.0 + e)
+        return s
+
+
+class MIrt3PL(MIrt2PL):
+    """
+    补偿型3参数多维irt模型
+    # :param Q: shape=(k,n_items) ，Q矩阵，用于表示每个项目考察了哪些维度的属性，k代表属性维度数量。
+    # Q[i,j]=1,表示第j个项目考察了第一个维度的属性； Q[i,j]=0,表示没有考察
+    """
+
+    def estimate_mcmc(self, **kwargs):
+        """
+        参数说明参考 http://docs.pymc.io/api/inference.html#module-pymc3.sampling
+        :param kwargs:
+        :return:
+        """
+
+        basic_model = pm.Model()
+        with basic_model:
+            # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(2, 5)
+            # theta (proficiency params) are sampled from a normal distribution
+            theta = pm.Normal("theta", mu=0, sd=1, shape=(self.user_count, self.k))
+            # a = pm.Normal("a", mu=1, tau=1, shape=(1, self.item_count))
+            a = pm.Lognormal("a", mu=0, tau=1, shape=(self.k, self.item_count))
+            b = pm.Normal("b", mu=0, sd=1, shape=(1, self.item_count))
+            c = pm.Beta("c", alpha=2, beta=5, shape=(1, self.item_count))
+
+            # z = pm.Deterministic(name="z", var=pm.math.dot(theta, a * self.Q) - b.repeat(self.user_count, axis=0))
+            z = pm.Deterministic(name="z", var=pm.math.dot(theta, a) - b.repeat(self.user_count, axis=0))
+
+            irt = pm.Deterministic(name="irt",
+                                   var=(1 - c.repeat(self.user_count, axis=0)) * pm.math.sigmoid(z) + c.repeat(
+                                       self.user_count, axis=0))
+
+            output = pm.Deterministic(name="output",
+                                      var=as_tensor_variable(irt)[
+                                          self._response['user_iloc'], self._response['item_iloc']])
+            correct = pm.Bernoulli('correct', p=output, observed=self._response["answer"].values)
+
+            # map_estimate = pm.find_MAP()
+            self.trace = pm.sample(**kwargs)
+
+        self.item_vector['b'] = self.trace['b'].mean(axis=0)[0, :]
+        self.item_vector['c'] = self.trace['c'].mean(axis=0)[0, :]
+        theta = pd.DataFrame(self.trace['theta'].mean(axis=0),
+                             columns=['theta_%d' % i for i in range(self.k)])
+        # a = pd.DataFrame(self.trace['a'].mean(axis=0).T*self.Q.T,
+        a = pd.DataFrame(self.trace['a'].mean(axis=0).T,
+                         columns=['a_%d' % i for i in range(self.k)])
+        self.user_vector = self.user_vector.join(theta, on="iloc", how='left')
+        self.item_vector = self.item_vector.join(a, on="iloc", how='left')
+
+    def predict_proba(self, users, items):
+        n = len(users)
+        m = len(items)
+        assert n == m, "should length(users)==length(items)"
+        user_v = self.user_vector.loc[users, ['theta_%d' % i for i in range(self.k)]]
+        item_a = self.item_vector.loc[items, ['a_%d' % i for i in range(self.k)]]
+        item_b = self.item_vector.loc[items, ['b']].values.flatten()
+        item_c = self.item_vector.loc[items, ['c']].values.flatten()
+
+        z = (user_v.values * item_a.values).sum(axis=1) - item_b
+        e = np.exp(z)
+        s = item_c + (1 - item_c) * e / (1.0 + e)
+        return s
+
+
+class MIrt2PLN(MIrt2PL):
+    """
+    非补偿型2参数多维irt模型
+    :param Q: shape=(k,n_items) ，Q矩阵，用于表示每个项目考察了哪些维度的属性，k代表属性维度数量。
+    Q[i,j]=1,表示第j个项目考察了第一个维度的属性； Q[i,j]=0,表示没有考察
+    :param args:
+    :param kwargs:
+    """
+
+    def estimate_mcmc(self, **kwargs):
+        """
+        参数说明参考 http://docs.pymc.io/api/inference.html#module-pymc3.sampling
+        :param kwargs:
+        :return:
+        """
+        basic_model = pm.Model()
+
+        with basic_model:
+            # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(2, 5)
+            theta = pm.Normal("theta", mu=0, sd=1, shape=(self.k, self.user_count, 1))
+            a = pm.Lognormal("a", mu=0, tau=1, shape=(self.k, 1, self.item_count))
+            b = pm.Normal("b", mu=0, sd=1, shape=(self.k, 1, self.item_count))
+            # a(theta-b)
+            z = pm.Deterministic(name="z",
+                                 var=a.repeat(self.user_count, axis=1) * (
+                                         theta.repeat(self.item_count, axis=2) - b.repeat(self.user_count,
+                                                                                          axis=1)))
+
+            irt = pm.Deterministic(name="irt",
+                                   var=pm.math.prod(pm.math.sigmoid(z), axis=0))
 
             output = pm.Deterministic(name="output",
                                       var=as_tensor_variable(irt)[
@@ -272,19 +372,102 @@ class UIrt3PL(UIrt2PL):
             # map_estimate = pm.find_MAP()
             # create a pymc simulation object, including all the above variables
             self.trace = pm.sample(**kwargs)
+        theta = self.trace['theta'].mean(axis=0)[:, :, 0]
+        theta = pd.DataFrame(theta.T, columns=['theta_%d' % i for i in range(self.k)])
 
-        self.item_vector['a'] = self.trace['a'].mean(axis=0)[0, :]
-        self.item_vector['b'] = self.trace['b'].mean(axis=0)[0, :]
-        self.item_vector['c'] = self.trace['c'].mean(axis=0)[0, :]
-        self.user_vector['theta'] = self.trace['theta'].mean(axis=0)[:, 0]
+        a = self.trace['a'].mean(axis=0)[:, 0, :]
+        b = self.trace['b'].mean(axis=0)[:, 0, :]
+        a = pd.DataFrame(a.T, columns=['a_%d' % i for i in range(self.k)])
+        b = pd.DataFrame(b.T, columns=['b_%d' % i for i in range(self.k)])
+
+        self.user_vector = self.user_vector.join(theta, on="iloc", how='left')
+        self.item_vector = self.item_vector.join(a, on="iloc", how='left')
+        self.item_vector = self.item_vector.join(b, on="iloc", how='left')
 
     def predict_proba(self, users, items):
-        user_v = self.user_vector.loc[users, ['theta']]
-        item_v = self.item_vector.loc[items, ['a', 'b', 'c']]
-        z = item_v['a'].values * (user_v['theta'].values - item_v['b'].values)
-        # z = alpha * (theta - beta)
+        n = len(users)
+        m = len(items)
+        assert n == m, "should length(users)==length(items)"
+        user_v = self.user_vector.loc[users, ['theta_%d' % i for i in range(self.k)]].values
+        item_a = self.item_vector.loc[items, ['a_%d' % i for i in range(self.k)]].values
+        item_b = self.item_vector.loc[items, ['b_%d' % i for i in range(self.k)]].values
+        z = (user_v - item_b) * item_a
         e = np.exp(z)
-        import scipy
+        s = e / (1.0 + e)
+        return np.prod(s, axis=1)
 
-        s = (1 - item_v['c'].values) * e / (1.0 + e) + item_v['c'].values
-        return s
+
+class MIrt3PLN(MIrt2PLN):
+    R"""
+    非补偿型3参数多维irt模型
+    .. math::
+        P(U_{ij}=1|\theta_i,a_j,b_j,c_j) = c_j + (1-c_j)\prod
+
+    Parameters
+    ----------
+    Q: numpy.ndarray
+        shape=(k,n_items) ，Q矩阵，用于表示每个项目考察了哪些维度的属性，k代表属性维度数量。
+        Q[i,j]=1,表示第j个项目考察了第一个维度的属性； Q[i,j]=0,表示没有考察
+    :param args:
+    :param kwargs:
+    """
+
+    def estimate_mcmc(self, **kwargs):
+        """
+        参数说明参考 http://docs.pymc.io/api/inference.html#module-pymc3.sampling
+        :param kwargs:
+        :return:
+        """
+        basic_model = pm.Model()
+
+        with basic_model:
+            # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(2, 5)
+            theta = pm.Normal("theta", mu=0, sd=1, shape=(self.k, self.user_count, 1))
+            a = pm.Lognormal("a", mu=0, tau=1, shape=(self.k, 1, self.item_count))
+            b = pm.Normal("b", mu=0, sd=1, shape=(self.k, 1, self.item_count))
+            c = pm.Beta("c", alpha=2, beta=5, shape=(1, self.item_count))
+
+            # a(theta-b)
+            z = pm.Deterministic(name="z",
+                                 var=a.repeat(self.user_count, axis=1) * (
+                                         theta.repeat(self.item_count, axis=2) - b.repeat(self.user_count,
+                                                                                          axis=1)))
+            # c + (1-c)*prod_k(sigmod(z))
+            irt = pm.Deterministic(name="irt",
+                                   var=c.repeat(self.user_count, axis=0) + (
+                                           1 - c.repeat(self.user_count, axis=0)) * pm.math.prod(pm.math.sigmoid(z),
+                                                                                                 axis=0))
+
+            output = pm.Deterministic(name="output",
+                                      var=as_tensor_variable(irt)[
+                                          self._response['user_iloc'], self._response['item_iloc']])
+            correct = pm.Bernoulli('correct', p=output, observed=self._response["answer"].values)
+
+            # map_estimate = pm.find_MAP()
+            # create a pymc simulation object, including all the above variables
+            self.trace = pm.sample(**kwargs)
+        theta = self.trace['theta'].mean(axis=0)[:, :, 0]
+        theta = pd.DataFrame(theta.T, columns=['theta_%d' % i for i in range(self.k)])
+
+        a = self.trace['a'].mean(axis=0)[:, 0, :]
+        b = self.trace['b'].mean(axis=0)[:, 0, :]
+        a = pd.DataFrame(a.T, columns=['a_%d' % i for i in range(self.k)])
+        b = pd.DataFrame(b.T, columns=['b_%d' % i for i in range(self.k)])
+
+        self.user_vector = self.user_vector.join(theta, on="iloc", how='left')
+        self.item_vector = self.item_vector.join(a, on="iloc", how='left')
+        self.item_vector = self.item_vector.join(b, on="iloc", how='left')
+        self.item_vector['c'] = self.trace['c'].mean(axis=0)[0, :]
+
+    def predict_proba(self, users, items):
+        n = len(users)
+        m = len(items)
+        assert n == m, "should length(users)==length(items)"
+        user_v = self.user_vector.loc[users, ['theta_%d' % i for i in range(self.k)]].values
+        item_a = self.item_vector.loc[items, ['a_%d' % i for i in range(self.k)]].values
+        item_b = self.item_vector.loc[items, ['b_%d' % i for i in range(self.k)]].values
+        item_c = self.item_vector.loc[items, 'c'].values
+        z = (user_v - item_b) * item_a
+        e = np.exp(z)
+        s = e / (1.0 + e)
+        return item_c + (1 - item_c) * np.prod(s, axis=1)

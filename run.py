@@ -121,7 +121,8 @@ def main(options):
     from utils.data import padding
     # data_bank = DataBank(logs=df)
     # print(data_bank)
-    from model.irt import UIrt2PL, UIrt3PL
+    from model.irt import UIrt2PL, UIrt3PL, MIrt2PL, MIrt3PL, MIrt2PLN, MIrt3PLN
+    from model.metrics import Metric
     # 0：未做
     # 1：正确
     # 2：错误
@@ -144,32 +145,47 @@ def main(options):
     # drop_item = hehe[hehe['answer'] < 10].index
     # df_target = df_target.set_index('item_id').drop(drop_item)
     # len(df_target)
-
+    # 数据切割成训练集和测试机
     train_df, test_df = split_data(df_target)
-    # count = len(df_target)
-    # train = df_target.iloc[:int(count * 0.7)]
-    # test = df_target.iloc[-int(count * 0.7):]
-    # train = df_target
-    # test = df_target
+
     print(len(df), len(train_df), len(test_df))
     print(test_df['answer'].value_counts())
-    # return
+    y_true = test_df['answer'].values
 
-    irt2 = UIrt2PL(train_df)
-    irt3 = UIrt3PL(train_df)
-    print(irt2, file=sys.stderr)
-    # return
-    irt3.estimate_mcmc(draws=150, tune=1000, njobs=2)
+    for Model in [
+        UIrt2PL,
+        UIrt3PL,
+        MIrt2PL,
+        MIrt3PL,
+        MIrt2PLN,
+        MIrt3PLN
+    ]:
+        # item_id = train_df['item_id'].unique()
+        # item_count = len(item_id)
+        # Q = pd.DataFrame(np.ones((item_count, 5)), columns=[str(i) for i in range(5)], index=item_id)
 
-    # pm.df_summary()
-    y0_proba = irt3.predict_proba(list(test_df['user_id'].values), list(test_df['item_id'].values))
-    y0_true = test_df['answer'].values
-    irt2.metric_mean_error(y0_true, y0_proba)
-    irt2.confusion_matrix(y0_true, y0_proba, threshold=0.7)
-    irt2.accuracy_score(y0_true, y0_proba, threshold=0.7)
-    irt2.classification_report(y0_true, y0_proba, threshold=0.7)
-    # irt0.plot_prc(y0_true, y0_proba)
-    return
+        model = Model(response=train_df)
+        print('\n' * 2)
+        print("*" * 10 + model.name() + "*" * 10)
+
+        model.estimate_mcmc(draws=150, tune=1000, njobs=1, progressbar=False)
+        y_proba = model.predict_proba(list(test_df['user_id'].values), list(test_df['item_id'].values))
+
+        error = Metric.metric_mean_error(y_true, y_proba)
+        print('=' * 20 + 'mean_error' + "=" * 20, )
+        print("mse", error['mse'])
+        print("mae", error['mae'])
+
+        print('=' * 20 + 'confusion_matrix' + "=" * 20)
+        cm = Metric.confusion_matrix(y_true, y_proba, threshold=0.8)
+        Metric.print_confusion_matrix(cm)
+
+        print('=' * 20 + 'accuracy_score' + "=" * 20)
+        acc_score = Metric.accuracy_score(y_true, y_proba, threshold=0.8)
+        print(acc_score)
+
+        # print('=' * 20 + 'classification_report' + "=" * 20, file=sys.stderr)
+        # Metric.classification_report(y_true, y_proba, threshold=0.7)
 
 
 if __name__ == "__main__":
