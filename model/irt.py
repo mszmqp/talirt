@@ -80,7 +80,11 @@ class BaseIrt(object):
 
     @abc.abstractmethod
     def predict_proba(self, users, items):
-        return np.zeros(len(users))
+        raise NotImplemented
+
+    @abc.abstractmethod
+    def predict_proba_x(self, users, items):
+        raise NotImplemented
 
     @classmethod
     def predict(cls, users, items, threshold=0.5):
@@ -142,10 +146,26 @@ class UIrt2PL(BaseIrt):
         assert n == m, "should length(users)==length(items)"
 
         user_v = self.user_vector.loc[users, ['theta']]
-        item_v = self.item_vector.loc[items, ['a', 'b']]
+        item_v = self.item_vector.loc[items, ['a', 'b', 'c']]
         z = item_v['a'].values * (user_v['theta'].values - item_v['b'].values)
+        # z = alpha * (theta - beta)
         e = np.exp(z)
-        s = e / (1.0 + e)
+        s = (1 - item_v['c'].values) * e / (1.0 + e) + item_v['c'].values
+        return s
+
+    def predict_proba_x(self, users, items):
+        user_count = len(users)
+        item_count = len(items)
+        theta = self.user_vector.loc[users, 'theta'].values.reshape((user_count, 1))
+        a = self.item_vector.loc[items, 'a'].values.reshape((1, item_count))
+        b = self.item_vector.loc[items, 'b'].values.reshape((1, item_count))
+        c = self.item_vector.loc[items, 'c'].values.reshape((1, item_count))
+        c = c.repeat(user_count, axis=0)
+        z = a.repeat(user_count, axis=0) * (
+                theta.repeat(item_count, axis=1) - b.repeat(user_count, axis=0))
+
+        e = np.exp(z)
+        s = c + (1 - c) * e / (1.0 + e)
         return s
 
 
@@ -186,19 +206,6 @@ class UIrt3PL(UIrt2PL):
         self.item_vector['b'] = self.trace['b'].mean(axis=0)[0, :]
         self.item_vector['c'] = self.trace['c'].mean(axis=0)[0, :]
         self.user_vector['theta'] = self.trace['theta'].mean(axis=0)[:, 0]
-
-    def predict_proba(self, users, items):
-        n = len(users)
-        m = len(items)
-        assert n == m, "should length(users)==length(items)"
-
-        user_v = self.user_vector.loc[users, ['theta']]
-        item_v = self.item_vector.loc[items, ['a', 'b', 'c']]
-        z = item_v['a'].values * (user_v['theta'].values - item_v['b'].values)
-        # z = alpha * (theta - beta)
-        e = np.exp(z)
-        s = (1 - item_v['c'].values) * e / (1.0 + e) + item_v['c'].values
-        return s
 
 
 class MIrt2PL(BaseIrt):
@@ -259,13 +266,29 @@ class MIrt2PL(BaseIrt):
         n = len(users)
         m = len(items)
         assert n == m, "should length(users)==length(items)"
-
-        user_v = self.user_vector.loc[users, ['theta_%d' % i for i in range(self.k)]]
-        item_a = self.item_vector.loc[items, ['a_%d' % i for i in range(self.k)]]
+        user_v = self.user_vector.loc[users, ['theta_%d' % i for i in range(self.k)]].values
+        item_a = self.item_vector.loc[items, ['a_%d' % i for i in range(self.k)]].values
         item_b = self.item_vector.loc[items, ['b']].values.flatten()
-        z = (user_v.values * item_a.values).sum(axis=1) - item_b
+        item_c = self.item_vector.loc[items, ['c']].values.flatten()
+        # 注意这里不要用矩阵的dot
+        z = (user_v * item_a).sum(axis=1) - item_b
         e = np.exp(z)
-        s = e / (1.0 + e)
+        s = item_c + (1 - item_c) * e / (1.0 + e)
+        return s
+
+    def predict_proba_x(self, users, items):
+        user_count = len(users)
+        item_count = len(items)
+        theta = self.user_vector.loc[users, ['theta_%d' % i for i in range(self.k)]].values  # shape=(user_count,k)
+        a = self.item_vector.loc[items, ['a_%d' % i for i in range(self.k)]].values.T  # shape = (k, item_count)
+        b = self.item_vector.loc[items, 'b'].values.reshape((1, item_count))
+        c = self.item_vector.loc[items, 'c'].values.reshape((1, item_count))
+        b = b.repeat(user_count, axis=0)
+        c = c.repeat(user_count, axis=0)
+        z = np.dot(theta, a) - b
+
+        e = np.exp(z)
+        s = c + (1 - c) * e / (1.0 + e)
         return s
 
 
@@ -317,20 +340,6 @@ class MIrt3PL(MIrt2PL):
                          columns=['a_%d' % i for i in range(self.k)])
         self.user_vector = self.user_vector.join(theta, on="iloc", how='left')
         self.item_vector = self.item_vector.join(a, on="iloc", how='left')
-
-    def predict_proba(self, users, items):
-        n = len(users)
-        m = len(items)
-        assert n == m, "should length(users)==length(items)"
-        user_v = self.user_vector.loc[users, ['theta_%d' % i for i in range(self.k)]]
-        item_a = self.item_vector.loc[items, ['a_%d' % i for i in range(self.k)]]
-        item_b = self.item_vector.loc[items, ['b']].values.flatten()
-        item_c = self.item_vector.loc[items, ['c']].values.flatten()
-
-        z = (user_v.values * item_a.values).sum(axis=1) - item_b
-        e = np.exp(z)
-        s = item_c + (1 - item_c) * e / (1.0 + e)
-        return s
 
 
 class MIrt2PLN(MIrt2PL):
@@ -388,13 +397,31 @@ class MIrt2PLN(MIrt2PL):
         n = len(users)
         m = len(items)
         assert n == m, "should length(users)==length(items)"
-        user_v = self.user_vector.loc[users, ['theta_%d' % i for i in range(self.k)]].values
-        item_a = self.item_vector.loc[items, ['a_%d' % i for i in range(self.k)]].values
-        item_b = self.item_vector.loc[items, ['b_%d' % i for i in range(self.k)]].values
+        user_v = self.user_vector.loc[users, ['theta_%d' % i for i in range(self.k)]].values  # shape=(user_count,k)
+        item_a = self.item_vector.loc[items, ['a_%d' % i for i in range(self.k)]].values  # shape = (item_count,k)
+        item_b = self.item_vector.loc[items, ['b_%d' % i for i in range(self.k)]].values  # shape = (item_count,k)
+        item_c = self.item_vector.loc[items, 'c'].values
         z = (user_v - item_b) * item_a
         e = np.exp(z)
         s = e / (1.0 + e)
-        return np.prod(s, axis=1)
+        return item_c + (1 - item_c) * np.prod(s, axis=1)
+
+    def predict_proba_x(self, users, items):
+        user_count = len(users)
+        item_count = len(items)
+        theta = self.user_vector.loc[users, ['theta_%d' % i for i in range(self.k)]].values  # shape=(user_count,k)
+        a = self.item_vector.loc[items, ['a_%d' % i for i in range(self.k)]].values  # shape = (item_count,k)
+        b = self.item_vector.loc[items, ['b_%d' % i for i in range(self.k)]].values  # shape = (item_count,k)
+        c = self.item_vector.loc[items, 'c'].values.reshape((1, item_count))
+        theta = theta.reshap(user_count, 1, self.k).repeat(item_count, 1)
+
+        a = a.reshape(1, item_count, self.k).repeat(user_count, axis=0)
+        b = b.reshape(1, item_count, self.k).repeat(user_count, axis=0)
+        c = c.repeat(user_count, axis=0)
+        z = a * (theta - b)
+        e = np.exp(z)
+        s = e / (1.0 + e)
+        return c + (1 - c) * np.prod(s, axis=1)
 
 
 class MIrt3PLN(MIrt2PLN):
@@ -458,16 +485,3 @@ class MIrt3PLN(MIrt2PLN):
         self.item_vector = self.item_vector.join(a, on="iloc", how='left')
         self.item_vector = self.item_vector.join(b, on="iloc", how='left')
         self.item_vector['c'] = self.trace['c'].mean(axis=0)[0, :]
-
-    def predict_proba(self, users, items):
-        n = len(users)
-        m = len(items)
-        assert n == m, "should length(users)==length(items)"
-        user_v = self.user_vector.loc[users, ['theta_%d' % i for i in range(self.k)]].values
-        item_a = self.item_vector.loc[items, ['a_%d' % i for i in range(self.k)]].values
-        item_b = self.item_vector.loc[items, ['b_%d' % i for i in range(self.k)]].values
-        item_c = self.item_vector.loc[items, 'c'].values
-        z = (user_v - item_b) * item_a
-        e = np.exp(z)
-        s = e / (1.0 + e)
-        return item_c + (1 - item_c) * np.prod(s, axis=1)
