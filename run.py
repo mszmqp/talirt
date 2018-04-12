@@ -153,10 +153,10 @@ def main(options):
     y_true = test_df['answer'].values
 
     for Model in [
-        UIrt2PL,
-        UIrt3PL,
-        MIrt2PL,
-        MIrt3PL,
+        # UIrt2PL,
+        # UIrt3PL,
+        # MIrt2PL,
+        # MIrt3PL,
         MIrt2PLN,
         MIrt3PLN
     ]:

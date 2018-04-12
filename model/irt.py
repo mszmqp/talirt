@@ -63,6 +63,7 @@ class BaseIrt(object):
         self.item_vector['accuracy'] = self.item_vector['right'] / self.item_vector['count']
 
         self.trace = None
+        self.D = 1.7
 
     def info(self):
         d = self._response['answer'].value_counts()
@@ -418,10 +419,10 @@ class MIrt2PLN(MIrt2PL):
         a = a.reshape(1, item_count, self.k).repeat(user_count, axis=0)
         b = b.reshape(1, item_count, self.k).repeat(user_count, axis=0)
         c = c.repeat(user_count, axis=0)
-        z = a * (theta - b)
+        z = self.D*a * (theta - b)
         e = np.exp(z)
         s = e / (1.0 + e)
-        return c + (1 - c) * np.prod(s, axis=1)
+        return c + (1 - c) * np.prod(s, axis=2)
 
 
 class MIrt3PLN(MIrt2PLN):
