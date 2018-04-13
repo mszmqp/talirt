@@ -3,17 +3,12 @@ from __future__ import print_function
 import warnings
 from itertools import combinations
 import numpy as np
-# from psy.utils import inverse_logistic, get_nodes_weights
-# from psy.fa import GPForth, Factor
-# from psy.settings import X_WEIGHTS, X_NODES
 import pymc3 as pm
 import pandas as pd
 import theano.tensor as tt
 from theano.tensor.basic import as_tensor_variable
 
 import abc
-
-import sys
 
 
 class BaseIrt(object):
@@ -93,6 +88,128 @@ class BaseIrt(object):
         proba[proba >= threshold] = 1
         proba[proba < threshold] = 0
         return proba
+
+    @abc.abstractmethod
+    def estimate_mcmc(self, **kwargs):
+        """Draw samples from the posterior using the given step methods.
+
+        Multiple step methods are supported via compound step methods.
+
+        Parameters
+        ----------
+        draws : int
+            The number of samples to draw. Defaults to 500. The number of tuned
+            samples are discarded by default. See discard_tuned_samples.
+        step : function or iterable of functions
+            A step function or collection of functions. If there are variables
+            without a step methods, step methods for those variables will
+            be assigned automatically.
+        init : str
+            Initialization method to use for auto-assigned NUTS samplers.
+
+            * auto : Choose a default initialization method automatically.
+              Currently, this is `'jitter+adapt_diag'`, but this can change in
+              the future. If you depend on the exact behaviour, choose an
+              initialization method explicitly.
+            * adapt_diag : Start with a identity mass matrix and then adapt
+              a diagonal based on the variance of the tuning samples. All
+              chains use the test value (usually the prior mean) as starting
+              point.
+            * jitter+adapt_diag : Same as `adapt_diag`, but add uniform jitter
+              in [-1, 1] to the starting point in each chain.
+            * advi+adapt_diag : Run ADVI and then adapt the resulting diagonal
+              mass matrix based on the sample variance of the tuning samples.
+            * advi+adapt_diag_grad : Run ADVI and then adapt the resulting
+              diagonal mass matrix based on the variance of the gradients
+              during tuning. This is **experimental** and might be removed
+              in a future release.
+            * advi : Run ADVI to estimate posterior mean and diagonal mass
+              matrix.
+            * advi_map: Initialize ADVI with MAP and use MAP as starting point.
+            * map : Use the MAP as starting point. This is discouraged.
+            * nuts : Run NUTS and estimate posterior mean and mass matrix from
+              the trace.
+        n_init : int
+            Number of iterations of initializer
+            If 'ADVI', number of iterations, if 'nuts', number of draws.
+        start : dict, or array of dict
+            Starting point in parameter space (or partial point)
+            Defaults to trace.point(-1)) if there is a trace provided and
+            model.test_point if not (defaults to empty dict). Initialization
+            methods for NUTS (see `init` keyword) can overwrite the default.
+        trace : backend, list, or MultiTrace
+            This should be a backend instance, a list of variables to track,
+            or a MultiTrace object with past values. If a MultiTrace object
+            is given, it must contain samples for the chain number `chain`.
+            If None or a list of variables, the NDArray backend is used.
+            Passing either "text" or "sqlite" is taken as a shortcut to set
+            up the corresponding backend (with "mcmc" used as the base
+            name).
+        chain_idx : int
+            Chain number used to store sample in backend. If `chains` is
+            greater than one, chain numbers will start here.
+        chains : int
+            The number of chains to sample. Running independent chains
+            is important for some convergence statistics and can also
+            reveal multiple modes in the posterior. If `None`, then set to
+            either `njobs` or 2, whichever is larger.
+        njobs : int
+            The number of chains to run in parallel. If `None`, set to the
+            number of CPUs in the system, but at most 4. Keep in mind that
+            some chains might themselves be multithreaded via openmp or
+            BLAS. In those cases it might be faster to set this to one.
+        tune : int
+            Number of iterations to tune, if applicable (defaults to 500).
+            Samplers adjust the step sizes, scalings or similar during
+            tuning. These samples will be drawn in addition to samples
+            and discarded unless discard_tuned_samples is set to True.
+        nuts_kwargs : dict
+            Options for the NUTS sampler. See the docstring of NUTS
+            for a complete list of options. Common options are
+
+            * target_accept: float in [0, 1]. The step size is tuned such
+              that we approximate this acceptance rate. Higher values like 0.9
+              or 0.95 often work better for problematic posteriors.
+            * max_treedepth: The maximum depth of the trajectory tree.
+            * step_scale: float, default 0.25
+              The initial guess for the step size scaled down by `1/n**(1/4)`.
+
+            If you want to pass options to other step methods, please use
+            `step_kwargs`.
+        step_kwargs : dict
+            Options for step methods. Keys are the lower case names of
+            the step method, values are dicts of keyword arguments.
+            You can find a full list of arguments in the docstring of
+            the step methods. If you want to pass arguments only to nuts,
+            you can use `nuts_kwargs`.
+        progressbar : bool
+            Whether or not to display a progress bar in the command line. The
+            bar shows the percentage of completion, the sampling speed in
+            samples per second (SPS), and the estimated remaining time until
+            completion ("expected time of arrival"; ETA).
+        model : Model (optional if in `with` context)
+        random_seed : int or list of ints
+            A list is accepted if `njobs` is greater than one.
+        live_plot : bool
+            Flag for live plotting the trace while sampling
+        live_plot_kwargs : dict
+            Options for traceplot. Example: live_plot_kwargs={'varnames': ['x']}
+        discard_tuned_samples : bool
+            Whether to discard posterior samples of the tune interval.
+        compute_convergence_checks : bool, default=True
+            Whether to compute sampler statistics like gelman-rubin and
+            effective_n.
+
+        Returns
+        -------
+        trace : pymc3.backends.base.MultiTrace
+            A `MultiTrace` object that contains the samples.
+
+        Examples
+        --------
+
+        """
+        raise NotImplemented
 
 
 class UIrt2PL(BaseIrt):
@@ -271,7 +388,7 @@ class MIrt2PL(BaseIrt):
         item_a = self.item_vector.loc[items, ['a_%d' % i for i in range(self.k)]].values
         item_b = self.item_vector.loc[items, ['b']].values.flatten()
         item_c = self.item_vector.loc[items, ['c']].values.flatten()
-        # 注意这里不要用矩阵的dot
+        # 注意本函数是按顺序求u和item的估计值，不是矩阵求解每个被试和每个项目的作答。这里不要用矩阵的dot
         z = (user_v * item_a).sum(axis=1) - item_b
         e = np.exp(z)
         s = item_c + (1 - item_c) * e / (1.0 + e)
@@ -294,19 +411,11 @@ class MIrt2PL(BaseIrt):
 
 
 class MIrt3PL(MIrt2PL):
-    """
-    补偿型3参数多维irt模型
-    # :param Q: shape=(k,n_items) ，Q矩阵，用于表示每个项目考察了哪些维度的属性，k代表属性维度数量。
-    # Q[i,j]=1,表示第j个项目考察了第一个维度的属性； Q[i,j]=0,表示没有考察
+    R"""
+        补偿型3参数多维irt模型
     """
 
     def estimate_mcmc(self, **kwargs):
-        """
-        参数说明参考 http://docs.pymc.io/api/inference.html#module-pymc3.sampling
-        :param kwargs:
-        :return:
-        """
-
         basic_model = pm.Model()
         with basic_model:
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(2, 5)
@@ -344,19 +453,16 @@ class MIrt3PL(MIrt2PL):
 
 
 class MIrt2PLN(MIrt2PL):
-    """
+    R"""
     非补偿型2参数多维irt模型
-    :param Q: shape=(k,n_items) ，Q矩阵，用于表示每个项目考察了哪些维度的属性，k代表属性维度数量。
-    Q[i,j]=1,表示第j个项目考察了第一个维度的属性； Q[i,j]=0,表示没有考察
-    :param args:
-    :param kwargs:
     """
 
     def estimate_mcmc(self, **kwargs):
         """
         参数说明参考 http://docs.pymc.io/api/inference.html#module-pymc3.sampling
-        :param kwargs:
-        :return:
+        Parameters
+        ----------
+
         """
         basic_model = pm.Model()
 
@@ -429,15 +535,12 @@ class MIrt3PLN(MIrt2PLN):
     R"""
     非补偿型3参数多维irt模型
     .. math::
-        P(U_{ij}=1|\theta_i,a_j,b_j,c_j) = c_j + (1-c_j)\prod
+        P(U_{ij}=1|\theta_i,a_j,b_j,c_j) = c_j + (1-c_j) \left( \prod_{k=1}^K \frac{e^{Da_{jk}(\theta_{ik}-b_{jk})}}{1+e^{Da_{jk}(\theta_{ik}-b_{jk})}} \right)
 
     Parameters
     ----------
-    Q: numpy.ndarray
-        shape=(k,n_items) ，Q矩阵，用于表示每个项目考察了哪些维度的属性，k代表属性维度数量。
-        Q[i,j]=1,表示第j个项目考察了第一个维度的属性； Q[i,j]=0,表示没有考察
-    :param args:
-    :param kwargs:
+
+
     """
 
     def estimate_mcmc(self, **kwargs):
@@ -447,14 +550,12 @@ class MIrt3PLN(MIrt2PLN):
         :return:
         """
         basic_model = pm.Model()
-
         with basic_model:
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(2, 5)
             theta = pm.Normal("theta", mu=0, sd=1, shape=(self.k, self.user_count, 1))
             a = pm.Lognormal("a", mu=0, tau=1, shape=(self.k, 1, self.item_count))
             b = pm.Normal("b", mu=0, sd=1, shape=(self.k, 1, self.item_count))
             c = pm.Beta("c", alpha=2, beta=5, shape=(1, self.item_count))
-
             # a(theta-b)
             z = pm.Deterministic(name="z",
                                  var=a.repeat(self.user_count, axis=1) * (
@@ -465,14 +566,10 @@ class MIrt3PLN(MIrt2PLN):
                                    var=c.repeat(self.user_count, axis=0) + (
                                            1 - c.repeat(self.user_count, axis=0)) * pm.math.prod(pm.math.sigmoid(z),
                                                                                                  axis=0))
-
             output = pm.Deterministic(name="output",
                                       var=as_tensor_variable(irt)[
                                           self._response['user_iloc'], self._response['item_iloc']])
             correct = pm.Bernoulli('correct', p=output, observed=self._response["answer"].values)
-
-            # map_estimate = pm.find_MAP()
-            # create a pymc simulation object, including all the above variables
             self.trace = pm.sample(**kwargs)
         theta = self.trace['theta'].mean(axis=0)[:, :, 0]
         theta = pd.DataFrame(theta.T, columns=['theta_%d' % i for i in range(self.k)])

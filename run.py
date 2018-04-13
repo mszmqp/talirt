@@ -160,7 +160,7 @@ def main(options):
         # UIrt3PL,
         # MIrt2PL,
         # MIrt3PL,
-        MIrt2PLN,
+        # MIrt2PLN,
         MIrt3PLN
     ]:
         # item_id = train_df['item_id'].unique()
