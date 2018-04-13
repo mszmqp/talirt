@@ -159,6 +159,8 @@ def init_option():
 
 
 def main(options):
+    import sys
+    sys.path.append("./")
     sim = Simulator(n_items=100,n_users=200,model="U3PL")
     df = sim.simulate()
     print(sim.user)
