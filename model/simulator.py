@@ -161,7 +161,7 @@ def init_option():
 def main(options):
     import sys
     sys.path.append("./")
-    sim = Simulator(n_items=100,n_users=200,model="U3PL")
+    sim = Simulator(n_items=100, n_users=200, model="U3PL")
     df = sim.simulate()
     print(sim.user)
     print(sim.item)
@@ -176,7 +176,7 @@ def main(options):
         for j in sim.item_index:
             user.append(i)
             item.append(j)
-            answer.append(int(df.loc[i, j]+0.5))
+            answer.append(int(df.loc[i, j] + 0.5))
             # print(i, j, df.loc[i, j])
     real_user = sim.user
     real_item = sim.item
@@ -184,18 +184,18 @@ def main(options):
     from model import irt
     response = pandas.DataFrame({'user_id': user, 'item_id': item, 'answer': answer})
     model = irt.UIrt3PL(response=response)
-    model.estimate_mcmc(draws=150, tune=1000, njobs=1, progressbar=False)
+    model.estimate_mcmc(draws=150, tune=10000, njobs=1, progressbar=False)
 
     estimate_user = model.user_vector
     estimate_item = model.item_vector
 
-    for r,e in zip(real_user['theta'],estimate_user['theta']):
-        print(r,e)
+    for r, e in zip(real_user['theta'], estimate_user['theta']):
+        print(r, e)
 
-    from sklearn.metrics import mean_absolute_error,mean_squared_error
+    from sklearn.metrics import mean_absolute_error, mean_squared_error
 
-    print('mae',mean_absolute_error(real_user['theta'],estimate_user['theta']))
-    print('mse',mean_squared_error(real_user['theta'],estimate_user['theta']))
+    print('mae', mean_absolute_error(real_user['theta'], estimate_user['theta']))
+    print('mse', mean_squared_error(real_user['theta'], estimate_user['theta']))
     # y_proba = model.predict_proba(list(test_df['user_id'].values), list(test_df['item_id'].values))
 
 
