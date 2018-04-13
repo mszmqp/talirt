@@ -169,11 +169,14 @@ def main(options):
     user = []
     item = []
     answer = []
+
+    # df.loc[df >= 0.5] = 1
+    # df.loc[df < 0.5] = 0
     for i in sim.user_index:
         for j in sim.item_index:
             user.append(i)
             item.append(j)
-            answer.append(df.loc[i, j])
+            answer.append(int(df.loc[i, j]+0.5))
             # print(i, j, df.loc[i, j])
     real_user = sim.user
     real_item = sim.item
@@ -181,7 +184,7 @@ def main(options):
     from model import irt
     response = pandas.DataFrame({'user_id': user, 'item_id': item, 'answer': answer})
     model = irt.UIrt3PL(response=response)
-    model.estimate_mcmc(draws=150, tune=10000, njobs=1, progressbar=False)
+    model.estimate_mcmc(draws=150, tune=1000, njobs=1, progressbar=False)
 
     estimate_user = model.user_vector
     estimate_item = model.item_vector
