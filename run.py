@@ -190,7 +190,11 @@ def mapper(options):
 
     for line in options.input:
         line = line.strip().split('\t')
+        # hadoop nlineinputformat 会多一列行号
+        if len(line) == 4:
+            line.pop(0)
         model, tune, njobs = line
+
         Model = _model_class[model]
         model, model_info = run(train_df, test_df, Model=Model, tune=int(tune), njobs=int(njobs))
         print(json.dumps(model_info))
