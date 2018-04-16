@@ -255,7 +255,7 @@ class UIrt2PL(BaseIrt):
         basic_model = pm.Model()
         with basic_model:
             trace_name = "trace_" + self.name()
-            if not os.path.exists(trace_name):
+            if os.path.exists(trace_name):
                 os.removedirs(trace_name)
             self.trace = pm.backends.Text(trace_name)
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(5, 17)
@@ -331,7 +331,7 @@ class UIrt3PL(UIrt2PL):
         basic_model = pm.Model()
         with basic_model:
             trace_name = "trace_" + self.name()
-            if not os.path.exists(trace_name):
+            if os.path.exists(trace_name):
                 os.removedirs(trace_name)
             self.trace = pm.backends.Text(trace_name)
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c \sim beta(5, 17)
@@ -389,7 +389,7 @@ class MIrt2PL(BaseIrt):
         basic_model = pm.Model()
         with basic_model:
             trace_name = "trace_" + self.name()
-            if not os.path.exists(trace_name):
+            if os.path.exists(trace_name):
                 os.removedirs(trace_name)
             self.trace = pm.backends.Text(trace_name)
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(2, 5)
@@ -460,7 +460,7 @@ class MIrt3PL(MIrt2PL):
         basic_model = pm.Model()
         with basic_model:
             trace_name = "trace_" + self.name()
-            if not os.path.exists(trace_name):
+            if os.path.exists(trace_name):
                 os.removedirs(trace_name)
             self.trace = pm.backends.Text(trace_name)
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(2, 5)
@@ -513,7 +513,7 @@ class MIrt2PLN(MIrt2PL):
 
         with basic_model:
             trace_name = "trace_" + self.name()
-            if not os.path.exists(trace_name):
+            if os.path.exists(trace_name):
                 os.removedirs(trace_name)
             self.trace = pm.backends.Text(trace_name)
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(2, 5)
@@ -601,7 +601,7 @@ class MIrt3PLN(MIrt2PLN):
         basic_model = pm.Model()
         with basic_model:
             trace_name = "trace_" + self.name()
-            if not os.path.exists(trace_name):
+            if os.path.exists(trace_name):
                 os.removedirs(trace_name)
             self.trace = pm.backends.Text(trace_name)
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(2, 5)
