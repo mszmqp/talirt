@@ -176,6 +176,8 @@ def init_option():
                         help=u"输入文件；默认标准输入设备")
     parser.add_argument("-o", "--output", dest="output",
                         help=u"输出文件；默认标准输出设备")
+    parser.add_argument("-r", "--run", dest="runner", default="",
+                        help=u"")
     return parser
 
 
