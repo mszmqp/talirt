@@ -37,7 +37,7 @@ jar cvf $NAME -C talirt/ .
 
 
 HADOOP_FILE="${__script_dir}/run.py,${__script_dir}/train_df.pickle,${__script_dir}/test_df.pickle,${__script_dir}/../talirt.jar#talirt"
-MAPPER="./python/bin/python3 run.py -r mapper"
+MAPPER="./python3/bin/python3 run.py -r mapper"
 REDUCER="cat"
 
 
