@@ -326,7 +326,7 @@ def mapper(options):
             line.pop(0)
         model, n_items, n_users, tune,njobs = line
 
-        model, model_info = test(n_users=int(n_users), n_items=int(n_items), tune=int(tune), njobs=int(1))
+        model_info = test(n_users=int(n_users), n_items=int(n_items), tune=int(tune), njobs=int(1))
         print(json.dumps(model_info))
 
 
