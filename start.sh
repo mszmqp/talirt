@@ -79,6 +79,7 @@ ${HADOOP_BIN} jar ${STREAMING_JAR_PATH} \
     -D mapreduce.job.reduce.slowstart.completedmaps=1 \
     -D mapreduce.map.memory.mb=6096 \
     -D mapreduce.reduce.memory.mb=2096 \
+    -D mapreduce.task.timeout=0 \
     -inputformat org.apache.hadoop.mapred.lib.NLineInputFormat \
     -mapper "${MAPPER}"  \
     -reducer "${REDUCER}" \
