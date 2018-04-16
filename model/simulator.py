@@ -158,45 +158,66 @@ def init_option():
     return parser
 
 
-def main(options):
-    import sys
-    sys.path.append("./")
-    sim = Simulator(n_items=100, n_users=200, model="U3PL")
+def test(n_items=100, n_users=200, model="U3PL", tune=1000, njobs=1):
+    import math
+    from sklearn.metrics import mean_absolute_error, mean_squared_error
+    from model import irt
+
+    sim = Simulator(n_items=n_items, n_users=n_users, model=model)
     df = sim.simulate()
-    print(sim.user)
-    print(sim.item)
-    print(df.head(10))
     user = []
     item = []
     answer = []
-
-    # df.loc[df >= 0.5] = 1
-    # df.loc[df < 0.5] = 0
     for i in sim.user_index:
         for j in sim.item_index:
             user.append(i)
             item.append(j)
-            answer.append(stats.bernoulli.rvs(df.loc[i, j],size=1)[0])
+            answer.append(stats.bernoulli.rvs(df.loc[i, j], size=1)[0])
             # print(i, j, df.loc[i, j])
     real_user = sim.user
     real_item = sim.item
 
-    from model import irt
     response = pandas.DataFrame({'user_id': user, 'item_id': item, 'answer': answer})
     model = irt.UIrt3PL(response=response)
-    model.estimate_mcmc(draws=150, tune=1000, njobs=1, progressbar=False)
+    model.estimate_mcmc(draws=5000, tune=tune, njobs=njobs, progressbar=False)
 
     estimate_user = model.user_vector
     estimate_item = model.item_vector
+    print("-" * 30)
+    print("n_items=%d, n_users=%d, model=%s, tune=%d, njobs=%d" % (n_items, n_users, model, tune, njobs))
+    print('theta\tmae:%f\tmse:%f\trmse:%f', (
+        mean_absolute_error(real_user['theta'], estimate_user['theta']),
+        mean_squared_error(real_user['theta'], estimate_user['theta']),
+        math.sqrt(mean_squared_error(real_user['theta'], estimate_user['theta'])),
+    )
+          )
+    print('a\tmae:%f\tmse:%f\trmse:%f', (
+        mean_absolute_error(real_item['a'], estimate_item['a']),
+        mean_squared_error(real_item['a'], estimate_item['a']),
+        math.sqrt(mean_squared_error(real_item['a'], estimate_item['a'])),
+    )
+          )
 
-    for r, e in zip(real_user['theta'], estimate_user['theta']):
-        print(r, e)
-
-    from sklearn.metrics import mean_absolute_error, mean_squared_error
-
-    print('mae', mean_absolute_error(real_user['theta'], estimate_user['theta']))
-    print('mse', mean_squared_error(real_user['theta'], estimate_user['theta']))
+    print('b\tmae:%f\tmse:%f\trmse:%f', (
+        mean_absolute_error(real_item['b'], estimate_item['b']),
+        mean_squared_error(real_item['b'], estimate_item['b']),
+        math.sqrt(mean_squared_error(real_item['b'], estimate_item['b'])),
+    )
+          )
+    print('c\tmae:%f\tmse:%f\trmse:%f', (
+        mean_absolute_error(real_item['c'], estimate_item['c']),
+        mean_squared_error(real_item['c'], estimate_item['c']),
+        math.sqrt(mean_squared_error(real_item['c'], estimate_item['c'])),
+    )
+          )
     # y_proba = model.predict_proba(list(test_df['user_id'].values), list(test_df['item_id'].values))
+
+
+def main(options):
+    import sys
+    sys.path.append("./")
+
+    test(n_items=50, n_users=1000, model="U3PL", tune=10000, njobs=4)
 
 
 if __name__ == "__main__":
