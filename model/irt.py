@@ -380,6 +380,11 @@ class MIrt2PL(BaseIrt):
         """
         basic_model = pm.Model()
         with basic_model:
+            trace_name = "trace_" + self.name()
+            if not os.path.exists(trace_name):
+                os.removedirs(trace_name)
+
+            self.trace = pm.backends.Text(trace_name)
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(2, 5)
             theta = pm.Normal("theta", mu=0, sd=1, shape=(self.user_count, self.k))
             a = pm.Lognormal("a", mu=0, tau=1, shape=(self.k, self.item_count))
@@ -396,7 +401,7 @@ class MIrt2PL(BaseIrt):
             correct = pm.Bernoulli('correct', p=output, observed=self._response["answer"].values)
 
             # map_estimate = pm.find_MAP()
-            self.trace = pm.sample(**kwargs)
+            self.trace = pm.sample(trace=self.trace, **kwargs)
 
         theta = pd.DataFrame(self.trace['theta'].mean(axis=0),
                              columns=['theta_%d' % i for i in range(self.k)])
