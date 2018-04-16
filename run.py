@@ -206,7 +206,7 @@ def run(train_df, test_df, Model, draws=500, tune=1000, njobs=1):
 
     model = Model(response=train_df)
 
-    model.estimate_mcmc(draws=draws, tune=tune, njobs=njobs, progressbar=False)
+    model.estimate_mcmc(draws=draws, tune=tune, njobs=njobs, progressbar=True)
     test_proba = model.predict_proba(list(test_df['user_id'].values), list(test_df['item_id'].values))
     train_proba = model.predict_proba(list(train_df['user_id'].values), list(train_df['item_id'].values))
 

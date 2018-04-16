@@ -17,9 +17,22 @@ import numpy
 import scipy
 from scipy.special import expit
 import math
+import json
+import sys
 
-
+sys.path.append("./")
 # lognorm的坑 https://book.douban.com/annotation/41953169/
+from model.irt import UIrt2PL, UIrt3PL, MIrt2PL, MIrt3PL, MIrt2PLN, MIrt3PLN
+
+_model_class = {
+    "UIrt2PL": UIrt2PL,
+    "UIrt3PL": UIrt3PL,
+    "MIrt2PL": MIrt2PL,
+    "MIrt3PL": MIrt3PL,
+    "MIrt2PLN": MIrt2PLN,
+    "MIrt3PLN": MIrt3PLN
+}
+
 
 class Simulator(object):
 
@@ -79,9 +92,8 @@ class Simulator(object):
          : pandas.DataFrame
 
         """
-        if self.model in ["M2PL", "M3PL", "M2PLN", "M3PLN"]:
-            self.dist_theta.rvs(self.n_users * self.k)
-
+        if self.model in ["M2PL", "M3PL"]:
+            # self.dist_theta.rvs(self.n_users * self.k)
             self.user = pandas.DataFrame(
                 {"theta_%d" % i: self.dist_theta.rvs(size=self.n_users) for i in range(self.k)}, index=self.user_index)
 
@@ -89,8 +101,17 @@ class Simulator(object):
             a['b'] = self.dist_b.rvs(size=self.n_items)
             a['c'] = self.dist_c.rvs(size=self.n_items)
             self.item = pandas.DataFrame(a, index=self.item_index)
+        elif self.model in ["M2PLN", "M3PLN"]:
+            # self.dist_theta.rvs(self.n_users * self.k)
+            self.user = pandas.DataFrame(
+                {"theta_%d" % i: self.dist_theta.rvs(size=self.n_users) for i in range(self.k)}, index=self.user_index)
 
-        else:
+            a = {"a_%d" % i: self.dist_a.rvs(size=self.n_items) for i in range(self.k)}
+            a.update({"b_%d" % i: self.dist_b.rvs(size=self.n_items) for i in range(self.k)})
+            a['c'] = self.dist_c.rvs(size=self.n_items)
+            self.item = pandas.DataFrame(a, index=self.item_index)
+
+        elif self.model in ['UIrt2PL', 'UIrt3PL']:
             self.user = pandas.DataFrame({
                 'theta': self.dist_theta.rvs(size=self.n_users)
             }, index=self.user_index)
@@ -158,10 +179,10 @@ def init_option():
     return parser
 
 
-def test(n_items=100, n_users=200, model="U3PL", tune=1000, njobs=1):
+def test(n_items=100, n_users=200, model="U3PL", draws=500, tune=1000, njobs=1):
     import math
     from sklearn.metrics import mean_absolute_error, mean_squared_error
-    from model import irt
+    # from model import irt
 
     sim = Simulator(n_items=n_items, n_users=n_users, model=model)
     df = sim.simulate()
@@ -178,47 +199,119 @@ def test(n_items=100, n_users=200, model="U3PL", tune=1000, njobs=1):
     real_item = sim.item
 
     response = pandas.DataFrame({'user_id': user, 'item_id': item, 'answer': answer})
-    model = irt.UIrt3PL(response=response)
-    model.estimate_mcmc(draws=5000, tune=tune, njobs=njobs, progressbar=False)
+    for Model in [UIrt2PL, UIrt3PL, MIrt2PL, MIrt3PL]:
+        model = Model(response=response)
+        model.estimate_mcmc(draws=draws, tune=tune, njobs=njobs, progressbar=True)
 
-    estimate_user = model.user_vector
-    estimate_item = model.item_vector
-    print("-" * 30)
-    print("n_items=%d, n_users=%d, model=%s, tune=%d, njobs=%d" % (n_items, n_users, model.name(), tune, njobs))
-    print('theta\tmae:%f\tmse:%f\trmse:%f'% (
-        mean_absolute_error(real_user['theta'], estimate_user['theta']),
-        mean_squared_error(real_user['theta'], estimate_user['theta']),
-        math.sqrt(mean_squared_error(real_user['theta'], estimate_user['theta'])),
-    )
-          )
-    print('a\tmae:%f\tmse:%f\trmse:%f'% (
-        mean_absolute_error(real_item['a'], estimate_item['a']),
-        mean_squared_error(real_item['a'], estimate_item['a']),
-        math.sqrt(mean_squared_error(real_item['a'], estimate_item['a'])),
-    )
-          )
+        estimate_user = model.user_vector
+        estimate_item = model.item_vector
+        model_info = {'model_name': model.name()}
+        model_info['parameters'] = {
+            'draws': draws,
+            'tune': tune,
+            'njobs': njobs,
+            'n_items': n_items,
+            'n_users': n_users,
 
-    print('b\tmae:%f\tmse:%f\trmse:%f'%(
-        mean_absolute_error(real_item['b'], estimate_item['b']),
-        mean_squared_error(real_item['b'], estimate_item['b']),
-        math.sqrt(mean_squared_error(real_item['b'], estimate_item['b'])),
-    )
-          )
-    print('c\tmae:%f\tmse:%f\trmse:%f'% (
-        mean_absolute_error(real_item['c'], estimate_item['c']),
-        mean_squared_error(real_item['c'], estimate_item['c']),
-        math.sqrt(mean_squared_error(real_item['c'], estimate_item['c'])),
-    )
-          )
-    # y_proba = model.predict_proba(list(test_df['user_id'].values), list(test_df['item_id'].values))
+        }
+        param = 'c'
+        mse = mean_absolute_error(real_user[param], estimate_user[param])
+        mae = mean_squared_error(real_user[param], estimate_user[param])
+        rmse = math.sqrt(mse)
+        model_info[param] = {
+            'mse': mse,
+            'mae': mae,
+            'rmse': rmse,
+
+        }
+
+        if model.name() in ['UIrt2PL', 'UIrt3PL']:
+            for param in ['theta', 'a', 'b']:
+                mse = mean_absolute_error(real_user[param], estimate_user[param])
+                mae = mean_squared_error(real_user[param], estimate_user[param])
+                rmse = math.sqrt(mse)
+                model_info[param] = {
+                    'mse': mse,
+                    'mae': mae,
+                    'rmse': rmse,
+
+                }
+        elif model.name() in ['MIrt2PL', 'MIrt3PL']:
+
+            for param in ['theta', 'a']:
+                real_value = real_user[["%s_%d" % (param, i) for i in range(model.k)]]
+                estimate_value = estimate_user[["%s_%d" % (param, i) for i in range(model.k)]]
+                mse = mean_absolute_error(real_value, estimate_value)
+                mae = mean_squared_error(real_value, estimate_value)
+                rmse = math.sqrt(mse)
+                model_info[param] = {
+                    'mse': mse,
+                    'mae': mae,
+                    'rmse': rmse,
+
+                }
+            param = 'b'
+            mse = mean_absolute_error(real_user[param], estimate_user[param])
+            mae = mean_squared_error(real_user[param], estimate_user[param])
+            rmse = math.sqrt(mse)
+            model_info[param] = {
+                'mse': mse,
+                'mae': mae,
+                'rmse': rmse,
+
+            }
+
+        elif model.name() in ['MIrt2PLN', 'MIrt3PLN']:
+            pass
+        else:
+            pass
+        yield model_info
 
 
 def main(options):
-    import sys
-    sys.path.append("./")
+    hehe = {
+        'model_name': [],
+        'n_items': [],
+        'n_users': [],
+        'draws': [],
+        'tune': [],
+        'njobs': [],
+        'theta-mae': [],
+        'theta-mse': [],
+        'theta-rmse': [],
+        'a-mae': [],
+        'a-mse': [],
+        'a-rmse': [],
+        'b-mae': [],
+        'b-mse': [],
+        'b-rmse': [],
+        'c-mae': [],
+        'c-mse': [],
+        'c-rmse': [],
+    }
+    for info in test(n_items=50, n_users=100, model="U3PL", draws=500, tune=100, njobs=1):
+        for t in ['model_name', 'n_items', 'n_users', 'draws', 'tune', 'njobs']:
+            hehe[t].append(info[t])
+        for t in ['theta', 'a', 'b', 'c']:
+            hehe[t + '-mae'] = info[t]['mae']
+            hehe[t + '-mse'] = info[t]['mse']
+            hehe[t + '-rmse'] = info[t]['rmse']
 
-    test(n_items=50, n_users=1000, model="U3PL", tune=10000, njobs=4)
-    # test(n_items=50, n_users=100, model="U3PL", tune=1000, njobs=1)
+    print(pandas.DataFrame(hehe))
+
+
+def mapper(options):
+    # train_df = pandas.read_pickle("simulator_df.pickle")
+
+    for line in options.input:
+        line = line.strip().split('\t')
+        # hadoop nlineinputformat 会多一列行号
+        if len(line) == 4:
+            line.pop(0)
+        n_items, n_users, tune = line
+
+        model, model_info = test(n_users=int(n_users), n_items=int(n_items), tune=int(tune), njobs=int(1))
+        print(json.dumps(model_info))
 
 
 if __name__ == "__main__":
@@ -231,4 +324,12 @@ if __name__ == "__main__":
         options.input = open(options.input)
     else:
         options.input = sys.stdin
-    main(options)
+
+    if options.runner == 'mapper':
+        mapper(options)
+
+    elif options.runner == 'reducer':
+        pass
+        # reducer(options)
+    else:
+        main(options)

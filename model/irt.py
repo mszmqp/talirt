@@ -36,6 +36,7 @@ class BaseIrt(object):
             self.item_vector = None
         self.trace = None
         self.D = 1.7
+        self.k = 0
 
     def _init_model(self):
         assert self._response is not None
