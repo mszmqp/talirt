@@ -207,13 +207,14 @@ def test(n_items=100, n_users=200, model="UIrt2PL", draws=500, tune=1000, njobs=
 
     estimate_user = model.user_vector
     estimate_item = model.item_vector
-    model_info = {'model_name': model.name()}
-    model_info['parameters'] = {
+
+    model_info = {
         'draws': draws,
         'tune': tune,
         'njobs': njobs,
         'n_items': n_items,
         'n_users': n_users,
+        'model_name': model.name(),
 
     }
 
