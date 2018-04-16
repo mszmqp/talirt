@@ -254,10 +254,7 @@ class UIrt2PL(BaseIrt):
         """
         basic_model = pm.Model()
         with basic_model:
-            trace_name = "trace_" + self.name()
-            if os.path.exists(trace_name):
-                shutil.rmtree(trace_name)
-            self.trace = pm.backends.Text(trace_name)
+
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(5, 17)
             # theta (proficiency params) are sampled from a normal distribution
             theta = pm.Normal("theta", mu=0, sd=1, shape=(self.user_count, 1))
@@ -277,6 +274,10 @@ class UIrt2PL(BaseIrt):
 
             # map_estimate = pm.find_MAP()
             # create a pymc simulation object, including all the above variables
+            trace_name = "trace_" + self.name()
+            if os.path.exists(trace_name):
+                shutil.rmtree(trace_name)
+            self.trace = pm.backends.Text(trace_name)
             kwargs['trace'] = self.trace
             self.trace = pm.sample(**kwargs)
 
@@ -331,10 +332,7 @@ class UIrt3PL(UIrt2PL):
         """
         basic_model = pm.Model()
         with basic_model:
-            trace_name = "trace_" + self.name()
-            if os.path.exists(trace_name):
-                os.removedirs(trace_name)
-            self.trace = pm.backends.Text(trace_name)
+
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c \sim beta(5, 17)
             # theta (proficiency params) are sampled from a normal distribution
             theta = pm.Normal("theta", mu=0, sd=1, shape=(self.user_count, 1))
@@ -355,7 +353,10 @@ class UIrt3PL(UIrt2PL):
                                       var=as_tensor_variable(irt)[
                                           self._response['user_iloc'], self._response['item_iloc']])
             correct = pm.Bernoulli('correct', p=output, observed=self._response["answer"].values)
-
+            trace_name = "trace_" + self.name()
+            if os.path.exists(trace_name):
+                os.removedirs(trace_name)
+            self.trace = pm.backends.Text(trace_name)
             kwargs['trace'] = self.trace
             self.trace = pm.sample(**kwargs)
 
@@ -390,10 +391,7 @@ class MIrt2PL(BaseIrt):
         """
         basic_model = pm.Model()
         with basic_model:
-            trace_name = "trace_" + self.name()
-            if os.path.exists(trace_name):
-                os.removedirs(trace_name)
-            self.trace = pm.backends.Text(trace_name)
+
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(2, 5)
             theta = pm.Normal("theta", mu=0, sd=1, shape=(self.user_count, self.k))
             a = pm.Lognormal("a", mu=0, tau=1, shape=(self.k, self.item_count))
@@ -408,7 +406,10 @@ class MIrt2PL(BaseIrt):
                                       var=as_tensor_variable(irt)[
                                           self._response['user_iloc'], self._response['item_iloc']])
             correct = pm.Bernoulli('correct', p=output, observed=self._response["answer"].values)
-
+            trace_name = "trace_" + self.name()
+            if os.path.exists(trace_name):
+                os.removedirs(trace_name)
+            self.trace = pm.backends.Text(trace_name)
             # map_estimate = pm.find_MAP()
             kwargs['trace'] = self.trace
             self.trace = pm.sample(**kwargs)
@@ -462,10 +463,7 @@ class MIrt3PL(MIrt2PL):
     def estimate_mcmc(self, **kwargs):
         basic_model = pm.Model()
         with basic_model:
-            trace_name = "trace_" + self.name()
-            if os.path.exists(trace_name):
-                os.removedirs(trace_name)
-            self.trace = pm.backends.Text(trace_name)
+
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(2, 5)
             # theta (proficiency params) are sampled from a normal distribution
             theta = pm.Normal("theta", mu=0, sd=1, shape=(self.user_count, self.k))
@@ -485,7 +483,10 @@ class MIrt3PL(MIrt2PL):
                                       var=as_tensor_variable(irt)[
                                           self._response['user_iloc'], self._response['item_iloc']])
             correct = pm.Bernoulli('correct', p=output, observed=self._response["answer"].values)
-
+            trace_name = "trace_" + self.name()
+            if os.path.exists(trace_name):
+                os.removedirs(trace_name)
+            self.trace = pm.backends.Text(trace_name)
             # map_estimate = pm.find_MAP()
             kwargs['trace'] = self.trace
             self.trace = pm.sample(**kwargs)
@@ -516,10 +517,7 @@ class MIrt2PLN(MIrt2PL):
         basic_model = pm.Model()
 
         with basic_model:
-            trace_name = "trace_" + self.name()
-            if os.path.exists(trace_name):
-                os.removedirs(trace_name)
-            self.trace = pm.backends.Text(trace_name)
+
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(2, 5)
             theta = pm.Normal("theta", mu=0, sd=1, shape=(self.k, self.user_count, 1))
             a = pm.Lognormal("a", mu=0, tau=1, shape=(self.k, 1, self.item_count))
@@ -537,7 +535,10 @@ class MIrt2PLN(MIrt2PL):
                                       var=as_tensor_variable(irt)[
                                           self._response['user_iloc'], self._response['item_iloc']])
             correct = pm.Bernoulli('correct', p=output, observed=self._response["answer"].values)
-
+            trace_name = "trace_" + self.name()
+            if os.path.exists(trace_name):
+                os.removedirs(trace_name)
+            self.trace = pm.backends.Text(trace_name)
             # map_estimate = pm.find_MAP()
             # create a pymc simulation object, including all the above variables
             kwargs['trace'] = self.trace
@@ -605,10 +606,7 @@ class MIrt3PLN(MIrt2PLN):
         """
         basic_model = pm.Model()
         with basic_model:
-            trace_name = "trace_" + self.name()
-            if os.path.exists(trace_name):
-                os.removedirs(trace_name)
-            self.trace = pm.backends.Text(trace_name)
+
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(2, 5)
             theta = pm.Normal("theta", mu=0, sd=1, shape=(self.k, self.user_count, 1))
             a = pm.Lognormal("a", mu=0, tau=1, shape=(self.k, 1, self.item_count))
@@ -628,6 +626,10 @@ class MIrt3PLN(MIrt2PLN):
                                       var=as_tensor_variable(irt)[
                                           self._response['user_iloc'], self._response['item_iloc']])
             correct = pm.Bernoulli('correct', p=output, observed=self._response["answer"].values)
+            trace_name = "trace_" + self.name()
+            if os.path.exists(trace_name):
+                os.removedirs(trace_name)
+            self.trace = pm.backends.Text(trace_name)
             kwargs['trace'] = self.trace
             self.trace = pm.sample(**kwargs)
         theta = self.trace['theta'].mean(axis=0)[:, :, 0]
