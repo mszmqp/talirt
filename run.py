@@ -42,38 +42,37 @@ def load_logs(cache_file="logs.pickle", from_cache=True):
     #             and lq.lq_library_id='5'
     #     """
     _sql = """
-            select
-                sa.sa_stu_id as user_id,
-                lq.lq_origin_id as item_id,
-                sa.sa_answer_status as answer,
-                lq.lq_qst_difct as difficult
-            
-            from odata.ods_ips_tb_stu_answer sa
-            join odata.ods_ips_tb_level_question lq on lq.lq_id=sa.sa_lq_id
-            where
-                sa.sa_year="2017"
-                and sa.sa_city_code="028"
-                and sa.sa_term_id='3'
-                and sa.sa_subj_id='ff80808127d77caa0127d7e10f1c00c4'
-                and sa.sa_lev_id='ff80808145707302014582f9d9dc3658'
-                and sa.sa_grd_id="7"
-                and lq.lq_library_id='5'
-                and sa.sa_is_fixup=0
-                and sa.sa_answer_status in (1,2)
+        select
+                        
+              sa.fk_student as user_id,
+              sa.fk_question as item_id,
+              case when sa.asw_first_status='错误' then 0 else 1  end  as answer
+        from dwdb.dwd_stdy_ips_level_answ sa
+        where
+            sa.qst_type_status='客观题'
+            and sa.asw_first_status in ('正确','错误')
+            and sa.fk_year='2017'
+            and sa.city_name = '成都'
+            and sa.grd_name='小学六年级'
+            and sa.term_name='暑期班'
+            and sa.subj_name='数学'
+            and sa.lev_name='尖子班'
+            and sa.cl_name='课后测'
+       
         """
-    _sql = """
-    select
-        lq.exp as item_id,
-        sa.student_id as user_id,
-        sa.answerstatus as answer,
-        sa.start_time,
-        sa.city_code,
-        c.grade
-    from app_bi.mkt_student_answer_zhenhu  sa
-    join odata.ods_mkt_level_question lq  on lq.id = sa.levelquestionid
-    join odata.ods_mkt_course c on c.id = lq.course_id
-    where c.grade='1' and sa.city_code='0311' and lq.course_id='f75f4fa840484445be3972fe739ed0aa'
-    """
+    # _sql = """
+    # select
+    #     lq.exp as item_id,
+    #     sa.student_id as user_id,
+    #     sa.answerstatus as answer,
+    #     sa.start_time,
+    #     sa.city_code,
+    #     c.grade
+    # from app_bi.mkt_student_answer_zhenhu  sa
+    # join odata.ods_mkt_level_question lq  on lq.id = sa.levelquestionid
+    # join odata.ods_mkt_course c on c.id = lq.course_id
+    # where c.grade='1' and sa.city_code='0311' and lq.course_id='f75f4fa840484445be3972fe739ed0aa'
+    # """
     if from_cache:
         # print >> sys.stderr, "从缓存读取题目画像数据"
         print("从缓存读取题目画像数据", file=sys.stderr)
@@ -123,7 +122,7 @@ def main(options):
     # 3：超时
     # 答题结果一定要处理成0-1二元值，否则会出错
     # df.loc[:, 'answer'] = df['answer'] == 1
-    df.loc[df["answer"] != 1, "answer"] = 0
+    # df.loc[df["answer"] != 1, "answer"] = 0
 
     # df_data = df
     # all_users = df['user_id'].unique()
@@ -153,9 +152,9 @@ def main(options):
         # UIrt2PL,
         # UIrt3PL,
         # MIrt2PL,
-        # MIrt3PL,
+        MIrt3PL,
         # MIrt2PLN,
-        MIrt3PLN
+        # MIrt3PLN
     ]:
         # item_id = train_df['item_id'].unique()
         # item_count = len(item_id)
@@ -164,8 +163,8 @@ def main(options):
         model = Model(response=train_df)
         print('\n' * 2)
         print("*" * 10 + model.name() + "*" * 10)
-
-        model.estimate_mcmc(draws=150, tune=1000, njobs=1, progressbar=False)
+        print(model.info())
+        model.estimate_mcmc(draws=150, tune=2000, njobs=1, progressbar=False)
         y_proba = model.predict_proba(list(test_df['user_id'].values), list(test_df['item_id'].values))
 
         error = Metric.metric_mean_error(y_true, y_proba)
