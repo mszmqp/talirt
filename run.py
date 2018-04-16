@@ -213,16 +213,16 @@ def run(train_df, test_df, Model, draws=150, tune=1000, njobs=1):
     model_info = {'model_name': model.name()}
 
     model_info['train'] = {
-        'y_proba': train_proba,
-        'y_true': train_true,
+        'y_proba': list(train_proba),
+        'y_true': list(train_true),
         'confusion_matrix': Metric.confusion_matrix(train_true, train_proba, threshold=0.5),
         'accuracy_score': Metric.accuracy_score_list(train_true, train_proba),
         'mae': Metric.mean_absolute_error(train_true, train_proba),
         'mse': Metric.mean_squared_error(train_true, train_proba),
     }
     model_info['test'] = {
-        'y_proba': test_proba,
-        'y_true': test_true,
+        'y_proba': list(test_proba),
+        'y_true': list(test_true),
         'confusion_matrix': Metric.confusion_matrix(test_true, test_proba, threshold=0.5),
         'accuracy_score': Metric.accuracy_score_list(test_true, test_proba),
         'mae': Metric.mean_absolute_error(test_true, test_proba),

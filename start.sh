@@ -14,7 +14,7 @@ SPARK_BIN="${SPARK_HOME}/bin/spark-submit"
 HADOOP_HOME="/usr/local/hadoop-2.6.0/"
 
 
-TASK_NAME=mkt_answer
+TASK_NAME="talirt"
 AUTHOR="zhangzhenhu"
 
 
