@@ -87,12 +87,12 @@ class Metric(object):
 
     @classmethod
     def accuracy_score_list(cls, y_true, y_proba):
-        scores = {}
+        scores = []
         for threshold in range(11):
             threshold /= 0.1
             y_pred = y_proba.copy()
             y_pred[y_pred > threshold] = 1
             y_pred[y_pred <= threshold] = 0
             score = metrics.accuracy_score(y_true, y_pred)
-            scores[threshold] = score
+            scores.append(threshold, score)
         return scores
