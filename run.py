@@ -17,12 +17,6 @@ import pandas
 import os
 import pandas as pd
 import numpy as np
-from catsim.initialization import RandomInitializer
-from catsim.selection import MaxInfoSelector
-from catsim.estimation import HillClimbingEstimator
-from catsim.stopping import MaxItemStopper
-from catsim.cat import generate_item_bank
-from catsim.simulation import Simulator
 import pymc3 as pm
 
 sys.path.append("../")

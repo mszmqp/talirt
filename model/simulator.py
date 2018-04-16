@@ -184,27 +184,27 @@ def test(n_items=100, n_users=200, model="U3PL", tune=1000, njobs=1):
     estimate_user = model.user_vector
     estimate_item = model.item_vector
     print("-" * 30)
-    print("n_items=%d, n_users=%d, model=%s, tune=%d, njobs=%d" % (n_items, n_users, model, tune, njobs))
-    print('theta\tmae:%f\tmse:%f\trmse:%f', (
+    print("n_items=%d, n_users=%d, model=%s, tune=%d, njobs=%d" % (n_items, n_users, model.name(), tune, njobs))
+    print('theta\tmae:%f\tmse:%f\trmse:%f'% (
         mean_absolute_error(real_user['theta'], estimate_user['theta']),
         mean_squared_error(real_user['theta'], estimate_user['theta']),
         math.sqrt(mean_squared_error(real_user['theta'], estimate_user['theta'])),
     )
           )
-    print('a\tmae:%f\tmse:%f\trmse:%f', (
+    print('a\tmae:%f\tmse:%f\trmse:%f'% (
         mean_absolute_error(real_item['a'], estimate_item['a']),
         mean_squared_error(real_item['a'], estimate_item['a']),
         math.sqrt(mean_squared_error(real_item['a'], estimate_item['a'])),
     )
           )
 
-    print('b\tmae:%f\tmse:%f\trmse:%f', (
+    print('b\tmae:%f\tmse:%f\trmse:%f'%(
         mean_absolute_error(real_item['b'], estimate_item['b']),
         mean_squared_error(real_item['b'], estimate_item['b']),
         math.sqrt(mean_squared_error(real_item['b'], estimate_item['b'])),
     )
           )
-    print('c\tmae:%f\tmse:%f\trmse:%f', (
+    print('c\tmae:%f\tmse:%f\trmse:%f'% (
         mean_absolute_error(real_item['c'], estimate_item['c']),
         mean_squared_error(real_item['c'], estimate_item['c']),
         math.sqrt(mean_squared_error(real_item['c'], estimate_item['c'])),
@@ -218,6 +218,7 @@ def main(options):
     sys.path.append("./")
 
     test(n_items=50, n_users=1000, model="U3PL", tune=10000, njobs=4)
+    # test(n_items=50, n_users=100, model="U3PL", tune=1000, njobs=1)
 
 
 if __name__ == "__main__":
