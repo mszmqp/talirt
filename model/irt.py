@@ -5,7 +5,7 @@ from itertools import combinations
 import numpy as np
 import pymc3 as pm
 import pandas as pd
-import theano.tensor as tt
+# import theano.tensor as tt
 from theano.tensor.basic import as_tensor_variable
 import os
 import abc

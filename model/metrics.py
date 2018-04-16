@@ -12,7 +12,7 @@ Date:    2018/4/12 10:21
 import sys
 import argparse
 from sklearn import metrics
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 
 class Metric(object):
