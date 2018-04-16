@@ -305,7 +305,7 @@ def main(options):
         'c-mse': [],
         'c-rmse': [],
     }
-    info = test(n_items=50, n_users=100, model="U3PL", draws=500, tune=100, njobs=1)
+    info = test(n_items=50, n_users=100, model="UIrt2PL", draws=500, tune=100, njobs=1)
     for t in ['model_name', 'n_items', 'n_users', 'draws', 'tune', 'njobs']:
         hehe[t].append(info[t])
     for t in ['theta', 'a', 'b', 'c']:
