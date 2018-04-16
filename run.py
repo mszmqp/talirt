@@ -192,7 +192,7 @@ def mapper(options):
         line = line.strip().split('\t')
         model, tune, njobs = line
         Model = _model_class[model]
-        model, model_info = run(train_df, test_df, Model=Model, tune=tune, njobs=njobs)
+        model, model_info = run(train_df, test_df, Model=Model, tune=int(tune), njobs=int(njobs))
         print(json.dumps(model_info))
 
 
