@@ -28,7 +28,15 @@ ${HADOOP_BIN} fs -put ${__script_dir}/input.txt ${HADOOP_INPUT}
 ${HADOOP_BIN} fs -rm -r ${HADOOP_OUTPUT}
 
 
-HADOOP_FILE="${__script_dir}/run.py,${__script_dir}/train_df.pickle,${__script_dir}/test_df.pickle"
+NAME=${__script_dir}/../talirt.jar
+rm -rf $NAME
+cd ${__script_dir}/../
+jar cvf $NAME -C talirt/ .
+#HADOOP_PYTHON_BIN=`echo ${HADOOP_PYTHON_BIN} | awk -F '#' '{print $1}'`
+
+
+
+HADOOP_FILE="${__script_dir}/run.py,${__script_dir}/train_df.pickle,${__script_dir}/test_df.pickle,${__script_dir}/../talirt.jar#talirt"
 MAPPER="./python/bin/python3 run.py -r mapper"
 REDUCER="cat"
 
