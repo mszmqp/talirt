@@ -277,7 +277,8 @@ class UIrt2PL(BaseIrt):
 
             # map_estimate = pm.find_MAP()
             # create a pymc simulation object, including all the above variables
-            self.trace = pm.sample(trace=self.trace, **kwargs)
+            kwargs['trace'] = self.trace
+            self.trace = pm.sample(**kwargs)
 
             # run an interactive MCMC sampling session
             # m.isample()
@@ -355,7 +356,8 @@ class UIrt3PL(UIrt2PL):
                                           self._response['user_iloc'], self._response['item_iloc']])
             correct = pm.Bernoulli('correct', p=output, observed=self._response["answer"].values)
 
-            self.trace = pm.sample(trace=self.trace, **kwargs)
+            kwargs['trace'] = self.trace
+            self.trace = pm.sample(**kwargs)
 
         self.item_vector['a'] = self.trace['a'].mean(axis=0)[0, :]
         self.item_vector['b'] = self.trace['b'].mean(axis=0)[0, :]
@@ -408,7 +410,8 @@ class MIrt2PL(BaseIrt):
             correct = pm.Bernoulli('correct', p=output, observed=self._response["answer"].values)
 
             # map_estimate = pm.find_MAP()
-            self.trace = pm.sample(trace=self.trace, **kwargs)
+            kwargs['trace'] = self.trace
+            self.trace = pm.sample(**kwargs)
 
         theta = pd.DataFrame(self.trace['theta'].mean(axis=0),
                              columns=['theta_%d' % i for i in range(self.k)])
@@ -484,7 +487,8 @@ class MIrt3PL(MIrt2PL):
             correct = pm.Bernoulli('correct', p=output, observed=self._response["answer"].values)
 
             # map_estimate = pm.find_MAP()
-            self.trace = pm.sample(trace=self.trace, **kwargs)
+            kwargs['trace'] = self.trace
+            self.trace = pm.sample(**kwargs)
 
         self.item_vector['b'] = self.trace['b'].mean(axis=0)[0, :]
         self.item_vector['c'] = self.trace['c'].mean(axis=0)[0, :]
@@ -536,7 +540,8 @@ class MIrt2PLN(MIrt2PL):
 
             # map_estimate = pm.find_MAP()
             # create a pymc simulation object, including all the above variables
-            self.trace = pm.sample(trace=self.trace, **kwargs)
+            kwargs['trace'] = self.trace
+            self.trace = pm.sample(**kwargs)
         theta = self.trace['theta'].mean(axis=0)[:, :, 0]
         theta = pd.DataFrame(theta.T, columns=['theta_%d' % i for i in range(self.k)])
 
@@ -623,7 +628,8 @@ class MIrt3PLN(MIrt2PLN):
                                       var=as_tensor_variable(irt)[
                                           self._response['user_iloc'], self._response['item_iloc']])
             correct = pm.Bernoulli('correct', p=output, observed=self._response["answer"].values)
-            self.trace = pm.sample(trace=self.trace, **kwargs)
+            kwargs['trace'] = self.trace
+            self.trace = pm.sample(**kwargs)
         theta = self.trace['theta'].mean(axis=0)[:, :, 0]
         theta = pd.DataFrame(theta.T, columns=['theta_%d' % i for i in range(self.k)])
 
