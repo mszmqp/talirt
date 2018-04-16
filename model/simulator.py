@@ -322,9 +322,9 @@ def mapper(options):
     for line in options.input:
         line = line.strip().split('\t')
         # hadoop nlineinputformat 会多一列行号
-        if len(line) == 4:
+        if len(line) == 6:
             line.pop(0)
-        n_items, n_users, tune = line
+        model, n_items, n_users, tune,njobs = line
 
         model, model_info = test(n_users=int(n_users), n_items=int(n_items), tune=int(tune), njobs=int(1))
         print(json.dumps(model_info))
