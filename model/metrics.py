@@ -94,5 +94,5 @@ class Metric(object):
             y_pred[y_pred > threshold] = 1
             y_pred[y_pred <= threshold] = 0
             score = metrics.accuracy_score(y_true, y_pred)
-            scores.append(threshold, score)
+            scores.append((threshold, score))
         return scores
