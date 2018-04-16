@@ -77,7 +77,23 @@ def split_data(df):
     return df[[not x for x in test_selected]], df[test_selected]
 
 
-sys.path.append("./")
+def data_info(response):
+    d = response['answer'].value_counts()
+    # 被试者id
+    _user_ids = response['user_id'].unique()
+    user_count = len(_user_ids)
+    # 项目id
+    _item_ids = response['item_id'].unique()
+    item_count = len(_item_ids)
+
+    return '\n'.join([
+        u"用户数量：%d" % user_count,
+        u"项目数量：%d" % item_count,
+        u"记录总数：%d" % len(response),
+        u'正确数量：%d' % d[1],
+        u'错误数量：%d' % d[0],
+        u'正确比例：%f%%' % (d[1] * 100.0 / d.sum()),
+    ])
 
 
 def load_logs(cache_file="logs.pickle", from_cache=True):
@@ -119,6 +135,7 @@ def load_logs(cache_file="logs.pickle", from_cache=True):
 
 
 if __name__ == "__main__":
+    sys.path.append("./")
     df = load_logs(from_cache=True)
     train_df, test_df = split_data(df)
     print(len(df), len(train_df), len(test_df))

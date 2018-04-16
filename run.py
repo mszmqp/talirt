@@ -20,7 +20,12 @@ import numpy as np
 import pymc3 as pm
 
 sys.path.append("../")
-from utils.data import split_data
+sys.path.append("./")
+sys.path.append("./talirt")
+from model.metrics import Metric
+from utils.data import split_data, data_info
+from model.irt import UIrt2PL, UIrt3PL, MIrt2PL, MIrt3PL, MIrt2PLN, MIrt3PLN
+import json
 
 
 def load_logs(cache_file="logs.pickle", from_cache=True):
@@ -103,7 +108,19 @@ def init_option():
                         help=u"输出文件；默认标准输出设备")
     parser.add_argument("-p", "--padding", dest="padding", action='store_true', default=False,
                         help=u"if padding")
+    parser.add_argument("-r", "--run", dest="runner", default="",
+                        help=u"")
     return parser
+
+
+_model_class = {
+    "UIrt2PL": UIrt2PL,
+    "UIrt3PL": UIrt3PL,
+    "MIrt2PL": MIrt2PL,
+    "MIrt3PL": MIrt3PL,
+    "MIrt2PLN": MIrt2PLN,
+    "MIrt3PLN": MIrt3PLN
+}
 
 
 def main(options):
@@ -114,7 +131,7 @@ def main(options):
     from utils.data import padding
     # data_bank = DataBank(logs=df)
     # print(data_bank)
-    from model.irt import UIrt2PL, UIrt3PL, MIrt2PL, MIrt3PL, MIrt2PLN, MIrt3PLN
+
     from model.metrics import Metric
     # 0：未做
     # 1：正确
@@ -128,60 +145,93 @@ def main(options):
     # all_users = df['user_id'].unique()
     # df = df[df['user_id'].isin(all_users[-50:])]
 
-    df_target = df.sample(frac=1)
-
-    if options.padding:
-        df_target = padding(df_target, user_count=40, item_count=40)
-
     # 删掉作答少的题目
     # hehe = df_target.groupby('item_id').count().sort_values('answer')
     # drop_item = hehe[hehe['answer'] < 10].index
     # df_target = df_target.set_index('item_id').drop(drop_item)
     # len(df_target)
     # 数据切割成训练集和测试机
+    df_target = df
     train_df, test_df = split_data(df_target)
+    print("-" * 10, "train data info", "-" * 10)
+    print(data_info(train_df))
+    print("-" * 10, "test data info", "-" * 10)
+    print(data_info(test_df))
+
+    train_df.to_pickle("train_df.pickle")
+    test_df.to_pickle("test_df.pickle")
 
     train_df = df_target
     test_df = df_target
+    model, model_info = run(train_df, test_df, MIrt3PL, draws=150, tune=1000, njobs=1)
 
-    print(len(df), len(train_df), len(test_df))
-    print(test_df['answer'].value_counts())
-    y_true = test_df['answer'].values
+    print('\n' * 2)
+    print("=" * 10 + model_info['model_name'] + "=" * 10)
 
-    for Model in [
-        # UIrt2PL,
-        # UIrt3PL,
-        # MIrt2PL,
-        MIrt3PL,
-        # MIrt2PLN,
-        # MIrt3PLN
-    ]:
-        # item_id = train_df['item_id'].unique()
-        # item_count = len(item_id)
-        # Q = pd.DataFrame(np.ones((item_count, 5)), columns=[str(i) for i in range(5)], index=item_id)
+    print('-' * 10 + 'train info' + "=" * 10)
+    print(data_info(train_df))
+    print("mse", model_info['train']['mse'])
+    print("mae", model_info['train']['mae'])
+    for threshold, score in model_info['train']['accuracy_score']:
+        print("accuracy_score", threshold, score)
+    # Metric.print_confusion_matrix(model_info['confusion_matrix'])
 
-        model = Model(response=train_df)
-        print('\n' * 2)
-        print("*" * 10 + model.name() + "*" * 10)
-        print(model.info())
-        model.estimate_mcmc(draws=150, tune=2000, njobs=1, progressbar=False)
-        y_proba = model.predict_proba(list(test_df['user_id'].values), list(test_df['item_id'].values))
+    print('-' * 10 + 'test info' + "=" * 10)
+    print(data_info(train_df))
+    print("mse", model_info['test']['mse'])
+    print("mae", model_info['test']['mae'])
+    for threshold, score in model_info['test']['accuracy_score']:
+        print("accuracy_score", threshold, score)
 
-        error = Metric.metric_mean_error(y_true, y_proba)
-        print('=' * 20 + 'mean_error' + "=" * 20, )
-        print("mse", error['mse'])
-        print("mae", error['mae'])
 
-        print('=' * 20 + 'confusion_matrix' + "=" * 20)
-        cm = Metric.confusion_matrix(y_true, y_proba, threshold=0.8)
-        Metric.print_confusion_matrix(cm)
+def mapper(options):
+    train_df = pandas.read_pickle("train_df.pickle")
+    test_df = pandas.read_pickle("test_df.pickle")
 
-        print('=' * 20 + 'accuracy_score' + "=" * 20)
-        acc_score = Metric.accuracy_score(y_true, y_proba, threshold=0.8)
-        print(acc_score)
+    for line in options.input:
+        line = line.strip().split('\t')
+        model, tune, njobs = line
+        Model = _model_class[model]
+        model, model_info = run(train_df, test_df, Model=Model, tune=tune, njobs=njobs)
+        print(json.dumps(model_info))
 
-        # print('=' * 20 + 'classification_report' + "=" * 20, file=sys.stderr)
-        # Metric.classification_report(y_true, y_proba, threshold=0.7)
+
+def run(train_df, test_df, Model, draws=150, tune=1000, njobs=1):
+    test_true = test_df['answer'].values
+    train_true = train_df['answer'].values
+
+    model = Model(response=train_df)
+
+    model.estimate_mcmc(draws=draws, tune=tune, njobs=njobs, progressbar=False)
+    test_proba = model.predict_proba(list(test_df['user_id'].values), list(test_df['item_id'].values))
+    train_proba = model.predict_proba(list(train_df['user_id'].values), list(train_df['item_id'].values))
+
+    model_info = {'model_name': model.name()}
+
+    model_info['train'] = {
+        'y_proba': train_proba,
+        'y_true': train_true,
+        'confusion_matrix': Metric.confusion_matrix(train_true, train_proba, threshold=0.5),
+        'accuracy_score': Metric.accuracy_score_list(train_true, train_proba),
+        'mae': Metric.mean_absolute_error(train_true, train_proba),
+        'mse': Metric.mean_squared_error(train_true, train_proba),
+    }
+    model_info['test'] = {
+        'y_proba': test_proba,
+        'y_true': test_true,
+        'confusion_matrix': Metric.confusion_matrix(test_true, test_proba, threshold=0.5),
+        'accuracy_score': Metric.accuracy_score_list(test_true, test_proba),
+        'mae': Metric.mean_absolute_error(test_true, test_proba),
+        'mse': Metric.mean_squared_error(test_true, test_proba),
+    }
+
+    model_info['parameters'] = {
+        'draws': draws,
+        'tune': tune,
+        'njobs': njobs,
+
+    }
+    return model, model_info
 
 
 if __name__ == "__main__":
@@ -194,4 +244,11 @@ if __name__ == "__main__":
         options.input = open(options.input)
     else:
         options.input = sys.stdin
-    main(options)
+    if options.runner == 'mapper':
+        mapper(options)
+
+    elif options.runner == 'reducer':
+        pass
+        # reducer(options)
+    else:
+        main(options)

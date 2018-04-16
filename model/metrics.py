@@ -28,6 +28,16 @@ class Metric(object):
         return error
 
     @classmethod
+    def mean_squared_error(cls, y_true, y_proba):
+        assert len(y_proba) == len(y_true)
+        return metrics.mean_squared_error(y_true, y_proba)
+
+    @classmethod
+    def mean_absolute_error(cls, y_true, y_proba):
+        assert len(y_proba) == len(y_true)
+        return metrics.mean_absolute_error(y_true, y_proba)
+
+    @classmethod
     def plot_prc(cls, y_true, y_proba):
         precision, recall, thresholds = metrics.precision_recall_curve(y_true, y_proba)
         print('=' * 20 + 'precision_recall_curve' + "=" * 20, file=sys.stderr)
@@ -74,3 +84,15 @@ class Metric(object):
         score = metrics.accuracy_score(y_true, y_pred)
 
         return score
+
+    @classmethod
+    def accuracy_score_list(cls, y_true, y_proba):
+        scores = {}
+        for threshold in range(11):
+            threshold /= 0.1
+            y_pred = y_proba.copy()
+            y_pred[y_pred > threshold] = 1
+            y_pred[y_pred <= threshold] = 0
+            score = metrics.accuracy_score(y_true, y_pred)
+            scores[threshold] = score
+        return scores

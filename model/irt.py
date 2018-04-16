@@ -7,7 +7,7 @@ import pymc3 as pm
 import pandas as pd
 import theano.tensor as tt
 from theano.tensor.basic import as_tensor_variable
-
+import os
 import abc
 
 
@@ -18,18 +18,27 @@ class BaseIrt(object):
 
         :param response_df: 作答数据，必须包含三列 user_id item_id answer
         """
+        if response is not None:
+            if 'user_id' not in response.columns or 'item_id' not in response.columns or 'answer' not in response.columns:
+                raise ValueError("input dataframe have no user_id or item_id  or answer")
 
-        if 'user_id' not in response.columns or 'item_id' not in response.columns or 'answer' not in response.columns:
-            raise ValueError("input dataframe have no user_id or item_id  or answer")
+            self._response = response[['user_id', 'item_id', 'answer']]
+            # 被试者id
+            self._user_ids = self._response['user_id'].unique()
+            self.user_count = len(self._user_ids)
+            # 项目id
+            self._item_ids = self._response['item_id'].unique()
+            self.item_count = len(self._item_ids)
+            self._init_model()
+        else:
 
-        self._response = response[['user_id', 'item_id', 'answer']]
-        # 被试者id
-        self._user_ids = self._response['user_id'].unique()
-        self.user_count = len(self._user_ids)
-        # 项目id
-        self._item_ids = self._response['item_id'].unique()
-        self.item_count = len(self._item_ids)
+            self.user_vector = None
+            self.item_vector = None
+        self.trace = None
+        self.D = 1.7
 
+    def _init_model(self):
+        assert self._response is not None
         self.user_vector = pd.DataFrame({
             'iloc': np.arange(self.user_count),
             'user_id': self._user_ids,
@@ -57,10 +66,29 @@ class BaseIrt(object):
         self.item_vector.fillna({'count': 0, 'right': 0}, inplace=True)
         self.item_vector['accuracy'] = self.item_vector['right'] / self.item_vector['count']
 
-        self.trace = None
-        self.D = 1.7
+    def save(self, path):
+        if not os.path.exists(path):
+            os.mkdir(path)
+        self.item_vector.to_pickle(os.path.join(path, 'item_vector.pl'))
+        self.user_vector.to_pickle(os.path.join(path, 'user_vector.pl'))
+
+    def load_model(self, path):
+        self.item_vector = pd.read_pickle(os.path.join(path, 'item_vector.pl'))
+        self.user_vector = pd.read_pickle(os.path.join(path, 'user_vector.pl'))
+        self.user_count = len(self.user_vector)
+        self.item_count = len(self.item_vector)
+        self._user_ids = self.user_vector['user_id'].unique()
+        self._item_ids = self.item_vector['item_id'].unique()
+
+    @classmethod
+    def load(cls, path):
+        model = cls(response=None)
+        model.load_model(path)
+        return model
 
     def info(self):
+        if self._response is None:
+            return "none data"
         d = self._response['answer'].value_counts()
         return '\n'.join([
             u"用户数量：%d" % self.user_count,
