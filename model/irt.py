@@ -9,7 +9,7 @@ import pandas as pd
 from theano.tensor.basic import as_tensor_variable
 import os
 import abc
-
+import shutil
 
 class BaseIrt(object):
 
@@ -256,7 +256,7 @@ class UIrt2PL(BaseIrt):
         with basic_model:
             trace_name = "trace_" + self.name()
             if os.path.exists(trace_name):
-                os.removedirs(trace_name)
+                shutil.rmtree(trace_name)
             self.trace = pm.backends.Text(trace_name)
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(5, 17)
             # theta (proficiency params) are sampled from a normal distribution
