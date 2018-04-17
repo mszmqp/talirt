@@ -257,7 +257,6 @@ def run(train_df, test_df, Model, draws=500, tune=1000, njobs=1):
 
 
 if __name__ == "__main__":
-    print(os.system('g++ --version'),file=sys.stderr)
     parser = init_option()
     options = parser.parse_args()
 

@@ -124,7 +124,7 @@ class BaseIrt(object):
         return proba
 
     def get_trace(self, model, chains, trace_class=SQLiteTrace):
-        trace_name = "trace_" + self.name()
+        trace_name = "trace_" + self.name()+'.db'
         if os.path.exists(trace_name):
             shutil.rmtree(trace_name)
         return MultiTrace([trace_class(chain=i, name=trace_name, model=model) for i in range(chains)])
