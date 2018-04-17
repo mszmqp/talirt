@@ -321,7 +321,8 @@ def mapper(options):
     # train_df = pandas.read_pickle("simulator_df.pickle")
     for line in options.input:
         line = line.strip()
-
+        if not line:
+            continue
         line = line.split('\t')
         # hadoop nlineinputformat 会多一列行号
         if len(line) == 6:

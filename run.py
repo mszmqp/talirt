@@ -189,10 +189,16 @@ def mapper(options):
     test_df = pandas.read_pickle("test_df.pickle")
 
     for line in options.input:
-        line = line.strip().split('\t')
+        line = line.strip()
+        if not line:
+            continue
+        line = line.split('\t')
         # hadoop nlineinputformat 会多一列行号
         if len(line) == 4:
             line.pop(0)
+        if not line or line[0] == '#':
+            continue
+
         model, tune, njobs = line
 
         Model = _model_class[model]
