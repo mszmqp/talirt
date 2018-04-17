@@ -17,30 +17,28 @@ HADOOP_HOME="/usr/local/hadoop-2.6.0/"
 TASK_NAME="talirt"
 AUTHOR="zhangzhenhu"
 
-HDFS_PREFIX="/user/app_bi/test/talirt/test_simulator/"
+HDFS_PREFIX="/user/app_bi/test/talirt/test_model/"
 
-HADOOP_INPUT="${HDFS_PREFIX}/input_simulator.txt"
+HADOOP_INPUT="${HDFS_PREFIX}/input.txt"
 HADOOP_OUTPUT="${HDFS_PREFIX}/report"
 
 ${HADOOP_BIN} fs -rm ${HDFS_PREFIX}
 ${HADOOP_BIN} fs -mkdir ${HDFS_PREFIX}
 
-${HADOOP_BIN} fs -put ${__script_dir}/input_simulator.txt ${HADOOP_INPUT}
-#${HADOOP_BIN} fs -put ${__script_dir}/train_df.pickle ${HDFS_PREFIX}
-#${HADOOP_BIN} fs -put ${__script_dir}/test_df.pickle ${HDFS_PREFIX}
+${HADOOP_BIN} fs -put ${__script_dir}/input.txt ${HADOOP_INPUT}
+${HADOOP_BIN} fs -put ${__script_dir}/train_df.pickle ${HDFS_PREFIX}
+${HADOOP_BIN} fs -put ${__script_dir}/test_df.pickle ${HDFS_PREFIX}
 
 
 
 
-NAME=${__script_dir}/../talirt.jar
-rm -rf $NAME
+LIBJAR=${__script_dir}/talirt.jar
+rm -rf $LIBJAR
 cd ${__script_dir}/../
-jar cf $NAME -C talirt/ .
-#HADOOP_PYTHON_BIN=`echo ${HADOOP_PYTHON_BIN} | awk -F '#' '{print $1}'`
+jar cf $LIBJAR -C . .
 
 
-
-HADOOP_FILE="${__script_dir}/test_simulator.py#run.py,${__script_dir}/../talirt.jar#talirt"
+HADOOP_FILE="${__script_dir}/test_model.py#run.py,${__script_dir}/train_df.pickle,${__script_dir}/test_df.pickle,${LIBJAR}#talirt"
 MAPPER="./python3/bin/python3 run.py -r mapper"
 REDUCER="cat"
 
