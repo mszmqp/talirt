@@ -18,6 +18,6 @@ from pymc3.backends.text import Text
 
 
 class TextTrace(Text):
-    def __init__(self, chain=None, **kwargs):
-        super(TextTrace).__init__(**kwargs)
+    def __init__(self, name, model=None, vars=None, test_point=None, chain=None, ):
+        super(TextTrace).__init__(name, model, vars, test_point)
         self.chain = chain
