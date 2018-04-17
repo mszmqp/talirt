@@ -11,6 +11,7 @@ import os
 import abc
 import shutil
 from pymc3.backends.base import MultiTrace
+from ..utils.pymc import TextTrace
 from pymc3.sampling import _cpu_count
 
 
@@ -121,11 +122,11 @@ class BaseIrt(object):
         proba[proba < threshold] = 0
         return proba
 
-    def get_trace(self, model, chains, trace_class=pm.backends.Text):
+    def get_trace(self, model, chains, trace_class=TextTrace):
         trace_name = "trace_" + self.name()
         if os.path.exists(trace_name):
             shutil.rmtree(trace_name)
-        return MultiTrace([trace_class(name=trace_name, model=model) for i in range(chains)])
+        return MultiTrace([trace_class(chain=i, name=trace_name, model=model) for i in range(chains)])
 
     @abc.abstractmethod
     def estimate_mcmc(self, **kwargs):
