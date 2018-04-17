@@ -364,11 +364,14 @@ class UIrt3PL(UIrt2PL):
                                       var=as_tensor_variable(irt)[
                                           self._response['user_iloc'], self._response['item_iloc']])
             correct = pm.Bernoulli('correct', p=output, observed=self._response["answer"].values)
-            trace_name = "trace_" + self.name()
-            if os.path.exists(trace_name):
-                os.removedirs(trace_name)
-            db = pm.backends.Text(trace_name)
-            kwargs['trace'] = db
+            njobs = kwargs.get('njobs', 1)
+            chains = kwargs.get('chains', None)
+            if njobs is None:
+                njobs = min(4, _cpu_count())
+            if chains is None:
+                chains = max(2, njobs)
+            m_trace = self.get_trace(basic_model, chains)
+            kwargs['trace'] = m_trace
             self.trace = pm.sample(**kwargs)
 
         self.item_vector['a'] = self.trace['a'].mean(axis=0)[0, :]
@@ -416,12 +419,14 @@ class MIrt2PL(BaseIrt):
                                       var=as_tensor_variable(irt)[
                                           self._response['user_iloc'], self._response['item_iloc']])
             correct = pm.Bernoulli('correct', p=output, observed=self._response["answer"].values)
-            trace_name = "trace_" + self.name()
-            if os.path.exists(trace_name):
-                os.removedirs(trace_name)
-            self.trace = pm.backends.Text(trace_name)
-            # map_estimate = pm.find_MAP()
-            kwargs['trace'] = self.trace
+            njobs = kwargs.get('njobs', 1)
+            chains = kwargs.get('chains', None)
+            if njobs is None:
+                njobs = min(4, _cpu_count())
+            if chains is None:
+                chains = max(2, njobs)
+            m_trace = self.get_trace(basic_model, chains)
+            kwargs['trace'] = m_trace
             self.trace = pm.sample(**kwargs)
 
         theta = pd.DataFrame(self.trace['theta'].mean(axis=0),
@@ -492,12 +497,14 @@ class MIrt3PL(MIrt2PL):
                                       var=as_tensor_variable(irt)[
                                           self._response['user_iloc'], self._response['item_iloc']])
             correct = pm.Bernoulli('correct', p=output, observed=self._response["answer"].values)
-            trace_name = "trace_" + self.name()
-            if os.path.exists(trace_name):
-                os.removedirs(trace_name)
-            self.trace = pm.backends.Text(trace_name)
-            # map_estimate = pm.find_MAP()
-            kwargs['trace'] = self.trace
+            njobs = kwargs.get('njobs', 1)
+            chains = kwargs.get('chains', None)
+            if njobs is None:
+                njobs = min(4, _cpu_count())
+            if chains is None:
+                chains = max(2, njobs)
+            m_trace = self.get_trace(basic_model, chains)
+            kwargs['trace'] = m_trace
             self.trace = pm.sample(**kwargs)
 
         self.item_vector['b'] = self.trace['b'].mean(axis=0)[0, :]
@@ -543,13 +550,14 @@ class MIrt2PLN(MIrt2PL):
                                       var=as_tensor_variable(irt)[
                                           self._response['user_iloc'], self._response['item_iloc']])
             correct = pm.Bernoulli('correct', p=output, observed=self._response["answer"].values)
-            trace_name = "trace_" + self.name()
-            if os.path.exists(trace_name):
-                os.removedirs(trace_name)
-            self.trace = pm.backends.Text(trace_name)
-            # map_estimate = pm.find_MAP()
-            # create a pymc simulation object, including all the above variables
-            kwargs['trace'] = self.trace
+            njobs = kwargs.get('njobs', 1)
+            chains = kwargs.get('chains', None)
+            if njobs is None:
+                njobs = min(4, _cpu_count())
+            if chains is None:
+                chains = max(2, njobs)
+            m_trace = self.get_trace(basic_model, chains)
+            kwargs['trace'] = m_trace
             self.trace = pm.sample(**kwargs)
         theta = self.trace['theta'].mean(axis=0)[:, :, 0]
         theta = pd.DataFrame(theta.T, columns=['theta_%d' % i for i in range(self.k)])
@@ -633,11 +641,14 @@ class MIrt3PLN(MIrt2PLN):
                                       var=as_tensor_variable(irt)[
                                           self._response['user_iloc'], self._response['item_iloc']])
             correct = pm.Bernoulli('correct', p=output, observed=self._response["answer"].values)
-            trace_name = "trace_" + self.name()
-            if os.path.exists(trace_name):
-                os.removedirs(trace_name)
-            self.trace = pm.backends.Text(trace_name)
-            kwargs['trace'] = self.trace
+            njobs = kwargs.get('njobs', 1)
+            chains = kwargs.get('chains', None)
+            if njobs is None:
+                njobs = min(4, _cpu_count())
+            if chains is None:
+                chains = max(2, njobs)
+            m_trace = self.get_trace(basic_model, chains)
+            kwargs['trace'] = m_trace
             self.trace = pm.sample(**kwargs)
         theta = self.trace['theta'].mean(axis=0)[:, :, 0]
         theta = pd.DataFrame(theta.T, columns=['theta_%d' % i for i in range(self.k)])
