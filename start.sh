@@ -17,15 +17,19 @@ HADOOP_HOME="/usr/local/hadoop-2.6.0/"
 TASK_NAME="talirt"
 AUTHOR="zhangzhenhu"
 
+HDFS_PREFIX="/user/app_bi/test/talirt/test_1/"
 
+HADOOP_INPUT="${HDFS_PREFIX}/input.txt"
+HADOOP_OUTPUT="${HDFS_PREFIX}/model_report"
 
-HADOOP_INPUT="/user/app_bi/test/talirt/input.txt"
-HADOOP_OUTPUT="/user/app_bi/test/talirt/model_compare"
+${HADOOP_BIN} fs -rm ${HDFS_PREFIX}
+${HADOOP_BIN} fs -mkdir ${HDFS_PREFIX}
 
-${HADOOP_BIN} fs -rm ${HADOOP_INPUT}
 ${HADOOP_BIN} fs -put ${__script_dir}/input.txt ${HADOOP_INPUT}
+${HADOOP_BIN} fs -put ${__script_dir}/train_df.pickle ${HDFS_PREFIX}
+${HADOOP_BIN} fs -put ${__script_dir}/test_df.pickle ${HDFS_PREFIX}
 
-${HADOOP_BIN} fs -rm -r ${HADOOP_OUTPUT}
+
 
 
 NAME=${__script_dir}/../talirt.jar
