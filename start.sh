@@ -31,7 +31,7 @@ ${HADOOP_BIN} fs -rm -r ${HADOOP_OUTPUT}
 NAME=${__script_dir}/../talirt.jar
 rm -rf $NAME
 cd ${__script_dir}/../
-jar cvf $NAME -C talirt/ .
+jar cf $NAME -C talirt/ .
 #HADOOP_PYTHON_BIN=`echo ${HADOOP_PYTHON_BIN} | awk -F '#' '{print $1}'`
 
 
