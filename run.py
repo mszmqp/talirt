@@ -163,7 +163,7 @@ def main(options):
 
     train_df = df_target
     test_df = df_target
-    model, model_info = run(train_df, test_df, MIrt3PL, draws=150, tune=1000, njobs=1)
+    model, model_info = run(train_df, test_df, UIrt2PL, draws=150, tune=1000, njobs=1)
 
     print('\n' * 2)
     print("=" * 10 + model_info['model_name'] + "=" * 10)

@@ -320,13 +320,18 @@ def main(options):
 def mapper(options):
     # train_df = pandas.read_pickle("simulator_df.pickle")
     for line in options.input:
-        line = line.strip().split('\t')
+        line = line.strip()
+
+        line = line.split('\t')
         # hadoop nlineinputformat 会多一列行号
         if len(line) == 6:
             line.pop(0)
-        model, n_items, n_users, tune,njobs = line
+        if not line or line[0] == '#':
+            continue
 
-        model_info = test(n_users=int(n_users), n_items=int(n_items), tune=int(tune), njobs=int(1))
+        model, n_items, n_users, tune, njobs = line
+
+        model_info = test(n_users=int(n_users), n_items=int(n_items), tune=int(tune), njobs=int(njobs))
         print(json.dumps(model_info))
 
 

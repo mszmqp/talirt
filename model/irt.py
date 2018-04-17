@@ -10,6 +10,8 @@ from theano.tensor.basic import as_tensor_variable
 import os
 import abc
 import shutil
+from pymc3.backends.base import MultiTrace
+from pymc3.sampling import _cpu_count
 
 class BaseIrt(object):
 
@@ -117,6 +119,12 @@ class BaseIrt(object):
         proba[proba >= threshold] = 1
         proba[proba < threshold] = 0
         return proba
+
+    def get_trace(self, model, chains, trace_class=pm.backends.Text):
+        trace_name = "trace_" + self.name()
+        if os.path.exists(trace_name):
+            shutil.rmtree(trace_name)
+        return MultiTrace([trace_class(name=trace_name, model=model) for i in range(chains)])
 
     @abc.abstractmethod
     def estimate_mcmc(self, **kwargs):
@@ -254,7 +262,6 @@ class UIrt2PL(BaseIrt):
         """
         basic_model = pm.Model()
         with basic_model:
-
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(5, 17)
             # theta (proficiency params) are sampled from a normal distribution
             theta = pm.Normal("theta", mu=0, sd=1, shape=(self.user_count, 1))
@@ -274,11 +281,14 @@ class UIrt2PL(BaseIrt):
 
             # map_estimate = pm.find_MAP()
             # create a pymc simulation object, including all the above variables
-            trace_name = "trace_" + self.name()
-            if os.path.exists(trace_name):
-                shutil.rmtree(trace_name)
-            self.trace = pm.backends.Text(trace_name)
-            kwargs['trace'] = self.trace
+            njobs = kwargs['njobs']
+            chains = kwargs['chains']
+            if njobs is None:
+                njobs = min(4, _cpu_count())
+            if chains is None:
+                chains = max(2, njobs)
+            m_trace = self.get_trace(basic_model,chains)
+            kwargs['trace'] = m_trace
             self.trace = pm.sample(**kwargs)
 
             # run an interactive MCMC sampling session
@@ -332,7 +342,6 @@ class UIrt3PL(UIrt2PL):
         """
         basic_model = pm.Model()
         with basic_model:
-
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c \sim beta(5, 17)
             # theta (proficiency params) are sampled from a normal distribution
             theta = pm.Normal("theta", mu=0, sd=1, shape=(self.user_count, 1))
@@ -356,8 +365,8 @@ class UIrt3PL(UIrt2PL):
             trace_name = "trace_" + self.name()
             if os.path.exists(trace_name):
                 os.removedirs(trace_name)
-            self.trace = pm.backends.Text(trace_name)
-            kwargs['trace'] = self.trace
+            db = pm.backends.Text(trace_name)
+            kwargs['trace'] = db
             self.trace = pm.sample(**kwargs)
 
         self.item_vector['a'] = self.trace['a'].mean(axis=0)[0, :]
@@ -391,7 +400,6 @@ class MIrt2PL(BaseIrt):
         """
         basic_model = pm.Model()
         with basic_model:
-
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(2, 5)
             theta = pm.Normal("theta", mu=0, sd=1, shape=(self.user_count, self.k))
             a = pm.Lognormal("a", mu=0, tau=1, shape=(self.k, self.item_count))
@@ -463,7 +471,6 @@ class MIrt3PL(MIrt2PL):
     def estimate_mcmc(self, **kwargs):
         basic_model = pm.Model()
         with basic_model:
-
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(2, 5)
             # theta (proficiency params) are sampled from a normal distribution
             theta = pm.Normal("theta", mu=0, sd=1, shape=(self.user_count, self.k))
@@ -517,7 +524,6 @@ class MIrt2PLN(MIrt2PL):
         basic_model = pm.Model()
 
         with basic_model:
-
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(2, 5)
             theta = pm.Normal("theta", mu=0, sd=1, shape=(self.k, self.user_count, 1))
             a = pm.Lognormal("a", mu=0, tau=1, shape=(self.k, 1, self.item_count))
@@ -606,7 +612,6 @@ class MIrt3PLN(MIrt2PLN):
         """
         basic_model = pm.Model()
         with basic_model:
-
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(2, 5)
             theta = pm.Normal("theta", mu=0, sd=1, shape=(self.k, self.user_count, 1))
             a = pm.Lognormal("a", mu=0, tau=1, shape=(self.k, 1, self.item_count))
