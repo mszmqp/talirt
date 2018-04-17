@@ -203,7 +203,7 @@ def test(n_items=100, n_users=200, model="UIrt2PL", draws=500, tune=1000, njobs=
     response = pandas.DataFrame({'user_id': user, 'item_id': item, 'answer': answer})
     Model = _model_class[model]
     model = Model(response=response)
-    model.estimate_mcmc(draws=draws, tune=tune, njobs=njobs, progressbar=True)
+    model.estimate_mcmc(draws=draws, tune=tune, njobs=njobs, progressbar=True, chains=1)
 
     estimate_user = model.user_vector
     estimate_item = model.item_vector
