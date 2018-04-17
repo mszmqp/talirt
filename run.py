@@ -196,7 +196,7 @@ def mapper(options):
         # hadoop nlineinputformat 会多一列行号
         if len(line) == 4:
             line.pop(0)
-        if not line or line[0] == '#':
+        if len(line) < 3 or line[0] == '#':
             continue
 
         model, tune, njobs = line
