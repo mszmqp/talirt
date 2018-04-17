@@ -11,7 +11,7 @@ import os
 import abc
 import shutil
 from pymc3.backends.base import MultiTrace
-from ..utils.pymc import TextTrace
+from utils.pymc import TextTrace
 from pymc3.sampling import _cpu_count
 
 
