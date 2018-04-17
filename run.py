@@ -15,6 +15,10 @@ from scipy import optimize
 import ibis
 import pandas
 import os
+
+if os.getenv('map_input_file'):
+    os.environ['COMPILEDIR'] = './.theano'
+
 import pandas as pd
 import numpy as np
 import pymc3 as pm
