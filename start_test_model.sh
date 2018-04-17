@@ -17,10 +17,10 @@ HADOOP_HOME="/usr/local/hadoop-2.6.0/"
 TASK_NAME="talirt"
 AUTHOR="zhangzhenhu"
 
-HDFS_PREFIX="/user/app_bi/test/talirt/test_1/"
+HDFS_PREFIX="/user/app_bi/test/talirt/test_model/"
 
 HADOOP_INPUT="${HDFS_PREFIX}/input.txt"
-HADOOP_OUTPUT="${HDFS_PREFIX}/model_report"
+HADOOP_OUTPUT="${HDFS_PREFIX}/report"
 
 ${HADOOP_BIN} fs -rm ${HDFS_PREFIX}
 ${HADOOP_BIN} fs -mkdir ${HDFS_PREFIX}
@@ -40,7 +40,7 @@ jar cf $NAME -C talirt/ .
 
 
 
-HADOOP_FILE="${__script_dir}/run.py,${__script_dir}/train_df.pickle,${__script_dir}/test_df.pickle,${__script_dir}/../talirt.jar#talirt"
+HADOOP_FILE="${__script_dir}/test_model.py#run.py,${__script_dir}/train_df.pickle,${__script_dir}/test_df.pickle,${__script_dir}/../talirt.jar#talirt"
 MAPPER="./python3/bin/python3 run.py -r mapper"
 REDUCER="cat"
 
