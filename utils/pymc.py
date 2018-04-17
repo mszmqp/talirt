@@ -15,9 +15,16 @@ import argparse
 from pymc3.backends.base import MultiTrace
 from pymc3.sampling import _cpu_count
 from pymc3.backends.text import Text
+from pymc3.backends.sqlite import SQLite
 
 
 class TextTrace(Text):
-    def __init__(self, name, model=None, vars=None, test_point=None, chain=None, ):
-        super(TextTrace,self).__init__(name, model, vars, test_point)
+    def __init__(self, name, model=None, vars=None, test_point=None, chain=None):
+        super(TextTrace, self).__init__(name, model, vars, test_point)
+        self.chain = chain
+
+
+class SQLiteTrace(SQLite):
+    def __init__(self, name, model=None, vars=None, test_point=None, chain=None):
+        super(SQLiteTrace, self).__init__(name, model, vars, test_point)
         self.chain = chain

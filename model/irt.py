@@ -11,7 +11,8 @@ import os
 import abc
 import shutil
 from pymc3.backends.base import MultiTrace
-from utils.pymc import TextTrace
+
+from utils.pymc import TextTrace,SQLiteTrace
 from pymc3.sampling import _cpu_count
 
 
@@ -122,7 +123,7 @@ class BaseIrt(object):
         proba[proba < threshold] = 0
         return proba
 
-    def get_trace(self, model, chains, trace_class=TextTrace):
+    def get_trace(self, model, chains, trace_class=SQLiteTrace):
         trace_name = "trace_" + self.name()
         if os.path.exists(trace_name):
             shutil.rmtree(trace_name)
