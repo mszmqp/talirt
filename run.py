@@ -15,7 +15,15 @@ from scipy import optimize
 import ibis
 import pandas
 import os
+#
+"""
+要想在hadoop集群运行，需要修改文件 theano/configdefaults.py
+增加下面两行
+    1884 elif os.getenv('COMPILEDIR') is not None:
+    1885     default_base_compiledir = os.getenv('COMPILEDIR')
 
+然后重新把python打包上传到集群
+"""
 if os.getenv('map_input_file'):
     os.environ['COMPILEDIR'] = './.theano'
 
