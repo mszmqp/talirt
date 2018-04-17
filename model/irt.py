@@ -13,6 +13,7 @@ import shutil
 from pymc3.backends.base import MultiTrace
 from pymc3.sampling import _cpu_count
 
+
 class BaseIrt(object):
 
     def __init__(self, response: pd.DataFrame):
@@ -281,13 +282,13 @@ class UIrt2PL(BaseIrt):
 
             # map_estimate = pm.find_MAP()
             # create a pymc simulation object, including all the above variables
-            njobs = kwargs['njobs']
-            chains = kwargs['chains']
+            njobs = kwargs.get('njobs', 1)
+            chains = kwargs.get('chains', None)
             if njobs is None:
                 njobs = min(4, _cpu_count())
             if chains is None:
                 chains = max(2, njobs)
-            m_trace = self.get_trace(basic_model,chains)
+            m_trace = self.get_trace(basic_model, chains)
             kwargs['trace'] = m_trace
             self.trace = pm.sample(**kwargs)
 
