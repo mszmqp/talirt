@@ -15,6 +15,7 @@ from scipy import optimize
 import ibis
 import pandas
 import os
+
 #
 """
 要想在hadoop集群运行，需要修改文件 theano/configdefaults.py
@@ -38,6 +39,7 @@ from model.metrics import Metric
 from utils.data import split_data, data_info
 from model.irt import UIrt2PL, UIrt3PL, MIrt2PL, MIrt3PL, MIrt2PLN, MIrt3PLN
 import json
+import sklearn
 
 
 def load_logs(cache_file="logs.pickle", from_cache=True):
@@ -237,6 +239,7 @@ def run(train_df, test_df, Model, draws=500, tune=1000, njobs=1):
         'accuracy_score': Metric.accuracy_score_list(train_true, train_proba),
         'mae': Metric.mean_absolute_error(train_true, train_proba),
         'mse': Metric.mean_squared_error(train_true, train_proba),
+        'auc': sklearn.metrics.roc_auc_score(train_true, train_proba),
     }
     model_info['test'] = {
         'y_proba': [float(x) for x in test_proba],
@@ -245,6 +248,7 @@ def run(train_df, test_df, Model, draws=500, tune=1000, njobs=1):
         'accuracy_score': Metric.accuracy_score_list(test_true, test_proba),
         'mae': Metric.mean_absolute_error(test_true, test_proba),
         'mse': Metric.mean_squared_error(test_true, test_proba),
+        'aur': sklearn.metrics.roc_auc_score(test_true, test_proba),
     }
 
     model_info['parameters'] = {
@@ -264,18 +268,14 @@ def json2DataFrame(inputs):
         'draws': [],
         'tune': [],
         'njobs': [],
-        '': [],
-        '': [],
-        '': [],
-        'a-mae': [],
-        'a-mse': [],
-        'a-rmse': [],
-        'b-mae': [],
-        'b-mse': [],
-        'b-rmse': [],
-        'c-mae': [],
-        'c-mse': [],
-        'c-rmse': [],
+        'train_acc': [],
+        'train_mae': [],
+        'train_mse': [],
+        'train_auc': [],
+        'test_acc': [],
+        'test_mae': [],
+        'test_mse': [],
+        'test_auc': [],
     }
     for info in inputs:
         if isinstance(info, str):
@@ -284,12 +284,15 @@ def json2DataFrame(inputs):
         hehe['draws'].append(info['parameters']['draws'])
         hehe['tune'].append(info['parameters']['tune'])
         hehe['njobs'].append(info['parameters']['njobs'])
-
-
-
-    print(pandas.DataFrame(hehe))
-
-
+        hehe['train_acc'].append(info['train']['accuracy_score'])
+        hehe['train_mae'].append(info['train']['mae'])
+        hehe['train_mse'].append(info['train']['mse'])
+        hehe['train_auc'].append(info['train']['auc'])
+        hehe['test_acc'].append(info['test']['accuracy_score'])
+        hehe['test_mae'].append(info['test']['mae'])
+        hehe['test_mse'].append(info['test']['mse'])
+        hehe['test_auc'].append(info['test']['auc'])
+    return pandas.DataFrame(hehe)
 
 
 if __name__ == "__main__":
@@ -304,8 +307,8 @@ if __name__ == "__main__":
     if options.runner == 'mapper':
         mapper(options)
 
-    elif options.runner == 'reducer':
-        pass
+    elif options.runner == 'report':
+        print(json2DataFrame(options.input))
         # reducer(options)
     else:
         main(options)

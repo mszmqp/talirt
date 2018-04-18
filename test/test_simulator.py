@@ -193,7 +193,7 @@ def json2DataFrame(inputs):
             hehe[t + '-mse'] = info[t]['mse']
             hehe[t + '-rmse'] = info[t]['rmse']
 
-    print(pandas.DataFrame(hehe))
+    return pandas.DataFrame(hehe)
 
 
 def mapper(options):
@@ -228,9 +228,8 @@ if __name__ == "__main__":
 
     if options.runner == 'mapper':
         mapper(options)
-
-    elif options.runner == 'reducer':
-        pass
+    elif options.runner == 'report':
+        print(json2DataFrame(options.input))
         # reducer(options)
     else:
         main(options)
