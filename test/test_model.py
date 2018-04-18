@@ -214,7 +214,7 @@ def mapper(options):
             continue
 
         model, tune, njobs = line
-
+        print(line, file=sys.stderr)
         Model = _model_class[model]
         model, model_info = run(train_df, test_df, Model=Model, tune=int(tune), njobs=int(njobs))
         print(json.dumps(model_info))

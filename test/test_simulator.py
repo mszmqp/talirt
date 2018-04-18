@@ -222,7 +222,7 @@ def mapper(options):
             continue
 
         model, n_items, n_users, tune, njobs = line
-
+        print(line,file=sys.stderr)
         model_info = test(model=model, n_users=int(n_users), n_items=int(n_items), tune=int(tune), njobs=int(njobs))
         print(json.dumps(model_info))
 
