@@ -256,6 +256,42 @@ def run(train_df, test_df, Model, draws=500, tune=1000, njobs=1):
     return model, model_info
 
 
+def json2DataFrame(inputs):
+    hehe = {
+        'model_name': [],
+        # 'n_items': [],
+        # 'n_users': [],
+        'draws': [],
+        'tune': [],
+        'njobs': [],
+        '': [],
+        '': [],
+        '': [],
+        'a-mae': [],
+        'a-mse': [],
+        'a-rmse': [],
+        'b-mae': [],
+        'b-mse': [],
+        'b-rmse': [],
+        'c-mae': [],
+        'c-mse': [],
+        'c-rmse': [],
+    }
+    for info in inputs:
+        if isinstance(info, str):
+            info = json.loads(info)
+        hehe['model_name'].append(info['model_name'])
+        hehe['draws'].append(info['parameters']['draws'])
+        hehe['tune'].append(info['parameters']['tune'])
+        hehe['njobs'].append(info['parameters']['njobs'])
+
+
+
+    print(pandas.DataFrame(hehe))
+
+
+
+
 if __name__ == "__main__":
     parser = init_option()
     options = parser.parse_args()

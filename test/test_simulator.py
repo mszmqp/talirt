@@ -27,6 +27,7 @@ from model.simulator import Simulator
 from model.irt import UIrt2PL, UIrt3PL, MIrt2PL, MIrt3PL, MIrt2PLN, MIrt3PLN
 import math
 from sklearn.metrics import mean_absolute_error, mean_squared_error
+
 _model_class = {
     "UIrt2PL": UIrt2PL,
     "UIrt3PL": UIrt3PL,
@@ -35,8 +36,6 @@ _model_class = {
     "MIrt2PLN": MIrt2PLN,
     "MIrt3PLN": MIrt3PLN
 }
-
-
 
 
 def init_option():
@@ -57,7 +56,6 @@ def init_option():
 
 
 def test(n_items=100, n_users=200, model="UIrt2PL", draws=500, tune=1000, njobs=1):
-
     # from model import irt
 
     sim = Simulator(n_items=n_items, n_users=n_users, model=model)
@@ -160,6 +158,11 @@ def test(n_items=100, n_users=200, model="UIrt2PL", draws=500, tune=1000, njobs=
 
 
 def main(options):
+    info = test(n_items=50, n_users=100, model="UIrt2PL", draws=500, tune=100, njobs=1)
+    print(json2DataFrame([info]))
+
+
+def json2DataFrame(inputs):
     hehe = {
         'model_name': [],
         'n_items': [],
@@ -180,13 +183,15 @@ def main(options):
         'c-mse': [],
         'c-rmse': [],
     }
-    info = test(n_items=50, n_users=100, model="UIrt2PL", draws=500, tune=100, njobs=1)
-    for t in ['model_name', 'n_items', 'n_users', 'draws', 'tune', 'njobs']:
-        hehe[t].append(info[t])
-    for t in ['theta', 'a', 'b', 'c']:
-        hehe[t + '-mae'] = info[t]['mae']
-        hehe[t + '-mse'] = info[t]['mse']
-        hehe[t + '-rmse'] = info[t]['rmse']
+    for info in inputs:
+        if isinstance(info, str):
+            info = json.loads(info)
+        for t in ['model_name', 'n_items', 'n_users', 'draws', 'tune', 'njobs']:
+            hehe[t].append(info[t])
+        for t in ['theta', 'a', 'b', 'c']:
+            hehe[t + '-mae'] = info[t]['mae']
+            hehe[t + '-mse'] = info[t]['mse']
+            hehe[t + '-rmse'] = info[t]['rmse']
 
     print(pandas.DataFrame(hehe))
 
