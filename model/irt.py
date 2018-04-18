@@ -12,7 +12,7 @@ import abc
 import shutil
 from pymc3.backends.base import MultiTrace
 
-from utils.pymc import TextTrace,SQLiteTrace
+from utils.pymc import TextTrace, SQLiteTrace
 from pymc3.sampling import _cpu_count
 
 
@@ -125,7 +125,7 @@ class BaseIrt(object):
 
     def get_trace(self, model, chains, trace_class=SQLiteTrace):
         return None
-        trace_name = "trace_" + self.name()+'.db'
+        trace_name = "trace_" + self.name() + '.db'
         if os.path.exists(trace_name):
             shutil.rmtree(trace_name)
         return MultiTrace([trace_class(chain=i, name=trace_name, model=model) for i in range(chains)])
@@ -293,6 +293,7 @@ class UIrt2PL(BaseIrt):
                 chains = max(2, njobs)
             # m_trace = self.get_trace(basic_model, chains)
             # kwargs['trace'] = m_trace
+            kwargs['discard_tuned_samples'] = False
             self.trace = pm.sample(**kwargs)
 
             # run an interactive MCMC sampling session
