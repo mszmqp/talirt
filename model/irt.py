@@ -646,6 +646,7 @@ class MIrt3PLN(MIrt2PLN):
             #     chains = max(2, njobs)
             # m_trace = self.get_trace(basic_model, chains)
             # kwargs['trace'] = m_trace
+            # 通过修改源码，不存储被burn的记录，所以这里一定要要False
             kwargs['discard_tuned_samples'] = False
             self.trace = pm.sample(**kwargs)
         theta = self.trace['theta'].mean(axis=0)[:, :, 0]
