@@ -22,7 +22,7 @@ HDFS_PREFIX="/user/app_bi/test/talirt/test_model/"
 HADOOP_INPUT="${HDFS_PREFIX}/input.txt"
 HADOOP_OUTPUT="${HDFS_PREFIX}/report"
 
-${HADOOP_BIN} fs -rm ${HDFS_PREFIX}
+${HADOOP_BIN} fs -rm -r ${HDFS_PREFIX}
 ${HADOOP_BIN} fs -mkdir ${HDFS_PREFIX}
 
 ${HADOOP_BIN} fs -put ${__script_dir}/input.txt ${HADOOP_INPUT}
