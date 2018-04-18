@@ -6,8 +6,9 @@
 1. 多进程时（njobs>1）， 进程间通信传输数据过大
 2. 单进程时（njobs>1），太大也会超过内存限制
 
-
-修改pymc3/sampling.py:664
+解决方法
+1. pymc3.sample(discard_tuned_samples=False),必须设置为discard_tuned_samples=False
+2. 修改pymc3/sampling.py:664
 
 ```python
 def _iter_sample(draws, step, start=None, trace=None, chain=0, tune=None,
