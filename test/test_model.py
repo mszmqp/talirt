@@ -308,7 +308,7 @@ if __name__ == "__main__":
         mapper(options)
 
     elif options.runner == 'report':
-        print(json2DataFrame(options.input))
+        print(json2DataFrame(options.input).to_csv(sep='\t'))
         # reducer(options)
     else:
         main(options)
