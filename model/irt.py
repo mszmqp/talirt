@@ -124,6 +124,7 @@ class BaseIrt(object):
         return proba
 
     def get_trace(self, model, chains, trace_class=SQLiteTrace):
+        return None
         trace_name = "trace_" + self.name()+'.db'
         if os.path.exists(trace_name):
             shutil.rmtree(trace_name)
@@ -290,8 +291,8 @@ class UIrt2PL(BaseIrt):
                 njobs = min(4, _cpu_count())
             if chains is None:
                 chains = max(2, njobs)
-            m_trace = self.get_trace(basic_model, chains)
-            kwargs['trace'] = m_trace
+            # m_trace = self.get_trace(basic_model, chains)
+            # kwargs['trace'] = m_trace
             self.trace = pm.sample(**kwargs)
 
             # run an interactive MCMC sampling session
@@ -371,8 +372,8 @@ class UIrt3PL(UIrt2PL):
                 njobs = min(4, _cpu_count())
             if chains is None:
                 chains = max(2, njobs)
-            m_trace = self.get_trace(basic_model, chains)
-            kwargs['trace'] = m_trace
+            # m_trace = self.get_trace(basic_model, chains)
+            # kwargs['trace'] = m_trace
             self.trace = pm.sample(**kwargs)
 
         self.item_vector['a'] = self.trace['a'].mean(axis=0)[0, :]
