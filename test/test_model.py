@@ -287,11 +287,11 @@ def json2DataFrame(inputs):
         hehe['train_acc'].append(info['train']['accuracy_score'])
         hehe['train_mae'].append(info['train']['mae'])
         hehe['train_mse'].append(info['train']['mse'])
-        hehe['train_auc'].append(info['train']['auc'])
+        hehe['train_auc'].append(info['train'].get('auc',0))
         hehe['test_acc'].append(info['test']['accuracy_score'])
         hehe['test_mae'].append(info['test']['mae'])
         hehe['test_mse'].append(info['test']['mse'])
-        hehe['test_auc'].append(info['test']['auc'])
+        hehe['test_auc'].append(info['test'].get('auc',0))
     return pandas.DataFrame(hehe)
 
 
