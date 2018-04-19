@@ -248,7 +248,7 @@ def run(train_df, test_df, Model, draws=500, tune=1000, njobs=1):
         'accuracy_score': Metric.accuracy_score_list(test_true, test_proba),
         'mae': Metric.mean_absolute_error(test_true, test_proba),
         'mse': Metric.mean_squared_error(test_true, test_proba),
-        'aur': sklearn.metrics.roc_auc_score(test_true, test_proba),
+        'auc': sklearn.metrics.roc_auc_score(test_true, test_proba),
     }
 
     model_info['parameters'] = {
@@ -291,7 +291,7 @@ def json2DataFrame(inputs):
         hehe['test_acc'].append(max(info['test']['accuracy_score'],key=lambda x:x[1]))
         hehe['test_mae'].append(info['test']['mae'])
         hehe['test_mse'].append(info['test']['mse'])
-        hehe['test_auc'].append(info['test'].get('auc', 0))
+        hehe['test_auc'].append(info['test'].get('aur', 0))
     return pandas.DataFrame(hehe)
 
 
