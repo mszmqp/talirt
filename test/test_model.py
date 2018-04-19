@@ -278,7 +278,11 @@ def json2DataFrame(inputs):
         'test_auc': [],
     }
     for info in inputs:
+
         if isinstance(info, str):
+            info = info.strip()
+            if not info:
+                continue
             info = json.loads(info)
         hehe['model_name'].append(info['model_name'])
         hehe['draws'].append(info['parameters']['draws'])

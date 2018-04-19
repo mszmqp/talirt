@@ -197,6 +197,9 @@ def json2DataFrame(inputs):
     }
     for info in inputs:
         if isinstance(info, str):
+            info = info.strip()
+            if not info:
+                continue
             info = json.loads(info)
         for t in ['model_name', 'n_items', 'n_users', 'draws', 'tune', 'njobs']:
             hehe[t].append(info[t])
