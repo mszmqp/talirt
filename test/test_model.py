@@ -288,11 +288,24 @@ def json2DataFrame(inputs):
         hehe['draws'].append(info['parameters']['draws'])
         hehe['tune'].append(info['parameters']['tune'])
         hehe['njobs'].append(info['parameters']['njobs'])
-        hehe['train_acc'].append(max(info['train']['accuracy_score'],key=lambda x:x[1]))
+        for threshold, acc in info['train']['accuracy_score']:
+            if threshold == 0.5:
+                hehe['train_acc_0.5'].append(acc)
+        max_threshold, max_acc = max(info['train']['accuracy_score'], key=lambda x: x[1])
+        hehe['train_max_threshold'].append(max_threshold)
+        hehe['train_max_acc'].append(max_acc)
+
         hehe['train_mae'].append(info['train']['mae'])
         hehe['train_mse'].append(info['train']['mse'])
         hehe['train_auc'].append(info['train'].get('auc', 0))
-        hehe['test_acc'].append(max(info['test']['accuracy_score'],key=lambda x:x[1]))
+
+        for threshold, acc in info['test']['accuracy_score']:
+            if threshold == 0.5:
+                hehe['test_acc_0.5'].append(acc)
+        max_threshold, max_acc = max(info['test']['accuracy_score'], key=lambda x: x[1])
+        hehe['test_max_threshold'].append(max_threshold)
+        hehe['test_max_acc'].append(max_acc)
+
         hehe['test_mae'].append(info['test']['mae'])
         hehe['test_mse'].append(info['test']['mse'])
         hehe['test_auc'].append(info['test'].get('aur', 0))
