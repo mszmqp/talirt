@@ -204,9 +204,9 @@ def json2DataFrame(inputs):
         for t in ['model_name', 'n_items', 'n_users', 'draws', 'tune', 'njobs']:
             hehe[t].append(info[t])
         for t in ['theta', 'a', 'b', 'c']:
-            hehe[t + '-mae'] = info[t]['mae']
-            hehe[t + '-mse'] = info[t]['mse']
-            hehe[t + '-rmse'] = info[t]['rmse']
+            hehe[t + '-mae'].append(info[t]['mae'])
+            hehe[t + '-mse'].append(info[t]['mse'])
+            hehe[t + '-rmse'].append(info[t]['rmse'])
 
     return pandas.DataFrame(hehe)
 
