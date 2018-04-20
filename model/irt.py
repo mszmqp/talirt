@@ -47,11 +47,12 @@ class BaseIrt(object):
                 raise ValueError("input dataframe have no user_id or item_id  or answer")
 
             self._response = response[['user_id', 'item_id', 'answer']]
+            self._response_matrix = self._response.pivot(index="user_id", columns="item_id", values='answer')
             # 被试者id
-            self._user_ids = self._response['user_id'].unique()
+            self._user_ids = list(self._response_matrix.index)
             self.user_count = len(self._user_ids)
             # 项目id
-            self._item_ids = self._response['item_id'].unique()
+            self._item_ids = list(self._response_matrix.columns)
             self.item_count = len(self._item_ids)
             self._init_model()
         else:
@@ -297,10 +298,10 @@ class UIrt2PL(BaseIrt):
             irt = pm.Deterministic(name="irt",
                                    var=pm.math.sigmoid(z))
 
-            output = pm.Deterministic(name="output",
-                                      var=as_tensor_variable(irt)[
-                                          self._response['user_iloc'], self._response['item_iloc']])
-            correct = pm.Bernoulli('correct', p=output, observed=self._response["answer"].values)
+            # output = pm.Deterministic(name="output",
+            #                           var=as_tensor_variable(irt)[
+            #                               self._response['user_iloc'], self._response['item_iloc']])
+            correct = pm.Bernoulli('correct', p=irt, observed=self._response_matrix)
 
             kwargs['discard_tuned_samples'] = False
             self.trace = pm.sample(**kwargs)

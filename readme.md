@@ -58,6 +58,8 @@ pymc3效率比较差，而且还伴随内存问题。主要导致原因是其每
 C++ 版本的BKT
 https://github.com/myudelson/hmm-scalable
 
+实验数据
+http://pslcdatashop.web.cmu.edu/KDDCup/
 
 国际教育领域数据挖掘协会
 
