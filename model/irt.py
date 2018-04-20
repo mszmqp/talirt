@@ -556,7 +556,7 @@ class MIrt2PLN(MIrt2PL):
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(2, 5)
             # theta = pm.Normal("theta", mu=0, sd=1, shape=(self.k, self.user_count, 1))
             theta = pm.MvNormal("theta", mu=np.zeros(self.k), cov=np.identity(self.k),
-                                shape=(self.user_count, self.k))
+                                shape=(self.k, self.user_count, 1))
             a = pm.Lognormal("a", mu=0, tau=1, shape=(self.k, 1, self.item_count))
             b = pm.Normal("b", mu=0, sd=1, shape=(self.k, 1, self.item_count))
             # a(theta-b)
@@ -648,7 +648,7 @@ class MIrt3PLN(MIrt2PLN):
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(2, 5)
             # theta = pm.Normal("theta", mu=0, sd=1, shape=(self.k, self.user_count, 1))
             theta = pm.MvNormal("theta", mu=np.zeros(self.k), cov=np.identity(self.k),
-                                shape=(self.user_count, self.k))
+                                shape=(self.k, self.user_count, 1))
             a = pm.Lognormal("a", mu=0, tau=1, shape=(self.k, 1, self.item_count))
             b = pm.Normal("b", mu=0, sd=1, shape=(self.k, 1, self.item_count))
             c = pm.Beta("c", alpha=2, beta=5, shape=(1, self.item_count))
