@@ -254,7 +254,7 @@ def run(train_df, test_df, model, draws=1000, tune=1000, k=1):
     model_info['parameters'] = {
         'draws': draws,
         'tune': tune,
-        'njobs': njobs,
+        'k': k,
 
     }
     return model, model_info
@@ -267,7 +267,7 @@ def json2DataFrame(inputs):
         # 'n_users': [],
         'draws': [],
         'tune': [],
-        'njobs': [],
+        'k': [],
         'train_acc_0.5': [],
         'train_max_threshold': [],
         'train_max_acc': [],
@@ -291,7 +291,7 @@ def json2DataFrame(inputs):
         hehe['model_name'].append(info['model_name'])
         hehe['draws'].append(info['parameters']['draws'])
         hehe['tune'].append(info['parameters']['tune'])
-        hehe['njobs'].append(info['parameters']['njobs'])
+        hehe['k'].append(info['parameters']['k'])
         for threshold, acc in info['train']['accuracy_score']:
             if threshold == 0.5:
                 hehe['train_acc_0.5'].append(acc)
