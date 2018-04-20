@@ -70,7 +70,7 @@ def init_option():
 def test(n_items=100, n_users=200, model="UIrt2PL", draws=500, tune=1000, k=1):
     # from model import irt
 
-    sim = Simulator(n_items=n_items, n_users=n_users, model=model, k=k, draws=draws)
+    sim = Simulator(n_items=n_items, n_users=n_users, model=model, k=k)
     df = sim.simulate()
     user = []
     item = []
