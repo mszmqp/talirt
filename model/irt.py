@@ -37,7 +37,7 @@ vals = pm.MvNormal('vals', mu=mu, cov=cov, shape=(5, 2))
 
 class BaseIrt(object):
 
-    def __init__(self, response: pd.DataFrame):
+    def __init__(self, response: pd.DataFrame, k=1):
         """
 
         :param response_df: 作答数据，必须包含三列 user_id item_id answer
@@ -60,7 +60,7 @@ class BaseIrt(object):
             self.item_vector = None
         self.trace = None
         self.D = 1.7
-        self.k = 0
+        self.k = k
 
     def _init_model(self):
         assert self._response is not None
@@ -402,13 +402,13 @@ class MIrt2PL(BaseIrt):
     """
 
     #
-    def __init__(self, k: int = 5, *args, **kwargs):
-        super(MIrt2PL, self).__init__(*args, **kwargs)
-        #     self.Q = Q.join(self.item_vector['iloc']).set_index('iloc').sort_index().values
-        #     m, self.k = self.Q.shape
-        #     self.Q = self.Q.reshape(self.k, m)
-        #     assert m == self.item_count
-        self.k = k
+    # def __init__(self, k: int = 5, *args, **kwargs):
+    #     super(MIrt2PL, self).__init__(*args, **kwargs)
+    #     self.Q = Q.join(self.item_vector['iloc']).set_index('iloc').sort_index().values
+    #     m, self.k = self.Q.shape
+    #     self.Q = self.Q.reshape(self.k, m)
+    #     assert m == self.item_count
+    # self.k = k
 
     def estimate_mcmc(self, **kwargs):
         """
@@ -421,7 +421,7 @@ class MIrt2PL(BaseIrt):
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(2, 5)
             # theta = pm.Normal("theta", mu=0, sd=1, shape=(self.user_count, self.k))
             theta = pm.MvNormal("theta", mu=np.zeros(self.k), cov=np.identity(self.k),
-                                shape=(self.user_count,self.k))
+                                shape=(self.user_count, self.k))
 
             a = pm.Lognormal("a", mu=0, tau=1, shape=(self.k, self.item_count))
             b = pm.Normal("b", mu=0, sd=1, shape=(1, self.item_count))
@@ -499,7 +499,7 @@ class MIrt3PL(MIrt2PL):
             # theta (proficiency params) are sampled from a normal distribution
             # theta = pm.Normal("theta", mu=0, sd=1, shape=(self.user_count, self.k))
             theta = pm.MvNormal("theta", mu=np.zeros(self.k), cov=np.identity(self.k),
-                                shape=(self.user_count,self.k))
+                                shape=(self.user_count, self.k))
             # a = pm.Normal("a", mu=1, tau=1, shape=(1, self.item_count))
             a = pm.Lognormal("a", mu=0, tau=1, shape=(self.k, self.item_count))
             b = pm.Normal("b", mu=0, sd=1, shape=(1, self.item_count))
@@ -556,7 +556,7 @@ class MIrt2PLN(MIrt2PL):
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(2, 5)
             # theta = pm.Normal("theta", mu=0, sd=1, shape=(self.k, self.user_count, 1))
             theta = pm.MvNormal("theta", mu=np.zeros(self.k), cov=np.identity(self.k),
-                                shape=(self.user_count,self.k))
+                                shape=(self.user_count, self.k))
             a = pm.Lognormal("a", mu=0, tau=1, shape=(self.k, 1, self.item_count))
             b = pm.Normal("b", mu=0, sd=1, shape=(self.k, 1, self.item_count))
             # a(theta-b)
@@ -648,7 +648,7 @@ class MIrt3PLN(MIrt2PLN):
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(2, 5)
             # theta = pm.Normal("theta", mu=0, sd=1, shape=(self.k, self.user_count, 1))
             theta = pm.MvNormal("theta", mu=np.zeros(self.k), cov=np.identity(self.k),
-                                shape=(self.user_count,self.k))
+                                shape=(self.user_count, self.k))
             a = pm.Lognormal("a", mu=0, tau=1, shape=(self.k, 1, self.item_count))
             b = pm.Normal("b", mu=0, sd=1, shape=(self.k, 1, self.item_count))
             c = pm.Beta("c", alpha=2, beta=5, shape=(1, self.item_count))
