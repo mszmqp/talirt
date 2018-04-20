@@ -213,20 +213,20 @@ def mapper(options):
         if len(line) < 3 or line[0] == '#':
             continue
 
-        model, tune, njobs = line
+        model, tune, k = line
         print(line, file=sys.stderr)
-        Model = _model_class[model]
-        model, model_info = run(train_df, test_df, Model=Model, tune=int(tune), njobs=int(njobs))
+
+        model, model_info = run(train_df, test_df, model=model, tune=int(tune), k=int(k))
         print(json.dumps(model_info))
 
 
-def run(train_df, test_df, Model, draws=500, tune=1000, njobs=1):
+def run(train_df, test_df, model, draws=1000, tune=1000, k=1):
     test_true = test_df['answer'].values
     train_true = train_df['answer'].values
+    Model = _model_class[model]
+    model = Model(response=train_df, k=k)
 
-    model = Model(response=train_df)
-
-    model.estimate_mcmc(draws=draws, tune=tune, njobs=njobs, progressbar=True, chains=1)
+    model.estimate_mcmc(draws=draws, tune=tune, njobs=1, progressbar=True, chains=1)
     test_proba = model.predict_proba(list(test_df['user_id'].values), list(test_df['item_id'].values))
     train_proba = model.predict_proba(list(train_df['user_id'].values), list(train_df['item_id'].values))
 
