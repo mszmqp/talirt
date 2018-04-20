@@ -554,15 +554,15 @@ class MIrt2PLN(MIrt2PL):
 
         with basic_model:
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(2, 5)
-            # theta = pm.Normal("theta", mu=0, sd=1, shape=(self.k, self.user_count, 1))
-            theta = pm.MvNormal("theta", mu=np.zeros(self.k), cov=np.identity(self.k),
-                                shape=(self.k, self.user_count))
+            theta = pm.Normal("theta", mu=0, sd=1, shape=(self.k, self.user_count, 1))
+            # theta = pm.MvNormal("theta", mu=np.zeros(self.k), cov=np.identity(self.k),
+            #                     shape=(self.k, self.user_count))
             a = pm.Lognormal("a", mu=0, tau=1, shape=(self.k, 1, self.item_count))
             b = pm.Normal("b", mu=0, sd=1, shape=(self.k, 1, self.item_count))
             # a(theta-b)
             z = pm.Deterministic(name="z",
                                  var=a.repeat(self.user_count, axis=1) * (
-                                         theta.reshape(self.k, self.user_count, 1).repeat(self.item_count, axis=2) - b.repeat(self.user_count,
+                                         theta.repeat(self.item_count, axis=2) - b.repeat(self.user_count,
                                                                                           axis=1)))
 
             irt = pm.Deterministic(name="irt",
@@ -646,16 +646,16 @@ class MIrt3PLN(MIrt2PLN):
         basic_model = pm.Model()
         with basic_model:
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(2, 5)
-            # theta = pm.Normal("theta", mu=0, sd=1, shape=(self.k, self.user_count, 1))
-            theta = pm.MvNormal("theta", mu=np.zeros(self.k), cov=np.identity(self.k),
-                                shape=(self.k, self.user_count))
+            theta = pm.Normal("theta", mu=0, sd=1, shape=(self.k, self.user_count, 1))
+            # theta = pm.MvNormal("theta", mu=np.zeros(self.k), cov=np.identity(self.k),
+            #                     shape=(self.k, self.user_count))
             a = pm.Lognormal("a", mu=0, tau=1, shape=(self.k, 1, self.item_count))
             b = pm.Normal("b", mu=0, sd=1, shape=(self.k, 1, self.item_count))
             c = pm.Beta("c", alpha=2, beta=5, shape=(1, self.item_count))
             # a(theta-b)
             z = pm.Deterministic(name="z",
                                  var=a.repeat(self.user_count, axis=1) * (
-                                         theta.reshape(self.k, self.user_count, 1).repeat(self.item_count, axis=2) - b.repeat(self.user_count,
+                                         theta.repeat(self.item_count, axis=2) - b.repeat(self.user_count,
                                                                                           axis=1)))
             # c + (1-c)*prod_k(sigmod(z))
             irt = pm.Deterministic(name="irt",
