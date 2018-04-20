@@ -17,7 +17,7 @@ HADOOP_HOME="/usr/local/hadoop-2.6.0/"
 TASK_NAME="talirt"
 AUTHOR="zhangzhenhu"
 
-HDFS_PREFIX="/user/app_bi/test/talirt/test_model/"
+HDFS_PREFIX="/user/app_bi/test/talirt/test_model_2/"
 
 HADOOP_INPUT="${HDFS_PREFIX}/input.txt"
 HADOOP_OUTPUT="${HDFS_PREFIX}/report"
