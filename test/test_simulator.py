@@ -219,9 +219,9 @@ def mapper(options):
             continue
         line = line.split('\t')
         # hadoop nlineinputformat 会多一列行号
-        if len(line) == 6:
+        if len(line) == 7:
             line.pop(0)
-        if len(line) < 5 or line[0] == '#':
+        if len(line) < 6 or line[0] == '#':
             continue
 
         model, n_items, n_users, tune, draws, k = line
