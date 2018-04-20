@@ -15,6 +15,25 @@ from pymc3.backends.base import MultiTrace
 from utils.pymc import TextTrace, SQLiteTrace
 from pymc3.sampling import _cpu_count
 
+"""
+多维IRT模型中，能力值theta的先验分布是
+（参考论文http://www.pacificmetrics.com/wp-content/uploads/2015/07/AERA2008_Duong_Subedi_Lee.pdf）
+
+Examinee ability
+parameters were generated from multivariate normal distribution with zero mean vector 0 and
+identity covariance matrix I (i.e., non-correlated abilities). 
+
+
+scipy中的多元正态分布
+scipy.stats.multivariate_normal.rvs(mu_actual, cov_actual, size=N)
+
+pymc3中的多元正态分布
+https://docs.pymc.io/api/distributions/multivariate.html
+cov = np.array([[1., 0.5], [0.5, 2]])
+mu = np.zeros(2)
+vals = pm.MvNormal('vals', mu=mu, cov=cov, shape=(5, 2))
+"""
+
 
 class BaseIrt(object):
 
@@ -400,7 +419,10 @@ class MIrt2PL(BaseIrt):
         basic_model = pm.Model()
         with basic_model:
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(2, 5)
-            theta = pm.Normal("theta", mu=0, sd=1, shape=(self.user_count, self.k))
+            # theta = pm.Normal("theta", mu=0, sd=1, shape=(self.user_count, self.k))
+            theta = pm.MvNormal("theta", mu=np.zeros(self.user_count), cov=np.identity(self.user_count),
+                                shape=(self.user_count, self.k))
+
             a = pm.Lognormal("a", mu=0, tau=1, shape=(self.k, self.item_count))
             b = pm.Normal("b", mu=0, sd=1, shape=(1, self.item_count))
             # z = pm.Deterministic(name="z", var=pm.math.dot(theta, a * self.Q) - b.repeat(self.user_count, axis=0))
@@ -475,7 +497,9 @@ class MIrt3PL(MIrt2PL):
         with basic_model:
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(2, 5)
             # theta (proficiency params) are sampled from a normal distribution
-            theta = pm.Normal("theta", mu=0, sd=1, shape=(self.user_count, self.k))
+            # theta = pm.Normal("theta", mu=0, sd=1, shape=(self.user_count, self.k))
+            theta = pm.MvNormal("theta", mu=np.zeros(self.user_count), cov=np.identity(self.user_count),
+                                shape=(self.user_count, self.k))
             # a = pm.Normal("a", mu=1, tau=1, shape=(1, self.item_count))
             a = pm.Lognormal("a", mu=0, tau=1, shape=(self.k, self.item_count))
             b = pm.Normal("b", mu=0, sd=1, shape=(1, self.item_count))
@@ -530,7 +554,9 @@ class MIrt2PLN(MIrt2PL):
 
         with basic_model:
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(2, 5)
-            theta = pm.Normal("theta", mu=0, sd=1, shape=(self.k, self.user_count, 1))
+            # theta = pm.Normal("theta", mu=0, sd=1, shape=(self.k, self.user_count, 1))
+            theta = pm.MvNormal("theta", mu=np.zeros(self.user_count), cov=np.identity(self.user_count),
+                                shape=(self.user_count, self.k))
             a = pm.Lognormal("a", mu=0, tau=1, shape=(self.k, 1, self.item_count))
             b = pm.Normal("b", mu=0, sd=1, shape=(self.k, 1, self.item_count))
             # a(theta-b)
@@ -620,7 +646,9 @@ class MIrt3PLN(MIrt2PLN):
         basic_model = pm.Model()
         with basic_model:
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(2, 5)
-            theta = pm.Normal("theta", mu=0, sd=1, shape=(self.k, self.user_count, 1))
+            # theta = pm.Normal("theta", mu=0, sd=1, shape=(self.k, self.user_count, 1))
+            theta = pm.MvNormal("theta", mu=np.zeros(self.user_count), cov=np.identity(self.user_count),
+                                shape=(self.user_count, self.k))
             a = pm.Lognormal("a", mu=0, tau=1, shape=(self.k, 1, self.item_count))
             b = pm.Normal("b", mu=0, sd=1, shape=(self.k, 1, self.item_count))
             c = pm.Beta("c", alpha=2, beta=5, shape=(1, self.item_count))

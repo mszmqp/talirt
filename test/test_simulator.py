@@ -20,6 +20,7 @@ import math
 import json
 import sys
 import os
+
 sys.path.append("../")
 sys.path.append("./")
 sys.path.append("./talirt")
@@ -33,7 +34,6 @@ sys.path.append("./talirt")
 """
 if os.getenv('map_input_file'):
     os.environ['COMPILEDIR'] = './.theano'
-
 
 from model.simulator import Simulator
 from model.irt import UIrt2PL, UIrt3PL, MIrt2PL, MIrt3PL, MIrt2PLN, MIrt3PLN
@@ -67,10 +67,10 @@ def init_option():
     return parser
 
 
-def test(n_items=100, n_users=200, model="UIrt2PL", draws=500, tune=1000, njobs=1):
+def test(n_items=100, n_users=200, model="UIrt2PL", draws=500, tune=1000, k=1):
     # from model import irt
 
-    sim = Simulator(n_items=n_items, n_users=n_users, model=model,k=5)
+    sim = Simulator(n_items=n_items, n_users=n_users, model=model, k=k, draws=draws)
     df = sim.simulate()
     user = []
     item = []
@@ -86,8 +86,8 @@ def test(n_items=100, n_users=200, model="UIrt2PL", draws=500, tune=1000, njobs=
 
     response = pandas.DataFrame({'user_id': user, 'item_id': item, 'answer': answer})
     Model = _model_class[model]
-    model = Model(response=response)
-    model.estimate_mcmc(draws=draws, tune=tune, njobs=njobs, progressbar=True, chains=1)
+    model = Model(response=response, k=k)
+    model.estimate_mcmc(draws=draws, tune=tune, njobs=1, progressbar=True, chains=1)
 
     estimate_user = model.user_vector
     estimate_item = model.item_vector
@@ -95,7 +95,7 @@ def test(n_items=100, n_users=200, model="UIrt2PL", draws=500, tune=1000, njobs=
     model_info = {
         'draws': draws,
         'tune': tune,
-        'njobs': njobs,
+        'k': k,
         'n_items': n_items,
         'n_users': n_users,
         'model_name': model.name(),
@@ -224,9 +224,10 @@ def mapper(options):
         if len(line) < 5 or line[0] == '#':
             continue
 
-        model, n_items, n_users, tune, njobs = line
-        print(line,file=sys.stderr)
-        model_info = test(model=model, n_users=int(n_users), n_items=int(n_items), tune=int(tune), njobs=int(njobs))
+        model, n_items, n_users, tune, draws, k = line
+        print(line, file=sys.stderr)
+        model_info = test(model=model, n_users=int(n_users), n_items=int(n_items), tune=int(tune), draws=int(draws),
+                          k=int(k))
         print(json.dumps(model_info))
 
 

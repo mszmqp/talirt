@@ -61,6 +61,7 @@ class Simulator(object):
         item_index
         user_index
         """
+
         self.dist_theta = theta
         self.dist_a = a
         self.dist_b = b
@@ -93,9 +94,11 @@ class Simulator(object):
 
         """
         if self.model in ["MIrt2PL", "MIrt3PL"]:
+            theta_array = self.dist_theta = stats.multivariate_normal.rvs(numpy.zeros(self.k), numpy.identity(self.k),
+                                                                          size=self.n_users)
             # self.dist_theta.rvs(self.n_users * self.k)
-            self.user = pandas.DataFrame(
-                {"theta_%d" % i: self.dist_theta.rvs(size=self.n_users) for i in range(self.k)}, index=self.user_index)
+            self.user = pandas.DataFrame(theta_array, columns=["theta_%d" % i for i in range(self.k)],
+                                         index=self.user_index)
 
             a = {"a_%d" % i: self.dist_a.rvs(size=self.n_items) for i in range(self.k)}
             a['b'] = self.dist_b.rvs(size=self.n_items)
@@ -103,8 +106,11 @@ class Simulator(object):
             self.item = pandas.DataFrame(a, index=self.item_index)
         elif self.model in ["MIrt2PLN", "MIrt3PLN"]:
             # self.dist_theta.rvs(self.n_users * self.k)
-            self.user = pandas.DataFrame(
-                {"theta_%d" % i: self.dist_theta.rvs(size=self.n_users) for i in range(self.k)}, index=self.user_index)
+            theta_array = self.dist_theta = stats.multivariate_normal.rvs(numpy.zeros(self.k), numpy.identity(self.k),
+                                                                          size=self.n_users)
+            # self.dist_theta.rvs(self.n_users * self.k)
+            self.user = pandas.DataFrame(theta_array, columns=["theta_%d" % i for i in range(self.k)],
+                                         index=self.user_index)
 
             a = {"a_%d" % i: self.dist_a.rvs(size=self.n_items) for i in range(self.k)}
             a.update({"b_%d" % i: self.dist_b.rvs(size=self.n_items) for i in range(self.k)})
@@ -162,5 +168,3 @@ class Simulator(object):
         z = numpy.dot(theta, a) - b
         p = c + (1 - c) * expit(z)
         return pandas.DataFrame(p, columns=item.index, index=user.index)
-
-
