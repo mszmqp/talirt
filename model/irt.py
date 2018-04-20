@@ -495,11 +495,11 @@ class MIrt3PL(MIrt2PL):
     def estimate_mcmc(self, **kwargs):
         basic_model = pm.Model()
         with basic_model:
-            # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(2, 5)
+            # 我们假设 \theta \sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(2, 5)
             # theta (proficiency params) are sampled from a normal distribution
             # theta = pm.Normal("theta", mu=0, sd=1, shape=(self.user_count, self.k))
-            theta = pm.MvNormal("theta", mu=np.zeros(self.user_count), cov=np.identity(self.user_count),
-                                shape=(self.user_count, self.k))
+            theta = pm.MvNormal("theta", mu=np.zeros(self.k), cov=np.identity(self.k),
+                                shape=(self.user_count,self.k))
             # a = pm.Normal("a", mu=1, tau=1, shape=(1, self.item_count))
             a = pm.Lognormal("a", mu=0, tau=1, shape=(self.k, self.item_count))
             b = pm.Normal("b", mu=0, sd=1, shape=(1, self.item_count))
@@ -555,8 +555,8 @@ class MIrt2PLN(MIrt2PL):
         with basic_model:
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(2, 5)
             # theta = pm.Normal("theta", mu=0, sd=1, shape=(self.k, self.user_count, 1))
-            theta = pm.MvNormal("theta", mu=np.zeros(self.user_count), cov=np.identity(self.user_count),
-                                shape=(self.user_count, self.k))
+            theta = pm.MvNormal("theta", mu=np.zeros(self.k), cov=np.identity(self.k),
+                                shape=(self.user_count,self.k))
             a = pm.Lognormal("a", mu=0, tau=1, shape=(self.k, 1, self.item_count))
             b = pm.Normal("b", mu=0, sd=1, shape=(self.k, 1, self.item_count))
             # a(theta-b)
@@ -647,8 +647,8 @@ class MIrt3PLN(MIrt2PLN):
         with basic_model:
             # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(2, 5)
             # theta = pm.Normal("theta", mu=0, sd=1, shape=(self.k, self.user_count, 1))
-            theta = pm.MvNormal("theta", mu=np.zeros(self.user_count), cov=np.identity(self.user_count),
-                                shape=(self.user_count, self.k))
+            theta = pm.MvNormal("theta", mu=np.zeros(self.k), cov=np.identity(self.k),
+                                shape=(self.user_count,self.k))
             a = pm.Lognormal("a", mu=0, tau=1, shape=(self.k, 1, self.item_count))
             b = pm.Normal("b", mu=0, sd=1, shape=(self.k, 1, self.item_count))
             c = pm.Beta("c", alpha=2, beta=5, shape=(1, self.item_count))

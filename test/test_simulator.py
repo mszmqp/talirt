@@ -181,7 +181,7 @@ def json2DataFrame(inputs):
         'n_users': [],
         'draws': [],
         'tune': [],
-        'njobs': [],
+        'k': [],
         'theta-mae': [],
         'theta-mse': [],
         'theta-rmse': [],
@@ -201,7 +201,7 @@ def json2DataFrame(inputs):
             if not info:
                 continue
             info = json.loads(info)
-        for t in ['model_name', 'n_items', 'n_users', 'draws', 'tune', 'njobs']:
+        for t in ['model_name', 'n_items', 'n_users', 'draws', 'tune', 'k']:
             hehe[t].append(info[t])
         for t in ['theta', 'a', 'b', 'c']:
             hehe[t + '-mae'].append(info[t]['mae'])
