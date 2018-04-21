@@ -304,6 +304,7 @@ class UIrt2PL(BaseIrt):
             observed = pm.Bernoulli('observed', p=output, observed=self._response["answer"].values)
 
             kwargs['discard_tuned_samples'] = False
+            kwargs['start'] = pm.find_MAP()
             self.trace = pm.sample(**kwargs)
 
             # run an interactive MCMC sampling session
