@@ -292,12 +292,11 @@ class UIrt2PL(BaseIrt):
             # a = pm.Normal("a", mu=1, tau=1, shape=(1, self.item_count))
             a = pm.Lognormal("a", mu=0, tau=1, shape=(1, self.item_count))
             b = pm.Normal("b", mu=0, sd=1, shape=(1, self.item_count))
-            z = pm.Deterministic(name="z", var=a.repeat(self.user_count, axis=0) * (
-                    theta.repeat(self.item_count, axis=1) - b.repeat(self.user_count, axis=0)))
-            # z = pm.Deterministic(name="z", var=theta*a-a*b)
-            irt = pm.Deterministic(name="irt",
-                                   var=pm.math.sigmoid(z))
-
+            # z = pm.Deterministic(name="z", var=a.repeat(self.user_count, axis=0) * (
+            #         theta.repeat(self.item_count, axis=1) - b.repeat(self.user_count, axis=0)))
+            # irt = pm.Deterministic(name="irt",
+            #                        var=pm.math.sigmoid(z))
+            irt = pm.Deterministic(name="irt", var=pm.math.sigmoid(theta*a-a*b))
             output = pm.Deterministic(name="output",
                                       var=as_tensor_variable(irt)[
                                           self._response['user_iloc'], self._response['item_iloc']])
@@ -366,14 +365,14 @@ class UIrt3PL(UIrt2PL):
             b = pm.Normal("b", mu=0, sd=1, shape=(1, self.item_count))
             c = pm.Beta("c", alpha=5, beta=17, shape=(1, self.item_count))
 
-            z = pm.Deterministic(name="z", var=a.repeat(self.user_count, axis=0) * (
-                    theta.repeat(self.item_count, axis=1) - b.repeat(self.user_count, axis=0)))
+            # z = pm.Deterministic(name="z", var=a.repeat(self.user_count, axis=0) * (
+            #         theta.repeat(self.item_count, axis=1) - b.repeat(self.user_count, axis=0)))
             # z = pm.Deterministic(name="z", var=pm.math.dot(theta, a) - b.repeat(self.user_count, axis=0))
 
-            irt = pm.Deterministic(name="irt",
-                                   var=(1 - c.repeat(self.user_count, axis=0)) * pm.math.sigmoid(z) + c.repeat(
-                                       self.user_count, axis=0))
-
+            # irt = pm.Deterministic(name="irt",
+            #                        var=(1 - c.repeat(self.user_count, axis=0)) * pm.math.sigmoid(z) + c.repeat(
+            #                            self.user_count, axis=0))
+            irt = pm.Deterministic(name="irt", var=(1-c)*pm.math.sigmoid(theta * a - a * b)+c)
             output = pm.Deterministic(name="output",
                                       var=as_tensor_variable(irt)[
                                           self._response['user_iloc'], self._response['item_iloc']])

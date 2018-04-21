@@ -53,6 +53,26 @@ pymc3效率比较差，而且还伴随内存问题。主要导致原因是其每
 最后求个平均值就行了，毕竟一般我们也只是要抽样的平均值（期望）
 
 
+## 缺失值问题
+
+学生答题有缺失值，对于观测变量缺失值的情况，pymc3是支持缺失值的http://docs.pymc.io/notebooks/getting_started中有一段
+
+	Missing values are handled transparently by passing a MaskedArray or a pandas.
+	DataFrame with NaN values to the observed argument when creating an observed stochastic random variable. 
+	Behind the scenes, another random variable, disasters.missing_values is created to model the missing values.
+	 All we need to do to handle the missing values is ensure we sample this random variable as well.
+
+	Unfortunately because they are discrete variables and thus have no meaningful gradient, 
+	we cannot use NUTS for sampling switchpoint or the missing disaster observations. 
+	Instead, we will sample using a Metroplis step method, which implements adaptive Metropolis-Hastings, 
+	because it is designed to handle discrete values. 
+	PyMC3 automatically assigns the correct sampling algorithms.
+
+
+**但是实验发现，这么搞抽样会非常慢**
+
+
+
 # 贝叶斯知识追踪
 
 C++ 版本的BKT
