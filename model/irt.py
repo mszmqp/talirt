@@ -296,7 +296,7 @@ class UIrt2PL(BaseIrt):
             #         theta.repeat(self.item_count, axis=1) - b.repeat(self.user_count, axis=0)))
             # irt = pm.Deterministic(name="irt",
             #                        var=pm.math.sigmoid(z))
-            irt = pm.Deterministic(name="irt", var=pm.math.sigmoid(theta*a-a*b))
+            irt = pm.Deterministic(name="irt", var=pm.math.sigmoid(theta * a - a * b))
             output = pm.Deterministic(name="output",
                                       var=as_tensor_variable(irt)[
                                           self._response['user_iloc'], self._response['item_iloc']])
@@ -373,11 +373,11 @@ class UIrt3PL(UIrt2PL):
             # irt = pm.Deterministic(name="irt",
             #                        var=(1 - c.repeat(self.user_count, axis=0)) * pm.math.sigmoid(z) + c.repeat(
             #                            self.user_count, axis=0))
-            irt = pm.Deterministic(name="irt", var=(1-c)*pm.math.sigmoid(theta * a - a * b)+c)
+            irt = pm.Deterministic(name="irt", var=(1 - c) * pm.math.sigmoid(theta * a - a * b) + c)
             output = pm.Deterministic(name="output",
                                       var=as_tensor_variable(irt)[
                                           self._response['user_iloc'], self._response['item_iloc']])
-            correct = pm.Bernoulli('correct', p=output, observed=self._response["answer"].values)
+            observed = pm.Bernoulli('observed', p=output, observed=self._response["answer"].values)
             # njobs = kwargs.get('njobs', 1)
             # chains = kwargs.get('chains', None)
             # if njobs is None:
@@ -387,6 +387,7 @@ class UIrt3PL(UIrt2PL):
             # m_trace = self.get_trace(basic_model, chains)
             # kwargs['trace'] = m_trace
             kwargs['discard_tuned_samples'] = False
+            kwargs['start'] = pm.find_MAP()
             self.trace = pm.sample(**kwargs)
 
         self.item_vector['a'] = self.trace['a'].mean(axis=0)[0, :]
@@ -428,15 +429,14 @@ class MIrt2PL(BaseIrt):
             a = pm.Lognormal("a", mu=0, tau=1, shape=(self.k, self.item_count))
             b = pm.Normal("b", mu=0, sd=1, shape=(1, self.item_count))
             # z = pm.Deterministic(name="z", var=pm.math.dot(theta, a * self.Q) - b.repeat(self.user_count, axis=0))
-            z = pm.Deterministic(name="z", var=pm.math.dot(theta, a) - b.repeat(self.user_count, axis=0))
-
-            irt = pm.Deterministic(name="irt",
-                                   var=pm.math.sigmoid(z))
+            # z = pm.Deterministic(name="z", var=pm.math.dot(theta, a) - b.repeat(self.user_count, axis=0))
+            # irt = pm.Deterministic(name="irt", var=pm.math.sigmoid(z))
+            irt = pm.Deterministic(name="irt", var=pm.math.sigmoid(pm.math.dot(theta, a) - b))
 
             output = pm.Deterministic(name="output",
                                       var=as_tensor_variable(irt)[
                                           self._response['user_iloc'], self._response['item_iloc']])
-            correct = pm.Bernoulli('correct', p=output, observed=self._response["answer"].values)
+            observed = pm.Bernoulli('observed', p=output, observed=self._response["answer"].values)
             # njobs = kwargs.get('njobs', 1)
             # chains = kwargs.get('chains', None)
             # if njobs is None:
@@ -446,6 +446,7 @@ class MIrt2PL(BaseIrt):
             # m_trace = self.get_trace(basic_model, chains)
             # kwargs['trace'] = m_trace
             kwargs['discard_tuned_samples'] = False
+            kwargs['start'] = pm.find_MAP()
             self.trace = pm.sample(**kwargs)
 
         theta = pd.DataFrame(self.trace['theta'].mean(axis=0),
@@ -517,7 +518,7 @@ class MIrt3PL(MIrt2PL):
             output = pm.Deterministic(name="output",
                                       var=as_tensor_variable(irt)[
                                           self._response['user_iloc'], self._response['item_iloc']])
-            correct = pm.Bernoulli('correct', p=output, observed=self._response["answer"].values)
+            observed = pm.Bernoulli('observed', p=output, observed=self._response["answer"].values)
             # njobs = kwargs.get('njobs', 1)
             # chains = kwargs.get('chains', None)
             # if njobs is None:
@@ -527,6 +528,7 @@ class MIrt3PL(MIrt2PL):
             # m_trace = self.get_trace(basic_model, chains)
             # kwargs['trace'] = m_trace
             kwargs['discard_tuned_samples'] = False
+            kwargs['start'] = pm.find_MAP()
             self.trace = pm.sample(**kwargs)
 
         self.item_vector['b'] = self.trace['b'].mean(axis=0)[0, :]
@@ -573,7 +575,7 @@ class MIrt2PLN(MIrt2PL):
             output = pm.Deterministic(name="output",
                                       var=as_tensor_variable(irt)[
                                           self._response['user_iloc'], self._response['item_iloc']])
-            correct = pm.Bernoulli('correct', p=output, observed=self._response["answer"].values)
+            observed = pm.Bernoulli('observed', p=output, observed=self._response["answer"].values)
             # njobs = kwargs.get('njobs', 1)
             # chains = kwargs.get('chains', None)
             # if njobs is None:
@@ -583,6 +585,7 @@ class MIrt2PLN(MIrt2PL):
             # m_trace = self.get_trace(basic_model, chains)
             # kwargs['trace'] = m_trace
             kwargs['discard_tuned_samples'] = False
+            kwargs['start'] = pm.find_MAP()
             self.trace = pm.sample(**kwargs)
         theta = self.trace['theta'].mean(axis=0)[:, :, 0]
         theta = pd.DataFrame(theta.T, columns=['theta_%d' % i for i in range(self.k)])
@@ -667,7 +670,7 @@ class MIrt3PLN(MIrt2PLN):
             output = pm.Deterministic(name="output",
                                       var=as_tensor_variable(irt)[
                                           self._response['user_iloc'], self._response['item_iloc']])
-            correct = pm.Bernoulli('correct', p=output, observed=self._response["answer"].values)
+            observed = pm.Bernoulli('observed', p=output, observed=self._response["answer"].values)
             # njobs = kwargs.get('njobs', 1)
             # chains = kwargs.get('chains', None)
             # if njobs is None:
@@ -678,6 +681,7 @@ class MIrt3PLN(MIrt2PLN):
             # kwargs['trace'] = m_trace
             # 通过修改源码，不存储被burn的记录，所以这里一定要要False
             kwargs['discard_tuned_samples'] = False
+            kwargs['start'] = pm.find_MAP()
             self.trace = pm.sample(**kwargs)
         theta = self.trace['theta'].mean(axis=0)[:, :, 0]
         theta = pd.DataFrame(theta.T, columns=['theta_%d' % i for i in range(self.k)])
