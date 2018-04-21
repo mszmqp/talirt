@@ -301,7 +301,7 @@ class UIrt2PL(BaseIrt):
                                       var=as_tensor_variable(irt)[
                                           self._response['user_iloc'], self._response['item_iloc']])
             # correct = pm.Bernoulli('correct', p=irt, observed=self._response_matrix)
-            correct = pm.Bernoulli('correct', p=output, observed=self._response["answer"].values)
+            observed = pm.Bernoulli('observed', p=output, observed=self._response["answer"].values)
 
             kwargs['discard_tuned_samples'] = False
             self.trace = pm.sample(**kwargs)
