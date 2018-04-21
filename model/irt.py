@@ -298,10 +298,10 @@ class UIrt2PL(BaseIrt):
             irt = pm.Deterministic(name="irt",
                                    var=pm.math.sigmoid(z))
 
-            # output = pm.Deterministic(name="output",
-            #                           var=as_tensor_variable(irt)[
-            #                               self._response['user_iloc'], self._response['item_iloc']])
-            correct = pm.Bernoulli('correct', p=irt, observed=self._response_matrix)
+            output = pm.Deterministic(name="output",
+                                      var=as_tensor_variable(irt)[
+                                          self._response['user_iloc'], self._response['item_iloc']])
+            correct = pm.Bernoulli('correct', p=output, observed=self._response_matrix)
 
             kwargs['discard_tuned_samples'] = False
             self.trace = pm.sample(**kwargs)
