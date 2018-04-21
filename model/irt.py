@@ -294,7 +294,7 @@ class UIrt2PL(BaseIrt):
             b = pm.Normal("b", mu=0, sd=1, shape=(1, self.item_count))
             z = pm.Deterministic(name="z", var=a.repeat(self.user_count, axis=0) * (
                     theta.repeat(self.item_count, axis=1) - b.repeat(self.user_count, axis=0)))
-
+            # z = pm.Deterministic(name="z", var=theta*a-a*b)
             irt = pm.Deterministic(name="irt",
                                    var=pm.math.sigmoid(z))
 
