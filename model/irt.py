@@ -300,11 +300,12 @@ class UIrt2PL(BaseIrt):
             output = pm.Deterministic(name="output",
                                       var=as_tensor_variable(irt)[
                                           self._response['user_iloc'], self._response['item_iloc']])
-            # correct = pm.Bernoulli('correct', p=irt, observed=self._response_matrix)
+            # observed = pm.Bernoulli('observed', p=irt, observed=self._response_matrix)
             observed = pm.Bernoulli('observed', p=output, observed=self._response["answer"].values)
 
             kwargs['discard_tuned_samples'] = False
             kwargs['start'] = pm.find_MAP()
+
             self.trace = pm.sample(**kwargs)
 
             # run an interactive MCMC sampling session
