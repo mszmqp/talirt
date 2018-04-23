@@ -312,7 +312,7 @@ def json2DataFrame(inputs):
 
         hehe['test_mae'].append(info['test']['mae'])
         hehe['test_mse'].append(info['test']['mse'])
-        hehe['test_auc'].append(info['test'].get('aur', 0))
+        hehe['test_auc'].append(info['test'].get('auc', 0))
     return pandas.DataFrame(hehe)
 
 
