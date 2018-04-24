@@ -50,6 +50,7 @@ if __name__ == "__main__":
     slice_data = {
     }
     stu_set = set()
+    print("read data...", file=sys.stderr)
     for line in sys.stdin:
         response, stu, question, skills = line.strip('\r\n').split('\t')
         if not skills or skills == '.' or skills == ' ':
@@ -75,6 +76,7 @@ if __name__ == "__main__":
     print("nZ\t" + str(nZ))
     print("Null skill ratios\txx\txx")
     index = 0
+    print('train model...', file=sys.stderr)
     for skill, data in tqdm(slice_data.items(), total=nK):
         bkt = Bkt()
         bkt.fit(np.array(data['response']))
