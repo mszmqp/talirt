@@ -31,8 +31,8 @@ class Bkt(MultinomialHMM):
 
     def _do_mstep(self, stats):
         super(Bkt, self)._do_mstep(stats)
-        self.transmat_[0][0] = 1
-        self.transmat_[0][1] = 0
+        self.transmat_[0][0] = 1-1e-5
+        self.transmat_[0][1] = 1e-5
 
 
 if __name__ == "__main__":
