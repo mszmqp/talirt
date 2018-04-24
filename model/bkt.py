@@ -64,7 +64,7 @@ if __name__ == "__main__":
                                                    'response': [],
                                                    'question': [], })
             record['stu'].append(stu)
-            record['response'].append(int(response)-1)
+            record['response'].append(int(response) - 1)
             record['question'].append(question)
             stu_set.add(stu)
     nK = len(slice_data)
@@ -83,7 +83,7 @@ if __name__ == "__main__":
         x = np.array(data['response'])
         bkt.fit(x.reshape((x.shape[0], 1)))
         print("%d\t%s" % (index, skill))
-        print("PI\t%f\t%f" % bkt.startprob_.flatten())
+        print("PI\t%f\t%f" % tuple(bkt.startprob_.flatten()))
         print(
             "A\t%f\t%f\t%f\t%f" % (bkt.transmat_[0][0], bkt.transmat_[0][1], bkt.transmat_[1][0], bkt.transmat_[1][1]))
         print(
