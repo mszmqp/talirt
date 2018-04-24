@@ -27,6 +27,7 @@ class Bkt(MultinomialHMM):
                                 random_state=random_state,
                                 n_iter=n_iter, tol=tol, verbose=verbose,
                                 params=params, init_params=init_params)
+        self.n_features = 2
 
     def _do_mstep(self, stats):
         super(Bkt, self)._do_mstep(stats)
@@ -60,8 +61,8 @@ if __name__ == "__main__":
         skills = skills.split('~')
         for skill in skills:
             record = slice_data.setdefault(skill, {'stu': [],
-                                            'response': [],
-                                            'question': [], })
+                                                   'response': [],
+                                                   'question': [], })
             record['stu'].append(stu)
             record['response'].append(int(response))
             record['question'].append(question)
@@ -79,7 +80,8 @@ if __name__ == "__main__":
     print('train model...', file=sys.stderr)
     for skill, data in tqdm(slice_data.items(), total=nK):
         bkt = Bkt()
-        bkt.fit(np.array(data['response']))
+        x = np.array(data['response'])
+        bkt.fit(x.reshape((x.shape[0], 1)))
         print("%d\t%s" % (index, skill))
         print("PI\t%f\t%f" % bkt.startprob_)
         print(
