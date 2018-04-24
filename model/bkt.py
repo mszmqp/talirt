@@ -83,7 +83,7 @@ if __name__ == "__main__":
         x = np.array(data['response'])
         bkt.fit(x.reshape((x.shape[0], 1)))
         print("%d\t%s" % (index, skill))
-        print("PI\t%f\t%f" % bkt.startprob_)
+        print("PI\t%f\t%f" % bkt.startprob_.flatten())
         print(
             "A\t%f\t%f\t%f\t%f" % (bkt.transmat_[0][0], bkt.transmat_[0][1], bkt.transmat_[1][0], bkt.transmat_[1][1]))
         print(
