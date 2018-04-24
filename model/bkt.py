@@ -59,7 +59,7 @@ if __name__ == "__main__":
 
         skills = skills.split('~')
         for skill in skills:
-            record = slice_data.get(skill, {'stu': [],
+            record = slice_data.setdefault(skill, {'stu': [],
                                             'response': [],
                                             'question': [], })
             record['stu'].append(stu)
