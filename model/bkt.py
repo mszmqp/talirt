@@ -64,7 +64,7 @@ if __name__ == "__main__":
                                                    'response': [],
                                                    'question': [], })
             record['stu'].append(stu)
-            record['response'].append(int(response))
+            record['response'].append(int(response)-1)
             record['question'].append(question)
             stu_set.add(stu)
     nK = len(slice_data)
