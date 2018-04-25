@@ -19,7 +19,7 @@ class Bkt(MultinomialHMM):
                  startprob_prior=1.0, transmat_prior=1.0,
                  algorithm="viterbi", random_state=None,
                  n_iter=200, tol=1e-5, verbose=False,
-                 params="ste", init_params="ste"):
+                 params="ste", init_params=""):
         MultinomialHMM.__init__(self, n_components,
                                 startprob_prior=startprob_prior,
                                 transmat_prior=transmat_prior,
@@ -28,11 +28,50 @@ class Bkt(MultinomialHMM):
                                 n_iter=n_iter, tol=tol, verbose=verbose,
                                 params=params, init_params=init_params)
         self.n_features = 2
+        self.startprob_ = np.array([0.5, 0.5])
+        self.transmat_ = np.array([[1 - 1e-8], [1 - 1e-8], [0.4, 0.6]])
+        self.emissionprob_ = np.array([[0.8, 0.2], [0.2, 0.8]])
 
     def _do_mstep(self, stats):
+        """"""
         super(Bkt, self)._do_mstep(stats)
-        self.transmat_[0][0] = 1-1e-5
-        self.transmat_[0][1] = 1e-5
+        # hmmlearn 在计算前后向算法时，计算乘法通过加log改成计算加法，所以这里概率值就不能再是0了。
+        #
+        self.transmat_[0][0] = 1 - 1e-8
+        self.transmat_[0][1] = 1e-8
+
+    def model_param(self):
+        return {'startprob': self.startprob_,
+                'transmat': self.transmat_,
+                'emissionprob': self.emissionprob_}
+
+
+def _cpu_count():
+    """Try to guess the number of CPUs in the system.
+
+    We use the number provided by psutil if that is installed.
+    If not, we use the number provided by multiprocessing, but assume
+    that half of the cpus are only hardware threads and ignore those.
+    """
+    try:
+        import psutil
+        cpus = psutil.cpu_count(False)
+    except ImportError:
+        import multiprocessing
+        try:
+            cpus = multiprocessing.cpu_count() // 2
+        except NotImplementedError:
+            cpus = 1
+    if cpus is None:
+        cpus = 1
+    return cpus
+
+
+def train(x, lengths):
+    bkt = Bkt()
+    bkt.fit(x, lengths)
+
+    return bkt.model_param()
 
 
 if __name__ == "__main__":
@@ -40,6 +79,7 @@ if __name__ == "__main__":
     import pandas as pd
     import sys
     from tqdm import tqdm
+    from joblib import Parallel, delayed
 
     skip_rows = 0
     SolverId = "1.2"
@@ -60,12 +100,11 @@ if __name__ == "__main__":
 
         skills = skills.split('~')
         for skill in skills:
-            record = slice_data.setdefault(skill, {'stu': [],
-                                                   'response': [],
-                                                   'question': [], })
-            record['stu'].append(stu)
-            record['response'].append(int(response) - 1)
-            record['question'].append(question)
+            record = slice_data.setdefault(skill, {})
+            record.setdefault(stu, []).append(int(response) - 1)
+            # record['stu'].append(stu)
+            # record['response'].append(int(response) - 1)
+            # record['question'].append(question)
             stu_set.add(stu)
     nK = len(slice_data)
     nG = len(stu_set)
@@ -76,17 +115,29 @@ if __name__ == "__main__":
     print("nO\t" + str(nO))
     print("nZ\t" + str(nZ))
     print("Null skill ratios\txx\txx")
-    index = 0
+
     print('train model...', file=sys.stderr)
-    for skill, data in tqdm(slice_data.items(), total=nK):
-        bkt = Bkt()
-        x = np.array(data['response'])
-        bkt.fit(x.reshape((x.shape[0], 1)))
+    jobs = []
+    skills = []
+    for skill, data in slice_data.items():
+        obs = list(data.values())
+        lengths = [len(line) for line in obs]
+        x = np.concatenate(obs)
+        # bkt = Bkt()
+        # x = np.array(data['response'])
+        # bkt.fit(x.reshape((x.shape[0], 1)))
+        jobs.append(delayed(train)(x, lengths))
+        skills.append(skill)
+    results = Parallel(n_jobs=_cpu_count() - 1)(jobs)
+    index = 0
+    for skill, bkt in zip(skills, results):
         print("%d\t%s" % (index, skill))
-        print("PI\t%f\t%f" % tuple(bkt.startprob_.flatten()))
+        print("PI\t%f\t%f" % tuple(bkt['startprob'].flatten()))
         print(
-            "A\t%f\t%f\t%f\t%f" % (bkt.transmat_[0][0], bkt.transmat_[0][1], bkt.transmat_[1][0], bkt.transmat_[1][1]))
+            "A\t%f\t%f\t%f\t%f" % (
+            bkt['transmat'][0][0], bkt['transmat'][0][1], bkt['transmat'][1][0], bkt['transmat'][1][1]))
         print(
             "B\t%f\t%f\t%f\t%f" % (
-                bkt.emissionprob_[0][0], bkt.emissionprob_[0][1], bkt.emissionprob_[1][0], bkt.emissionprob_[1][1]))
+                bkt['emissionprob'][0][0], bkt['emissionprob'][0][1], bkt['emissionprob'][1][0],
+                bkt['emissionprob'][1][1]))
         index += 1
