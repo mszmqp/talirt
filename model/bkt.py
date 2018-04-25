@@ -11,6 +11,7 @@ Date:    2018/4/24 14:18
 """
 import numpy as np
 from hmmlearn.hmm import MultinomialHMM
+import time
 
 
 class Bkt(MultinomialHMM):
@@ -84,9 +85,12 @@ def _cpu_count():
 
 
 def train(x, lengths):
+    start = time.time()
     bkt = Bkt()
     bkt.fit(x, lengths)
-    print(bkt.monitor_.converged,file=sys.stderr)
+    # print(bkt.monitor_.converged,file=sys.stderr)
+    bkt.monitor_.report()
+    print('elapsed ', time.time() - start, file=sys.stderr)
     return bkt.model_param()
 
 
