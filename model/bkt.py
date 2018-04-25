@@ -40,6 +40,22 @@ class Bkt(MultinomialHMM):
         self.transmat_[0][0] = 1 - 1e-8
         self.transmat_[0][1] = 1e-8
 
+        # 约束控制
+        if self.emissionprob_[0][1] > 0.3:
+            self.emissionprob_[0][1] = 0.3
+
+        if self.emissionprob_[0][1] <= 0:
+            self.emissionprob_[0][1] = 1e-6
+
+        if self.emissionprob_[1][0] > 0.3:
+            self.emissionprob_[1][0] = 0.3
+
+        if self.emissionprob_[1][0] <= 0:
+            self.emissionprob_[1][0] = 1e-6
+
+        self.emissionprob_[0][0] = 1 - self.emissionprob_[0][1]
+        self.emissionprob_[1][1] = 1 - self.emissionprob_[1][0]
+
     def model_param(self):
         return {'startprob': self.startprob_,
                 'transmat': self.transmat_,
