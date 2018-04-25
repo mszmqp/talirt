@@ -86,7 +86,7 @@ def _cpu_count():
 def train(x, lengths):
     bkt = Bkt()
     bkt.fit(x, lengths)
-
+    print(bkt.monitor_.converged,file=sys.stderr)
     return bkt.model_param()
 
 
@@ -146,7 +146,7 @@ if __name__ == "__main__":
         # print(len(x),sum(lengths))
         jobs.append(delayed(train)(x, lengths))
         skills.append(skill)
-    results = Parallel(n_jobs=_cpu_count() - 1)(jobs)
+    results = Parallel(n_jobs=_cpu_count() - 1, backend='threading')(jobs)
     index = 0
     for skill, bkt in zip(skills, results):
         print("%d\t%s" % (index, skill))
