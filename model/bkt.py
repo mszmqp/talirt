@@ -29,7 +29,7 @@ class Bkt(MultinomialHMM):
                                 params=params, init_params=init_params)
         self.n_features = 2
         self.startprob_ = np.array([0.5, 0.5])
-        self.transmat_ = np.array([[1 - 1e-8,1e-8], [0.4, 0.6]])
+        self.transmat_ = np.array([[1 - 1e-8, 1e-8], [0.4, 0.6]])
         self.emissionprob_ = np.array([[0.8, 0.2], [0.2, 0.8]])
 
     def _do_mstep(self, stats):
@@ -123,9 +123,11 @@ if __name__ == "__main__":
         obs = list(data.values())
         lengths = [len(line) for line in obs]
         x = np.concatenate(obs)
+        x = x.reshape((len(x), 1))
         # bkt = Bkt()
         # x = np.array(data['response'])
         # bkt.fit(x.reshape((x.shape[0], 1)))
+        # print(len(x),sum(lengths))
         jobs.append(delayed(train)(x, lengths))
         skills.append(skill)
     results = Parallel(n_jobs=_cpu_count() - 1)(jobs)
@@ -135,7 +137,7 @@ if __name__ == "__main__":
         print("PI\t%f\t%f" % tuple(bkt['startprob'].flatten()))
         print(
             "A\t%f\t%f\t%f\t%f" % (
-            bkt['transmat'][0][0], bkt['transmat'][0][1], bkt['transmat'][1][0], bkt['transmat'][1][1]))
+                bkt['transmat'][0][0], bkt['transmat'][0][1], bkt['transmat'][1][0], bkt['transmat'][1][1]))
         print(
             "B\t%f\t%f\t%f\t%f" % (
                 bkt['emissionprob'][0][0], bkt['emissionprob'][0][1], bkt['emissionprob'][1][0],
