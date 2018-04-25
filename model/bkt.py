@@ -88,8 +88,8 @@ def train(x, lengths):
     start = time.time()
     bkt = Bkt()
     bkt.fit(x, lengths)
-    # print(bkt.monitor_.converged,file=sys.stderr)
-    bkt.monitor_.report()
+    print(bkt.monitor_.iter, bkt.monitor_.converged, file=sys.stderr)
+    # bkt.monitor_.report()
     print('elapsed ', time.time() - start, file=sys.stderr)
     return bkt.model_param()
 
@@ -150,7 +150,7 @@ if __name__ == "__main__":
         # print(len(x),sum(lengths))
         jobs.append(delayed(train)(x, lengths))
         skills.append(skill)
-    results = Parallel(n_jobs=_cpu_count() - 1, backend='threading')(jobs)
+    results = Parallel(n_jobs=_cpu_count() - 1)(jobs)
     index = 0
     for skill, bkt in zip(skills, results):
         print("%d\t%s" % (index, skill))
