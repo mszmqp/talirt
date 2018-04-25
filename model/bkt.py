@@ -88,9 +88,7 @@ def train(x, lengths):
     start = time.time()
     bkt = Bkt()
     bkt.fit(x, lengths)
-    print(bkt.monitor_.iter, bkt.monitor_.converged, file=sys.stderr)
-    # bkt.monitor_.report()
-    print('elapsed ', time.time() - start, file=sys.stderr)
+    print(bkt.monitor_.iter, bkt.monitor_.converged, 'elapsed ', time.time() - start, file=sys.stderr)
     return bkt.model_param()
 
 
