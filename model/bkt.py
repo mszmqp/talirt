@@ -29,7 +29,7 @@ class Bkt(MultinomialHMM):
                                 params=params, init_params=init_params)
         self.n_features = 2
         self.startprob_ = np.array([0.5, 0.5])
-        self.transmat_ = np.array([[1 - 1e-8], [1 - 1e-8], [0.4, 0.6]])
+        self.transmat_ = np.array([[1 - 1e-8,1e-8], [0.4, 0.6]])
         self.emissionprob_ = np.array([[0.8, 0.2], [0.2, 0.8]])
 
     def _do_mstep(self, stats):
