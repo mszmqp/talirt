@@ -38,8 +38,12 @@ class Bkt(MultinomialHMM):
         super(Bkt, self)._do_mstep(stats)
         # hmmlearn 在计算前后向算法时，计算乘法通过加log改成计算加法，所以这里概率值就不能再是0了。
         #
-        self.transmat_[0][0] = 1 - 1e-8
         self.transmat_[0][1] = 1e-8
+        self.transmat_[0][0] = 1 - self.transmat_[0][1]
+
+        if self.transmat_[1][0] <= 0:
+            self.transmat_[1][0] = 1e6
+            self.transmat_[1][1] = 1 - self.transmat_[1][0]
 
         # 约束控制
         if self.emissionprob_[0][1] > 0.3:
@@ -94,6 +98,11 @@ def train(x, lengths):
 
 if __name__ == "__main__":
 
+    """
+    https://github.com/myudelson/hmm-scalable
+    对于空知识点的处理逻辑是：
+    把空知识点看成独立的知识点，但是并不进行hmm训练，而是单纯统计其每个作答状态的比例，用这个比例作为预测值。
+    """
     import pandas as pd
     import sys
     from tqdm import tqdm
