@@ -320,6 +320,12 @@ class UIrt2PL(BaseIrt):
         # print(pm.summary(self.trace))
         # _ = pm.traceplot(trace)
 
+    def estimate_theta(self):
+        pass
+
+    def _irt(self,):
+        pass
+
     def predict_proba(self, users, items):
         n = len(users)
         m = len(items)

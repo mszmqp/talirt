@@ -29,6 +29,96 @@ sys.path.append("../")
 
 path_data = './data/'
 
+class CF:
+    pass
+
+
+class IRT:
+    pass
+
+
+
+class RecommendABC(object):
+
+    def __init__(self,city_id,grade_id,subject_id,level_id,):
+        pass
+
+    def _xxx(self):
+        pass
+
+
+    def fectch_data(self):
+        """
+        模型包括候选题目数据，以及班型所有学生
+        Returns
+        -------
+            格式？
+        """
+        pass
+
+    def fit(self):
+        """
+
+        训练
+        模型包括候选题目数据，以及班型所有学生
+        Returns
+        -------
+
+        """
+
+        pass
+    def seri(self):
+        # cPickle
+        # sklearn joblib
+        # 二进制，或者json
+        pass
+
+    def save_redis(self):
+        # 序列化的结果保存到一个位置（redis）
+        pass
+    def save_file(self):
+
+        # 序列化的结果保存到一个位置（redis）
+        pass
+    @classmethod
+    def load_from_redis(self,model):
+
+        # return self object
+        pass
+
+    @classmethod
+    def load_from_file(self, model):
+        # return self object
+        pass
+
+    def predict(self,stu_id,items=None):
+        """
+
+        Parameters
+        ----------
+        stu_id
+        items : 可以为空，已经作答过的题目不用返回
+
+        Returns
+        -------
+
+        """
+
+
+
+
+
+class RecommendCF(RecommendABC):
+
+    def __init__(self):
+        pass
+        self.model =  CF()
+
+
+    def _xxx(self):
+        pass
+
+
 def obtain_data(from_cache):
 
     '''
