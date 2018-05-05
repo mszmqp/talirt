@@ -35,15 +35,6 @@ def init_option():
 
 
 def main(options):
-    # users = np.random.randint(low=0, high=3, size=20)
-    # items = np.random.randint(low=0, high=5, size=20)
-    # answers = np.random.randint(low=0, high=2, size=20)
-    # response = pd.DataFrame({'user_id': users, 'item_id': items, 'answer': answers}).drop_duplicates(
-    #     ['item_id', 'user_id'])
-    # model2 = irt.UIrt2PL(response, D=1.702)
-    # model2.set_abc(pd.DataFrame({'a': np.ones(5), 'b': [1, 2, 3, 4, 5]}), columns=['a', 'b'])
-    #
-    # res = model2.estimate_theta(method='CG', options={'maxiter': 20, 'disp': True})
 
     test_1()
     test_2()
@@ -105,17 +96,12 @@ def test_3():
     model = irt.UIrt2PL(response=response)
     # print(items)
     model.set_abc(items, columns=['a', 'b'])
-    # model.set_theta(students)
-    # data = model.predict_proba_x(model.user_vector.index, model.item_vector.index)
-    #
-    # response = pd.DataFrame({'user_id': [1] * count, 'item_id': np.arange(count), 'answer': [1] * count})
-    # model2 = UIrt2PL(response)
-    # model2.set_abc(pd.DataFrame({'a': np.ones(count), 'b': [diffculty] * count}))
 
     res = model.estimate_theta(method='CG', options={'maxiter': 20, 'disp': False})
     ok = all(res.x < 20) and all(res.x > -20)
     print('test:%s' % ok, 'result:%s' % res.x, 'iter:%d' % res.nit, 'estimate:%s' % res.success, "msg:%s" % msg)
     return ok
+
 
 def test_4():
     msg = """ 1个人，5道难度为1的题目，全答错，估计能力值"""
@@ -133,17 +119,11 @@ def test_4():
     model = irt.UIrt2PL(response=response)
     # print(items)
     model.set_abc(items, columns=['a', 'b'])
-    # model.set_theta(students)
-    # data = model.predict_proba_x(model.user_vector.index, model.item_vector.index)
-    #
-    # response = pd.DataFrame({'user_id': [1] * count, 'item_id': np.arange(count), 'answer': [1] * count})
-    # model2 = UIrt2PL(response)
-    # model2.set_abc(pd.DataFrame({'a': np.ones(count), 'b': [diffculty] * count}))
-
     res = model.estimate_theta(method='CG', options={'maxiter': 20, 'disp': False})
     ok = all(res.x < 20) and all(res.x > -20)
     print('test:%s' % ok, 'result:%s' % res.x, 'iter:%d' % res.nit, 'estimate:%s' % res.success, "msg:%s" % msg)
     return ok
+
 
 def test_5():
     msg = """3个人，5道难度为1题目，全答对，估计能力值"""
@@ -159,12 +139,6 @@ def test_5():
     response = pd.DataFrame(np.ones((3, 5)), index=students.index,
                             columns=items.index)
 
-    # users = np.random.randint(low=0, high=3, size=20)
-    # items = np.random.randint(low=0, high=5, size=20)
-    # answers = np.random.randint(low=0, high=2, size=20)
-
-    # response = pd.DataFrame({'user_id': users, 'item_id': items, 'answer': answers}).drop_duplicates(
-    #     ['item_id', 'user_id'])
     model2 = irt.UIrt2PL(response, D=1.702, sequential=False)
 
     model2.set_abc(items)
@@ -190,13 +164,6 @@ def test_6():
                             columns=items.index)
     response.iloc[0, 1] = np.NAN
     response.iloc[1, 2] = np.NAN
-    # print(response)
-    # users = np.random.randint(low=0, high=3, size=20)
-    # items = np.random.randint(low=0, high=5, size=20)
-    # answers = np.random.randint(low=0, high=2, size=20)
-
-    # response = pd.DataFrame({'user_id': users, 'item_id': items, 'answer': answers}).drop_duplicates(
-    #     ['item_id', 'user_id'])
     model2 = irt.UIrt2PL(response, D=1.702, sequential=False)
 
     model2.set_abc(items)
