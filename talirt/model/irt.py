@@ -545,15 +545,15 @@ class UIrt2PL(BaseIrt):
 
         # 注意y可能有缺失值
         y = self._response_matrix.values
-        theta = self.user_vector.loc[:, ['theta']].values.reshap(1,self.user_count)
+        theta = self.user_vector.loc[:, ['theta']].values.reshape(1, self.user_count)
         if 'a' in self.item_vector.columns:
-            a = self.item_vector.loc[:, 'a'].values.reshap(1,self.item_count)
+            a = self.item_vector.loc[:, 'a'].values.reshape(1, self.item_count)
         else:
             a = None
 
-        b = self.item_vector.loc[:, 'b'].values.reshap(1,self.item_count)
+        b = self.item_vector.loc[:, 'b'].values.reshape(1, self.item_count)
         if 'c' in self.item_vector.columns:
-            c = self.item_vector.loc[:, 'c'].values.reshap(1,self.item_count)
+            c = self.item_vector.loc[:, 'c'].values.reshape(1, self.item_count)
         else:
             c = None
         # https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html#scipy.optimize.minimize
