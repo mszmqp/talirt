@@ -22,7 +22,7 @@ import sys
 
 sys.path.append("./")
 # lognorm的坑 https://book.douban.com/annotation/41953169/
-from model.irt import UIrt2PL, UIrt3PL, MIrt2PL, MIrt3PL, MIrt2PLN, MIrt3PLN
+from talirt.model.irt import UIrt2PL, UIrt3PL, MIrt2PL, MIrt3PL, MIrt2PLN, MIrt3PLN
 
 _model_class = {
     "UIrt2PL": UIrt2PL,

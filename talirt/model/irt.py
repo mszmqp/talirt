@@ -11,9 +11,10 @@ import os
 import abc
 import shutil
 from pymc3.backends.base import MultiTrace
-
-from utils.pymc import TextTrace, SQLiteTrace
+from scipy.special import expit as sigmod
+from talirt.utils.pymc import TextTrace, SQLiteTrace
 from pymc3.sampling import _cpu_count
+from scipy.optimize import minimize
 
 """
 多维IRT模型中，能力值theta的先验分布是
@@ -37,10 +38,10 @@ vals = pm.MvNormal('vals', mu=mu, cov=cov, shape=(5, 2))
 
 class BaseIrt(object):
 
-    def __init__(self, response: pd.DataFrame, k=1):
+    def __init__(self, response: pd.DataFrame = None, k=1, D=1):
         """
-
         :param response_df: 作答数据，必须包含三列 user_id item_id answer
+        D=1.702
         """
         if response is not None:
             if 'user_id' not in response.columns or 'item_id' not in response.columns or 'answer' not in response.columns:
@@ -60,7 +61,7 @@ class BaseIrt(object):
             self.user_vector = None
             self.item_vector = None
         self.trace = None
-        self.D = 1.7
+        self.D = D
         self.k = k
 
     def _init_model(self):
@@ -91,6 +92,91 @@ class BaseIrt(object):
         self.item_vector = self.item_vector.join(item_stat, how='left')
         self.item_vector.fillna({'count': 0, 'right': 0}, inplace=True)
         self.item_vector['accuracy'] = self.item_vector['right'] / self.item_vector['count']
+
+    def set_theta(self, values):
+        """
+
+        Parameters
+        ----------
+        values
+
+        Returns
+        -------
+
+        """
+        assert isinstance(values, pd.DataFrame) or isinstance(values,
+                                                              np.ndarray), "values的类型必须是pandas.DataFrame或numpy.ndarray"
+
+        if self.user_vector is None:
+            assert isinstance(values, pd.DataFrame), "values的类型必须是pandas.DataFrame"
+            self.user_count = len(values)
+            self._user_ids = list(values.index)
+
+            self.user_vector = pd.DataFrame({
+                'iloc': np.arange(self.user_count),
+                'user_id': self._user_ids,
+                'theta': values.loc[:, 'theta'].values.flatten(),
+            },
+                index=self._user_ids)
+
+        else:
+            if isinstance(values, pd.DataFrame):
+                # self.user_vector = values
+                self.user_vector.loc[values.index, 'theta'] = values.loc[:, 'theta'].values.flatten()
+
+            elif isinstance(values, np.ndarray):
+                self.user_vector.loc[:, 'theta'] = values.flatten()
+
+            else:
+                raise TypeError("values的类型必须是pandas.DataFrame 或numpy.ndarray")
+
+    def set_abc(self, values, columns=['a', 'b', 'c']):
+        """
+        values 可以是pandas.DataFrame 或者 numpy.ndarray
+        当values:pandas.DataFrame,,shape=(n,len(columns))，一行一个item,
+        pandas.DataFrame.index是item_id,columns包括a,b,c。
+
+        当values:numpy.ndarray,shape=(n,len(columns)),一行一个item,列对应着columns参数。
+        Parameters
+        ----------
+        values
+        columns 要设置的列
+
+        Returns
+        -------
+
+        """
+
+        assert isinstance(values, pd.DataFrame) or isinstance(values,
+                                                              np.ndarray), "values的类型必须是pandas.DataFrame或numpy.ndarray"
+
+        if self.item_vector is None:
+            assert isinstance(values, pd.DataFrame), "values的类型必须是pandas.DataFrame"
+            self.item_count = len(values)
+            self._item_ids = list(values.index)
+
+            self.item_vector = pd.DataFrame({
+                'iloc': np.arange(self.item_count),
+                'item_id': self._item_ids,
+                'a': np.zeros(self.item_count),
+                'b': np.zeros(self.item_count),
+                'c': np.zeros(self.item_count),
+
+            },
+                index=self._item_ids)
+
+            self.item_vector.loc[:, columns] = values.loc[:, columns]
+
+        else:
+            if isinstance(values, pd.DataFrame):
+                # self.user_vector = values
+                self.item_vector.loc[values.index, columns] = values.loc[:, columns]
+
+            elif isinstance(values, np.ndarray):
+                self.item_vector.loc[:, columns] = values
+
+            else:
+                raise TypeError("values的类型必须是pandas.DataFrame或numpy.ndarray")
 
     def save(self, path):
         if not os.path.exists(path):
@@ -272,6 +358,43 @@ class BaseIrt(object):
         """
         raise NotImplemented
 
+    def _object_func(self, y: np.ndarray, theta: np.ndarray, a: np.ndarray = None, b: np.ndarray = None,
+                     c: np.ndarray = None):
+        """
+        目标函数
+        Parameters
+        ----------
+        theta
+        a
+        b
+        c
+
+        Returns
+        -------
+
+        """
+        raise NotImplemented
+
+    def _jac(self, y: np.ndarray, theta: np.ndarray, a: np.ndarray = None, b: np.ndarray = None,
+             c: np.ndarray = None):
+        """
+        返回雅克比矩阵，也就是一阶导数
+        Returns
+        -------
+
+        """
+        raise NotImplemented
+
+    def _hessian(self, y: np.ndarray, theta: np.ndarray, a: np.ndarray = None, b: np.ndarray = None,
+                 c: np.ndarray = None):
+        """
+        返回海森矩阵，也就是二阶导数
+        Returns
+        -------
+
+        """
+        raise NotImplemented
+
 
 class UIrt2PL(BaseIrt):
 
@@ -320,12 +443,6 @@ class UIrt2PL(BaseIrt):
         # print(pm.summary(self.trace))
         # _ = pm.traceplot(trace)
 
-    def estimate_theta(self):
-        pass
-
-    def _irt(self,):
-        pass
-
     def predict_proba(self, users, items):
         n = len(users)
         m = len(items)
@@ -353,6 +470,104 @@ class UIrt2PL(BaseIrt):
         e = np.exp(z)
         s = c + (1 - c) * e / (1.0 + e)
         return s
+
+    def _prob(self, theta: np.ndarray, a: np.ndarray = None, b: np.ndarray = None, c: np.ndarray = None):
+        """
+
+        Parameters
+        ----------
+        theta shape=(n,1) n是学生数量
+        a  shape=(1,m) m是题目数量
+        b  shape=(1,m) m是题目数量
+        c  shape=(1,m) m是题目数量
+
+        Returns
+        -------
+
+        """
+        z = self.D * a * (theta - b)
+        return sigmod(z)
+
+    def _object_func(self, theta: np.ndarray, y: np.ndarray, a: np.ndarray = None, b: np.ndarray = None,
+                     c: np.ndarray = None):
+        """
+        .. math::
+            Object function  = - \ln L(x;\theta)=-(\sum_{i=0}^n ({y^{(i)}} \ln P + (1-y^{(i)}) \ln (1-P)))
+        Parameters
+        ----------
+        theta
+        a
+        b
+        c
+
+        Returns
+        -------
+        res : OptimizeResult
+
+        The optimization result represented as a OptimizeResult object.
+        Important attributes are: x the solution array, success a Boolean flag indicating if the optimizer
+        exited successfully and message which describes the cause of the termination.
+        See OptimizeResult for a description of other attributes.
+        """
+
+        # 预测值
+        y_hat = self._prob(theta=theta, a=a, b=b)
+        # llik = y * np.log(y_hat) + (1 - y) * np.log(1 - y_hat)
+        obj = - np.sum(np.where(y, np.log(y_hat), np.log(1 - y_hat)))
+        # print('obj', obj)
+        # 目标函数没有求平均
+        return obj
+
+    def _jac(self, theta: np.ndarray, y: np.ndarray, a: np.ndarray = None, b: np.ndarray = None,
+             c: np.ndarray = None):
+        # 预测值
+        y_hat = self._prob(theta=theta, a=a, b=b)
+        # 一阶导数
+        # 每一列是一个样本，求所有样本的平均值
+        grd = np.sum(self.D * a * (y_hat - y), axis=1)
+        # print('grd', grd)
+        return grd
+
+    def _hessian(self, theta: np.ndarray, y: np.ndarray, a: np.ndarray = None, b: np.ndarray = None,
+                 c: np.ndarray = None):
+        # 预测值
+        y_hat = self._prob(theta=theta, a=a, b=b)
+
+        # return np.sum(y_hat * (1 - y_hat) * self.D ** 2 * a * a, axis=1)
+        return np.dot(self.D * self.D * a * y_hat * (1 - y_hat), a.T)
+
+    def estimate_theta(self, method='CG', tol=None, options=None, bounds=None):
+
+        # 注意y可能有缺失值
+        y = self._response_matrix.values
+        theta = self.user_vector.loc[:, ['theta']].values
+        if 'a' in self.item_vector.columns:
+            a = self.item_vector.loc[:, 'a'].values
+        else:
+            a = None
+
+        b = self.item_vector.loc[:, 'b'].values
+        if 'c' in self.item_vector.columns:
+            c = self.item_vector.loc[:, 'c'].values
+        else:
+            c = None
+        # https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html#scipy.optimize.minimize
+        # CG
+        # Newton-CG
+        # L-BFGS-B
+        if method == "CG":
+            res = minimize(self._object_func, x0=theta, args=(y, a, b, c), method='CG', jac=self._jac, options=options,
+                           tol=tol)
+        elif method == "Newton-CG":
+            res = minimize(self._object_func, x0=theta, args=(y, a, b, c), method='Newton-CG', jac=self._jac,
+                           hess=self._hessian)
+        elif method == "L-BFGS-B":
+            res = minimize(self._object_func, x0=theta, args=(y, a, b, c), method='L-BFGS-B', jac=self._jac,
+                           bounds=bounds)
+
+        # print(res.success)
+        self.user_vector.loc[:, ['theta']] = res.x
+        return res
 
 
 class UIrt3PL(UIrt2PL):
