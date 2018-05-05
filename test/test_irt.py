@@ -13,7 +13,7 @@ import sys
 import argparse
 import pandas as pd
 import numpy as np
-
+from talirt.model import irt
 __version__ = 1.0
 
 
@@ -33,9 +33,22 @@ def init_option():
 
 
 def main(options):
-    from talirt.model.irt import UIrt2PL
+    from talirt.model import irt
     import matplotlib.pyplot as plt
-    model = UIrt2PL()
+    users = np.random.randint(low=0, high=3, size=20)
+    items = np.random.randint(low=0, high=5, size=20)
+    answers = np.random.randint(low=0, high=2, size=20)
+    response = pd.DataFrame({'user_id': users, 'item_id': items, 'answer': answers}).drop_duplicates(
+        ['item_id', 'user_id'])
+    model2 = irt.UIrt2PL(response, D=1.702)
+    model2.set_abc(pd.DataFrame({'a': np.ones(5), 'b': [1,2,3,4,5]}), columns=['a', 'b'])
+
+    res = model2.estimate_theta(method='CG', options={'maxiter': 20, 'disp': True})
+
+
+
+def test_1():
+    model = irt.UIrt2PL()
     items = pd.DataFrame({'a': np.ones(10), 'b': np.random.randint(1, 6, 10)})
     students = pd.DataFrame({'theta':np.random.randint(-1,8,5)})
     #print(items)

@@ -517,11 +517,13 @@ class UIrt2PL(BaseIrt):
 
         # 预测值
         y_hat = self._prob(theta=theta, a=a, b=b)
-        # llik = y * np.log(y_hat) + (1 - y) * np.log(1 - y_hat)
-        obj = - np.sum(np.where(y, np.log(y_hat), np.log(1 - y_hat)))
+        # 答题记录通常不是满记录的，里面有空值，对于空值设置为0，然后再求sum，这样不影响结果
+        obj = y * np.log(y_hat) + (1 - y) * np.log(1 - y_hat)
+        # 用where处理不了空值，如果是空值，where认为是真
+        # obj = - np.sum(np.where(y, np.log(y_hat), np.log(1 - y_hat)))
         # print('obj', obj)
         # 目标函数没有求平均
-        return obj
+        return - np.sum(np.nan_to_num(obj, copy=False))
 
     def _jac_theta(self, theta: np.ndarray, y: np.ndarray, a: np.ndarray = None, b: np.ndarray = None,
                    c: np.ndarray = None):
@@ -529,7 +531,10 @@ class UIrt2PL(BaseIrt):
         y_hat = self._prob(theta=theta, a=a, b=b)
         # 一阶导数
         # 每一列是一个样本，求所有样本的平均值
-        grd = np.sum(self.D * a * (y_hat - y), axis=1)
+        all = self.D * a * (y_hat - y)
+
+        # 答题记录通常不是满记录的，里面有空值，对于空值设置为0，然后再求sum，这样不影响结果
+        grd = np.sum(np.nan_to_num(all, copy=False), axis=1)
         # print('grd', grd)
         return grd
 
@@ -539,7 +544,10 @@ class UIrt2PL(BaseIrt):
         y_hat = self._prob(theta=theta, a=a, b=b)
 
         # return np.sum(y_hat * (1 - y_hat) * self.D ** 2 * a * a, axis=1)
-        return np.dot(self.D * self.D * a * y_hat * (1 - y_hat), a.T)
+        # 答题记录通常不是满记录的，里面有空值，对于空值设置为0，然后再求sum，这样不影响结果
+        tmp = self.D * self.D * a * y_hat * (1 - y_hat)
+        np.where(np.isnan(y), 0, tmp)
+        return np.dot(tmp, a.T)
 
     def estimate_theta(self, method='CG', tol=None, options=None, bounds=None):
 
