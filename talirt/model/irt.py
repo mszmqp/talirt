@@ -165,7 +165,7 @@ class BaseIrt(object):
                 'item_id': self._item_ids,
                 'a': np.ones(self.item_count),
                 'b': np.zeros(self.item_count),
-                'c': np.ones(self.item_count),
+                'c': np.zeros(self.item_count),
 
             },
                 index=self._item_ids)
