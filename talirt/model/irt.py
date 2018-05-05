@@ -380,8 +380,8 @@ class BaseIrt(object):
         """
         raise NotImplemented
 
-    def _jac(self, y: np.ndarray, theta: np.ndarray, a: np.ndarray = None, b: np.ndarray = None,
-             c: np.ndarray = None):
+    def _jac_theta(self, y: np.ndarray, theta: np.ndarray, a: np.ndarray = None, b: np.ndarray = None,
+                   c: np.ndarray = None):
         """
         返回雅克比矩阵，也就是一阶导数
         Returns
@@ -390,8 +390,8 @@ class BaseIrt(object):
         """
         raise NotImplemented
 
-    def _hessian(self, y: np.ndarray, theta: np.ndarray, a: np.ndarray = None, b: np.ndarray = None,
-                 c: np.ndarray = None):
+    def _hessian_theta(self, y: np.ndarray, theta: np.ndarray, a: np.ndarray = None, b: np.ndarray = None,
+                       c: np.ndarray = None):
         """
         返回海森矩阵，也就是二阶导数
         Returns
@@ -523,8 +523,8 @@ class UIrt2PL(BaseIrt):
         # 目标函数没有求平均
         return obj
 
-    def _jac(self, theta: np.ndarray, y: np.ndarray, a: np.ndarray = None, b: np.ndarray = None,
-             c: np.ndarray = None):
+    def _jac_theta(self, theta: np.ndarray, y: np.ndarray, a: np.ndarray = None, b: np.ndarray = None,
+                   c: np.ndarray = None):
         # 预测值
         y_hat = self._prob(theta=theta, a=a, b=b)
         # 一阶导数
@@ -533,8 +533,8 @@ class UIrt2PL(BaseIrt):
         # print('grd', grd)
         return grd
 
-    def _hessian(self, theta: np.ndarray, y: np.ndarray, a: np.ndarray = None, b: np.ndarray = None,
-                 c: np.ndarray = None):
+    def _hessian_theta(self, theta: np.ndarray, y: np.ndarray, a: np.ndarray = None, b: np.ndarray = None,
+                       c: np.ndarray = None):
         # 预测值
         y_hat = self._prob(theta=theta, a=a, b=b)
 
@@ -545,15 +545,15 @@ class UIrt2PL(BaseIrt):
 
         # 注意y可能有缺失值
         y = self._response_matrix.values
-        theta = self.user_vector.loc[:, ['theta']].values
+        theta = self.user_vector.loc[:, ['theta']].values.reshap(1,self.user_count)
         if 'a' in self.item_vector.columns:
-            a = self.item_vector.loc[:, 'a'].values
+            a = self.item_vector.loc[:, 'a'].values.reshap(1,self.item_count)
         else:
             a = None
 
-        b = self.item_vector.loc[:, 'b'].values
+        b = self.item_vector.loc[:, 'b'].values.reshap(1,self.item_count)
         if 'c' in self.item_vector.columns:
-            c = self.item_vector.loc[:, 'c'].values
+            c = self.item_vector.loc[:, 'c'].values.reshap(1,self.item_count)
         else:
             c = None
         # https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html#scipy.optimize.minimize
@@ -561,15 +561,17 @@ class UIrt2PL(BaseIrt):
         # Newton-CG
         # L-BFGS-B
         if method == "CG":
-            res = minimize(self._object_func, x0=theta, args=(y, a, b, c), method='CG', jac=self._jac, options=options,
+            res = minimize(self._object_func, x0=theta, args=(y, a, b, c), method='CG', jac=self._jac_theta,
+                           options=options,
                            tol=tol)
         elif method == "Newton-CG":
-            res = minimize(self._object_func, x0=theta, args=(y, a, b, c), method='Newton-CG', jac=self._jac,
-                           hess=self._hessian)
+            res = minimize(self._object_func, x0=theta, args=(y, a, b, c), method='Newton-CG', jac=self._jac_theta,
+                           hess=self._hessian_theta)
         elif method == "L-BFGS-B":
-            res = minimize(self._object_func, x0=theta, args=(y, a, b, c), method='L-BFGS-B', jac=self._jac,
+            res = minimize(self._object_func, x0=theta, args=(y, a, b, c), method='L-BFGS-B', jac=self._jac_theta,
                            bounds=bounds)
-
+        else:
+            raise ValueError('不支持的优化算法')
         # print(res.success)
         self.user_vector.loc[:, ['theta']] = res.x
         return res
