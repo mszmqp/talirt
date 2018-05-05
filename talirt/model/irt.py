@@ -38,17 +38,28 @@ vals = pm.MvNormal('vals', mu=mu, cov=cov, shape=(5, 2))
 
 class BaseIrt(object):
 
-    def __init__(self, response: pd.DataFrame = None, k=1, D=1):
+    def __init__(self, response: pd.DataFrame = None, sequential=True, k=1, D=1):
         """
         :param response_df: 作答数据，必须包含三列 user_id item_id answer
         D=1.702
         """
         if response is not None:
-            if 'user_id' not in response.columns or 'item_id' not in response.columns or 'answer' not in response.columns:
-                raise ValueError("input dataframe have no user_id or item_id  or answer")
+            if sequential:
+                if 'user_id' not in response.columns or 'item_id' not in response.columns or 'answer' not in response.columns:
+                    raise ValueError("input dataframe have no user_id or item_id  or answer")
 
-            self._response = response[['user_id', 'item_id', 'answer']]
-            self._response_matrix = self._response.pivot(index="user_id", columns="item_id", values='answer')
+                self._response = response[['user_id', 'item_id', 'answer']]
+                self._response_matrix = self._response.pivot(index="user_id", columns="item_id", values='answer')
+            else:
+                self._response_matrix = response.copy()
+
+                self._response_matrix.index.name = 'user_id'
+                # 矩阵形式生成序列数据
+                self._response = pd.melt(self._response_matrix.reset_index(), id_vars=['user_id'], var_name="item_id",
+                                         value_name='answer')
+                # 去掉空值
+                self._response.dropna(inplace=True)
+
             # 被试者id
             self._user_ids = list(self._response_matrix.index)
             self.user_count = len(self._user_ids)
