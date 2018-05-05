@@ -582,7 +582,7 @@ if __name__ == '__main__':
     df_question = re_cf.fetch_data()
     dic_user, dic_lq, pred = re_cf.fit(df_question)
     pred = re_cf.seri(dic_user, dic_lq, pred)
-    print("CF_ALGORITHM: the score of student: " + stu + " at the " + lq + " is " + str(re_cf.predict(stu, lq, True)))
+    print("CF_ALGORITHM: the score of student: " + stu + " at the item: " + lq + " is " + str(re_cf.predict(stu, lq, True)))
 
     # test irt_algorithm
     re_irt = RecommendIRT(year='2018', city_id='0571', grade_id='7', \
@@ -594,4 +594,4 @@ if __name__ == '__main__':
     df_question = re_irt.obtain_from_csv()
     lq_diff, weights = re_irt.fit(df_question)
     theta_stu = re_irt.seri(weights)
-    print("IRT_ALGORITHM: the score of student: " + stu + " at the " + lq + " is " + str(re_irt.predict(stu, lq_diff, lq, True)))
+    print("IRT_ALGORITHM: the probability of student: " + stu + " at the item: " + lq + " is " + str(re_irt.predict(stu, lq_diff, lq, True)))
