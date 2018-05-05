@@ -490,7 +490,7 @@ class UIrt2PL(BaseIrt):
         -------
 
         """
-        z = self.D * a * (theta - b)
+        z = self.D * a * (theta.reshape(self.user_count, 1) - b)
         return sigmod(z)
 
     def _object_func(self, theta: np.ndarray, y: np.ndarray, a: np.ndarray = None, b: np.ndarray = None,
@@ -545,7 +545,7 @@ class UIrt2PL(BaseIrt):
 
         # 注意y可能有缺失值
         y = self._response_matrix.values
-        theta = self.user_vector.loc[:, ['theta']].values.reshape(1, self.user_count)
+        theta = self.user_vector.loc[:, ['theta']].values.reshape(self.user_count, 1)
         if 'a' in self.item_vector.columns:
             a = self.item_vector.loc[:, 'a'].values.reshape(1, self.item_count)
         else:
