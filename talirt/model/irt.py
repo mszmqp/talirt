@@ -130,7 +130,7 @@ class BaseIrt(object):
             else:
                 raise TypeError("values的类型必须是pandas.DataFrame 或numpy.ndarray")
 
-    def set_abc(self, values, columns=['a', 'b', 'c']):
+    def set_abc(self, values, columns=None):
         """
         values 可以是pandas.DataFrame 或者 numpy.ndarray
         当values:pandas.DataFrame,,shape=(n,len(columns))，一行一个item,
@@ -149,6 +149,11 @@ class BaseIrt(object):
 
         assert isinstance(values, pd.DataFrame) or isinstance(values,
                                                               np.ndarray), "values的类型必须是pandas.DataFrame或numpy.ndarray"
+        if columns is None:
+            if isinstance(values, pd.DataFrame):
+                columns = [x for x in ['a', 'b', 'c'] if x in values.columns]
+            else:
+                raise ValueError("需要指定columns")
 
         if self.item_vector is None:
             assert isinstance(values, pd.DataFrame), "values的类型必须是pandas.DataFrame"
@@ -158,19 +163,19 @@ class BaseIrt(object):
             self.item_vector = pd.DataFrame({
                 'iloc': np.arange(self.item_count),
                 'item_id': self._item_ids,
-                'a': np.zeros(self.item_count),
+                'a': np.ones(self.item_count),
                 'b': np.zeros(self.item_count),
-                'c': np.zeros(self.item_count),
+                'c': np.ones(self.item_count),
 
             },
                 index=self._item_ids)
 
-            self.item_vector.loc[:, columns] = values.loc[:, columns]
+            self.item_vector.loc[:, columns] = values.loc[:, columns].values
 
         else:
             if isinstance(values, pd.DataFrame):
                 # self.user_vector = values
-                self.item_vector.loc[values.index, columns] = values.loc[:, columns]
+                self.item_vector.loc[values.index, columns] = values.loc[:, columns].values
 
             elif isinstance(values, np.ndarray):
                 self.item_vector.loc[:, columns] = values
