@@ -554,6 +554,7 @@ class UIrt2PL(BaseIrt):
 
         # 答题记录通常不是满记录的，里面有空值，对于空值设置为0，然后再求sum，这样不影响结果
         grd = np.sum(np.nan_to_num(all, copy=False), axis=1)
+        grd = grd.reshape(len(grd), 1)
         print(grd.shape, file=sys.stderr)
         return grd
 
