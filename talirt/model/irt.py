@@ -568,7 +568,7 @@ class UIrt2PL(BaseIrt):
         # 答题记录通常不是满记录的，里面有空值，对于空值设置为0，然后再求sum，这样不影响结果
         tmp = self.D * self.D * a * y_hat * (1 - y_hat)
         np.where(np.isnan(y), 0, tmp)
-        hess = np.dot(tmp, a.T).flatten()
+        hess = np.dot(tmp, a.T)
         print(hess.shape, file=sys.stderr)
         return hess
 
