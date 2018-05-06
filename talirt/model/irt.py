@@ -506,7 +506,7 @@ class UIrt2PL(BaseIrt):
 
         """
 
-        z = self.D * a * (theta.reshape(len(theta, 1)) - b)
+        z = self.D * a * (theta.reshape(len(theta), 1) - b)
         if c is None:
             return sigmod(z)
         return c + (1 - c) * sigmod(z)
