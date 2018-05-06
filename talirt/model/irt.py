@@ -554,7 +554,7 @@ class UIrt2PL(BaseIrt):
 
         # 答题记录通常不是满记录的，里面有空值，对于空值设置为0，然后再求sum，这样不影响结果
         grd = np.sum(np.nan_to_num(all, copy=False), axis=1)
-        #grd = grd.reshape(len(grd), 1)
+        # grd = grd.reshape(len(grd), 1)
         print(grd.shape, file=sys.stderr)
         return grd
 
@@ -634,7 +634,7 @@ class UIrt2PL(BaseIrt):
             for index, row in iter_rows:
                 # 注意y可能有缺失值
                 y = row.values.reshape(1, len(row))
-                theta = self.user_vector.loc[index, 'theta'].values.reshape(1, 1)
+                theta = self.user_vector.loc[index, ['theta']].values.reshape(1, 1)
 
                 res = minimize(self._object_func, x0=theta, args=(y, a, b, c), method=method, jac=self._jac_theta,
                                bounds=bounds, hess=hessian, options=options, tol=tol)
