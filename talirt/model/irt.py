@@ -491,7 +491,7 @@ class UIrt2PL(BaseIrt):
         s = c + (1 - c) * e / (1.0 + e)
         return s
 
-    def _prob(self, theta: np.ndarray, a: np.ndarray = None, b: np.ndarray = None, c: np.ndarray = None):
+    def _prob(self, theta: np.ndarray, a: np.ndarray, b: np.ndarray, c: np.ndarray = None):
         """
 
         Parameters
@@ -505,8 +505,11 @@ class UIrt2PL(BaseIrt):
         -------
 
         """
-        z = self.D * a * (theta - b)
-        return sigmod(z)
+
+        z = self.D * a * (theta.reshape(len(theta, 1)) - b)
+        if c is None:
+            return sigmod(z)
+        return c + (1 - c) * sigmod(z)
 
     def _object_func(self, theta: np.ndarray, y: np.ndarray, a: np.ndarray = None, b: np.ndarray = None,
                      c: np.ndarray = None):
