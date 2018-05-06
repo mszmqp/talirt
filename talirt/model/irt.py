@@ -598,7 +598,14 @@ class UIrt2PL(BaseIrt):
         else:
             c = None
 
+        if method == "Newton-CG":
+            hessian = self._hessian_theta
+        else:
+            hessian = None
+
         success = []
+
+        self._es_res_theta = []
         if join:
 
             # 注意y可能有缺失值
@@ -606,13 +613,14 @@ class UIrt2PL(BaseIrt):
             theta = self.user_vector.loc[:, ['theta']].values.reshape(self.user_count, 1)
 
             res = minimize(self._object_func, x0=theta, args=(y, a, b, c), method=method, jac=self._jac_theta,
-                           bounds=bounds, hess=self._hessian_theta, options=options, tol=tol)
+                           bounds=bounds, hess=hessian, options=options, tol=tol)
 
             self.user_vector.loc[:, ['theta']] = res.x
 
             # y_list.append(y)
             # theta_list.append(theta)
             success.append(res.success)
+            self._es_res_theta.append(res)
         else:
             if progressbar:
                 iter_rows = tqdm(self.response_matrix.iterrows(), total=len(self.response_matrix))
@@ -624,9 +632,10 @@ class UIrt2PL(BaseIrt):
                 theta = self.user_vector.loc[index, 'theta'].values.reshape(1, 1)
 
                 res = minimize(self._object_func, x0=theta, args=(y, a, b, c), method=method, jac=self._jac_theta,
-                               bounds=bounds, hess=self._hessian_theta, options=options, tol=tol)
+                               bounds=bounds, hess=hessian, options=options, tol=tol)
                 self.user_vector.loc[index, 'theta'] = res.x[0]
                 success.append(res.success)
+                self._es_res_theta.append(res)
 
         return all(success)
 
