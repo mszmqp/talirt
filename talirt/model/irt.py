@@ -15,6 +15,7 @@ from scipy.special import expit as sigmod
 from talirt.utils.pymc import TextTrace, SQLiteTrace
 from pymc3.sampling import _cpu_count
 from scipy.optimize import minimize
+from tqdm import tqdm
 
 """
 多维IRT模型中，能力值theta的先验分布是
@@ -48,23 +49,24 @@ class BaseIrt(object):
                 if 'user_id' not in response.columns or 'item_id' not in response.columns or 'answer' not in response.columns:
                     raise ValueError("input dataframe have no user_id or item_id  or answer")
 
-                self._response = response[['user_id', 'item_id', 'answer']]
-                self._response_matrix = self._response.pivot(index="user_id", columns="item_id", values='answer')
+                self.response_sequence = response[['user_id', 'item_id', 'answer']]
+                self.response_matrix = self.response_sequence.pivot(index="user_id", columns="item_id", values='answer')
             else:
-                self._response_matrix = response.copy()
+                self.response_matrix = response.copy()
 
-                self._response_matrix.index.name = 'user_id'
+                self.response_matrix.index.name = 'user_id'
                 # 矩阵形式生成序列数据
-                self._response = pd.melt(self._response_matrix.reset_index(), id_vars=['user_id'], var_name="item_id",
-                                         value_name='answer')
+                self.response_sequence = pd.melt(self.response_matrix.reset_index(), id_vars=['user_id'],
+                                                 var_name="item_id",
+                                                 value_name='answer')
                 # 去掉空值
-                self._response.dropna(inplace=True)
+                self.response_sequence.dropna(inplace=True)
 
             # 被试者id
-            self._user_ids = list(self._response_matrix.index)
+            self._user_ids = list(self.response_matrix.index)
             self.user_count = len(self._user_ids)
             # 项目id
-            self._item_ids = list(self._response_matrix.columns)
+            self._item_ids = list(self.response_matrix.columns)
             self.item_count = len(self._item_ids)
             self._init_model()
         else:
@@ -76,7 +78,7 @@ class BaseIrt(object):
         self.k = k
 
     def _init_model(self):
-        assert self._response is not None
+        assert self.response_sequence is not None
         self.user_vector = pd.DataFrame({
             'iloc': np.arange(self.user_count),
             'user_id': self._user_ids,
@@ -85,20 +87,22 @@ class BaseIrt(object):
         self.item_vector = pd.DataFrame(
             {'iloc': np.arange(self.item_count),
              'item_id': self._item_ids,
-             'a': np.zeros(self.item_count),
+             'a': np.ones(self.item_count),
              'b': np.zeros(self.item_count),
              'c': np.zeros(self.item_count)}, index=self._item_ids)
 
-        self._response = self._response.join(self.user_vector['iloc'].rename('user_iloc'), on='user_id', how='left')
-        self._response = self._response.join(self.item_vector['iloc'].rename('item_iloc'), on='item_id', how='left')
+        self.response_sequence = self.response_sequence.join(self.user_vector['iloc'].rename('user_iloc'), on='user_id',
+                                                             how='left')
+        self.response_sequence = self.response_sequence.join(self.item_vector['iloc'].rename('item_iloc'), on='item_id',
+                                                             how='left')
         # 统计每个应试者的作答情况
-        user_stat = self._response.groupby('user_id')['answer'].aggregate(['count', 'sum']).rename(
+        user_stat = self.response_sequence.groupby('user_id')['answer'].aggregate(['count', 'sum']).rename(
             columns={'sum': 'right'})
         self.user_vector = self.user_vector.join(user_stat, how='left')
         self.user_vector.fillna({'count': 0, 'right': 0}, inplace=True)
         self.user_vector['accuracy'] = self.user_vector['right'] / self.user_vector['count']
         # 统计每个项目的作答情况
-        item_stat = self._response.groupby('item_id')['answer'].aggregate(['count', 'sum']).rename(
+        item_stat = self.response_sequence.groupby('item_id')['answer'].aggregate(['count', 'sum']).rename(
             columns={'sum': 'right'})
         self.item_vector = self.item_vector.join(item_stat, how='left')
         self.item_vector.fillna({'count': 0, 'right': 0}, inplace=True)
@@ -215,13 +219,13 @@ class BaseIrt(object):
         return model
 
     def info(self):
-        if self._response is None:
+        if self.response_sequence is None:
             return "none data"
-        d = self._response['answer'].value_counts()
+        d = self.response_sequence['answer'].value_counts()
         return '\n'.join([
             u"用户数量：%d" % self.user_count,
             u"项目数量：%d" % self.item_count,
-            u"记录总数：%d" % len(self._response),
+            u"记录总数：%d" % len(self.response_sequence),
             u'正确数量：%d' % d[1],
             u'错误数量：%d' % d[0],
             u'正确比例：%f%%' % (d[1] * 100.0 / d.sum()),
@@ -438,9 +442,9 @@ class UIrt2PL(BaseIrt):
             irt = pm.Deterministic(name="irt", var=pm.math.sigmoid(theta * a - a * b))
             output = pm.Deterministic(name="output",
                                       var=as_tensor_variable(irt)[
-                                          self._response['user_iloc'], self._response['item_iloc']])
-            # observed = pm.Bernoulli('observed', p=irt, observed=self._response_matrix)
-            observed = pm.Bernoulli('observed', p=output, observed=self._response["answer"].values)
+                                          self.response_sequence['user_iloc'], self.response_sequence['item_iloc']])
+            # observed = pm.Bernoulli('observed', p=irt, observed=self.response_matrix)
+            observed = pm.Bernoulli('observed', p=output, observed=self.response_sequence["answer"].values)
 
             kwargs['discard_tuned_samples'] = False
             # kwargs['start'] = pm.find_MAP()
@@ -501,7 +505,7 @@ class UIrt2PL(BaseIrt):
         -------
 
         """
-        z = self.D * a * (theta.reshape(self.user_count, 1) - b)
+        z = self.D * a * (theta - b)
         return sigmod(z)
 
     def _object_func(self, theta: np.ndarray, y: np.ndarray, a: np.ndarray = None, b: np.ndarray = None,
@@ -560,11 +564,26 @@ class UIrt2PL(BaseIrt):
         np.where(np.isnan(y), 0, tmp)
         return np.dot(tmp, a.T)
 
-    def estimate_theta(self, method='CG', tol=None, options=None, bounds=None):
+    def estimate_theta(self, method='CG', tol=None, options=None, bounds=None, join=True, progressbar=True):
+        """
+        已知题目参数的情况下，估计学生的能力值。
+        优化算法说明参考 https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html#scipy.optimize.minimize
 
-        # 注意y可能有缺失值
-        y = self._response_matrix.values
-        theta = self.user_vector.loc[:, ['theta']].values.reshape(self.user_count, 1)
+        Parameters
+        ----------
+        method 优化算法，可选 CG、Newton-CG、L-BFGS-B
+        tol
+        options
+        bounds
+        join join=True，所有学生一起估计；反之，每个学生独立估计
+
+        Returns
+        -------
+
+        """
+        if method not in ["CG", "Newton-CG", "L-BFGS-B"]:
+            raise ValueError('不支持的优化算法')
+
         if 'a' in self.item_vector.columns:
             a = self.item_vector.loc[:, 'a'].values.reshape(1, self.item_count)
         else:
@@ -575,25 +594,38 @@ class UIrt2PL(BaseIrt):
             c = self.item_vector.loc[:, 'c'].values.reshape(1, self.item_count)
         else:
             c = None
-        # https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html#scipy.optimize.minimize
-        # CG
-        # Newton-CG
-        # L-BFGS-B
-        if method == "CG":
-            res = minimize(self._object_func, x0=theta, args=(y, a, b, c), method='CG', jac=self._jac_theta,
-                           options=options,
-                           tol=tol)
-        elif method == "Newton-CG":
-            res = minimize(self._object_func, x0=theta, args=(y, a, b, c), method='Newton-CG', jac=self._jac_theta,
-                           hess=self._hessian_theta)
-        elif method == "L-BFGS-B":
-            res = minimize(self._object_func, x0=theta, args=(y, a, b, c), method='L-BFGS-B', jac=self._jac_theta,
-                           bounds=bounds)
+
+        success = []
+        if join:
+
+            # 注意y可能有缺失值
+            y = self.response_matrix.values
+            theta = self.user_vector.loc[:, ['theta']].values.reshape(self.user_count, 1)
+
+            res = minimize(self._object_func, x0=theta, args=(y, a, b, c), method=method, jac=self._jac_theta,
+                           bounds=bounds, hess=self._hessian_theta, options=options, tol=tol)
+
+            self.user_vector.loc[:, ['theta']] = res.x
+
+            # y_list.append(y)
+            # theta_list.append(theta)
+            success.append(res.success)
         else:
-            raise ValueError('不支持的优化算法')
-        # print(res.success)
-        self.user_vector.loc[:, ['theta']] = res.x
-        return res
+            if progressbar:
+                iter_rows = tqdm(self.response_matrix.iterrows(), total=len(self.response_matrix))
+            else:
+                iter_rows = self.response_matrix.iterrows()
+            for index, row in iter_rows:
+                # 注意y可能有缺失值
+                y = row.values.reshape(1, len(row))
+                theta = self.user_vector.loc[index, 'theta'].values.reshape(1, 1)
+
+                res = minimize(self._object_func, x0=theta, args=(y, a, b, c), method=method, jac=self._jac_theta,
+                               bounds=bounds, hess=self._hessian_theta, options=options, tol=tol)
+                self.user_vector.loc[index, 'theta'] = res.x[0]
+                success.append(res.success)
+
+        return all(success)
 
 
 class UIrt3PL(UIrt2PL):
@@ -624,8 +656,8 @@ class UIrt3PL(UIrt2PL):
             irt = pm.Deterministic(name="irt", var=(1 - c) * pm.math.sigmoid(theta * a - a * b) + c)
             output = pm.Deterministic(name="output",
                                       var=as_tensor_variable(irt)[
-                                          self._response['user_iloc'], self._response['item_iloc']])
-            observed = pm.Bernoulli('observed', p=output, observed=self._response["answer"].values)
+                                          self.response_sequence['user_iloc'], self.response_sequence['item_iloc']])
+            observed = pm.Bernoulli('observed', p=output, observed=self.response_sequence["answer"].values)
             # njobs = kwargs.get('njobs', 1)
             # chains = kwargs.get('chains', None)
             # if njobs is None:
@@ -683,8 +715,8 @@ class MIrt2PL(BaseIrt):
 
             output = pm.Deterministic(name="output",
                                       var=as_tensor_variable(irt)[
-                                          self._response['user_iloc'], self._response['item_iloc']])
-            observed = pm.Bernoulli('observed', p=output, observed=self._response["answer"].values)
+                                          self.response_sequence['user_iloc'], self.response_sequence['item_iloc']])
+            observed = pm.Bernoulli('observed', p=output, observed=self.response_sequence["answer"].values)
             # njobs = kwargs.get('njobs', 1)
             # chains = kwargs.get('chains', None)
             # if njobs is None:
@@ -765,8 +797,8 @@ class MIrt3PL(MIrt2PL):
 
             output = pm.Deterministic(name="output",
                                       var=as_tensor_variable(irt)[
-                                          self._response['user_iloc'], self._response['item_iloc']])
-            observed = pm.Bernoulli('observed', p=output, observed=self._response["answer"].values)
+                                          self.response_sequence['user_iloc'], self.response_sequence['item_iloc']])
+            observed = pm.Bernoulli('observed', p=output, observed=self.response_sequence["answer"].values)
             # njobs = kwargs.get('njobs', 1)
             # chains = kwargs.get('chains', None)
             # if njobs is None:
@@ -822,8 +854,8 @@ class MIrt2PLN(MIrt2PL):
 
             output = pm.Deterministic(name="output",
                                       var=as_tensor_variable(irt)[
-                                          self._response['user_iloc'], self._response['item_iloc']])
-            observed = pm.Bernoulli('observed', p=output, observed=self._response["answer"].values)
+                                          self.response_sequence['user_iloc'], self.response_sequence['item_iloc']])
+            observed = pm.Bernoulli('observed', p=output, observed=self.response_sequence["answer"].values)
             # njobs = kwargs.get('njobs', 1)
             # chains = kwargs.get('chains', None)
             # if njobs is None:
@@ -917,8 +949,8 @@ class MIrt3PLN(MIrt2PLN):
                                                                                                  axis=0))
             output = pm.Deterministic(name="output",
                                       var=as_tensor_variable(irt)[
-                                          self._response['user_iloc'], self._response['item_iloc']])
-            observed = pm.Bernoulli('observed', p=output, observed=self._response["answer"].values)
+                                          self.response_sequence['user_iloc'], self.response_sequence['item_iloc']])
+            observed = pm.Bernoulli('observed', p=output, observed=self.response_sequence["answer"].values)
             # njobs = kwargs.get('njobs', 1)
             # chains = kwargs.get('chains', None)
             # if njobs is None:
