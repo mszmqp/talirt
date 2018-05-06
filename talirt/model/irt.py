@@ -8,6 +8,7 @@ import pandas as pd
 # import theano.tensor as tt
 from theano.tensor.basic import as_tensor_variable
 import os
+import sys
 import abc
 import shutil
 from pymc3.backends.base import MultiTrace
@@ -558,6 +559,7 @@ class UIrt2PL(BaseIrt):
 
     def _hessian_theta(self, theta: np.ndarray, y: np.ndarray, a: np.ndarray = None, b: np.ndarray = None,
                        c: np.ndarray = None):
+        theta = theta.reshape(len(theta), 1)
         # 预测值
         y_hat = self._prob(theta=theta, a=a, b=b)
 
@@ -565,7 +567,9 @@ class UIrt2PL(BaseIrt):
         # 答题记录通常不是满记录的，里面有空值，对于空值设置为0，然后再求sum，这样不影响结果
         tmp = self.D * self.D * a * y_hat * (1 - y_hat)
         np.where(np.isnan(y), 0, tmp)
-        return np.dot(tmp, a.T)
+        hess = np.dot(tmp, a.T)
+        print(hess.shape, file=sys.stderr)
+        return hess
 
     def estimate_theta(self, method='CG', tol=None, options=None, bounds=None, join=True, progressbar=True):
         """
