@@ -52,6 +52,7 @@ class BaseIrt(object):
 
                 self.response_sequence = response[['user_id', 'item_id', 'answer']]
                 self.response_matrix = self.response_sequence.pivot(index="user_id", columns="item_id", values='answer')
+
             else:
                 self.response_matrix = response.copy()
 
@@ -70,6 +71,12 @@ class BaseIrt(object):
             self._item_ids = list(self.response_matrix.columns)
             self.item_count = len(self._item_ids)
             self._init_model()
+            labels = set(response.columns).intersection(set(['a', 'b', 'c']))
+            if sequential and labels:
+                item_info = response[['item_id'] + list(labels)].drop_duplicates(subset=['item_id'])
+                item_info.set_index('item_id', inplace=True)
+                self.set_abc(item_info, columns=list(labels))
+
         else:
 
             self.user_vector = None
@@ -508,6 +515,7 @@ class UIrt2PL(BaseIrt):
         """
 
         z = self.D * a * (theta.reshape(len(theta), 1) - b)
+        # print(type(z))
         if c is None:
             return sigmod(z)
         return c + (1 - c) * sigmod(z)
@@ -555,7 +563,7 @@ class UIrt2PL(BaseIrt):
         # 答题记录通常不是满记录的，里面有空值，对于空值设置为0，然后再求sum，这样不影响结果
         grd = np.sum(np.nan_to_num(all, copy=False), axis=1)
         # grd = grd.reshape(len(grd), 1)
-        print(grd.shape, file=sys.stderr)
+        # print(grd.shape, file=sys.stderr)
         return grd
 
     def _hessian_theta(self, theta: np.ndarray, y: np.ndarray, a: np.ndarray = None, b: np.ndarray = None,
@@ -569,10 +577,10 @@ class UIrt2PL(BaseIrt):
         tmp = self.D * self.D * a * y_hat * (1 - y_hat)
         np.where(np.isnan(y), 0, tmp)
         hess = np.dot(tmp, a.T)
-        print(hess.shape, file=sys.stderr)
+        # print(hess.shape, file=sys.stderr)
         return hess
 
-    def estimate_theta(self, method='CG', tol=None, options=None, bounds=None, join=True, progressbar=True):
+    def estimate_theta(self, method='CG', tol=None, options=None, bounds=None, progressbar=True):
         """
         已知题目参数的情况下，估计学生的能力值。
         优化算法说明参考 https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html#scipy.optimize.minimize
@@ -611,36 +619,38 @@ class UIrt2PL(BaseIrt):
         success = []
 
         self._es_res_theta = []
-        if join:
+        # if join:
+        #
+        #     # 注意y可能有缺失值
+        #     y = self.response_matrix.values
+        #     theta = self.user_vector.loc[:, ['theta']].values.reshape(self.user_count, 1)
+        #
+        #     res = minimize(self._object_func, x0=theta, args=(y, a, b, c), method=method, jac=self._jac_theta,
+        #                    bounds=bounds, hess=hessian, options=options, tol=tol)
+        #
+        #     self.user_vector.loc[:, ['theta']] = res.x
+        #
+        #     # y_list.append(y)
+        #     # theta_list.append(theta)
+        #     success.append(res.success)
+        #     self._es_res_theta.append(res)
+        # else:
 
+        if progressbar:
+            iter_rows = tqdm(self.response_matrix.iterrows(), total=len(self.response_matrix))
+        else:
+            iter_rows = self.response_matrix.iterrows()
+        # 每个人独立估计
+        for index, row in iter_rows:
             # 注意y可能有缺失值
-            y = self.response_matrix.values
-            theta = self.user_vector.loc[:, ['theta']].values.reshape(self.user_count, 1)
+            y = row.values.reshape(1, len(row))
+            theta = self.user_vector.loc[index, 'theta']
 
-            res = minimize(self._object_func, x0=theta, args=(y, a, b, c), method=method, jac=self._jac_theta,
+            res = minimize(self._object_func, x0=[theta], args=(y, a, b, c), method=method, jac=self._jac_theta,
                            bounds=bounds, hess=hessian, options=options, tol=tol)
-
-            self.user_vector.loc[:, ['theta']] = res.x
-
-            # y_list.append(y)
-            # theta_list.append(theta)
+            self.user_vector.loc[index, 'theta'] = res.x[0]
             success.append(res.success)
             self._es_res_theta.append(res)
-        else:
-            if progressbar:
-                iter_rows = tqdm(self.response_matrix.iterrows(), total=len(self.response_matrix))
-            else:
-                iter_rows = self.response_matrix.iterrows()
-            for index, row in iter_rows:
-                # 注意y可能有缺失值
-                y = row.values.reshape(1, len(row))
-                theta = self.user_vector.loc[index, ['theta']].values.reshape(1, 1)
-
-                res = minimize(self._object_func, x0=theta, args=(y, a, b, c), method=method, jac=self._jac_theta,
-                               bounds=bounds, hess=hessian, options=options, tol=tol)
-                self.user_vector.loc[index, 'theta'] = res.x[0]
-                success.append(res.success)
-                self._es_res_theta.append(res)
 
         return all(success)
 

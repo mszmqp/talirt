@@ -36,12 +36,13 @@ def init_option():
 
 def main(options):
 
-    test_1()
-    test_2()
-    test_3()
-    test_4()
-    test_5()
-    test_6()
+    for x in [test_1(),
+    test_2(),
+    test_3(),
+    test_4(),
+    test_5(),
+    test_6(),]:
+        print(x)
 
 
 def test_1():
@@ -55,9 +56,9 @@ def test_1():
     model = irt.UIrt2PL(response=response)
     model.set_abc(items, columns=['a', 'b'])
     res = model.estimate_theta(method='CG', options={'maxiter': 20, 'disp': False})
-    ok = all(res.x < 20) and all(res.x > -20)
-    print('test:%s' % ok, 'result:%s' % res.x, 'iter:%d' % res.nit, 'estimate:%s' % res.success, "msg:%s" % msg)
-    return ok
+    # ok = all(res.x < 20) and all(res.x > -20)
+    # print('test:%s' % ok, 'result:%s' % res.x, 'iter:%d' % res.nit, 'estimate:%s' % res.success, "msg:%s" % msg)
+    return res
 
 
 def test_2():
@@ -75,9 +76,9 @@ def test_2():
     model.set_abc(items, columns=['a', 'b'])
 
     res = model.estimate_theta(method='CG', options={'maxiter': 20, 'disp': False})
-    ok = all(res.x < 20) and all(res.x > -20)
-    print('test:%s' % ok, 'result:%s' % res.x, 'iter:%d' % res.nit, 'estimate:%s' % res.success, "msg:%s" % msg)
-    return ok
+    # ok = all(res.x < 20) and all(res.x > -20)
+    # print('test:%s' % ok, 'result:%s' % res.x, 'iter:%d' % res.nit, 'estimate:%s' % res.success, "msg:%s" % msg)
+    return res
 
 
 def test_3():
@@ -98,9 +99,9 @@ def test_3():
     model.set_abc(items, columns=['a', 'b'])
 
     res = model.estimate_theta(method='CG', options={'maxiter': 20, 'disp': False})
-    ok = all(res.x < 20) and all(res.x > -20)
-    print('test:%s' % ok, 'result:%s' % res.x, 'iter:%d' % res.nit, 'estimate:%s' % res.success, "msg:%s" % msg)
-    return ok
+    # ok = all(res.x < 20) and all(res.x > -20)
+    # print('test:%s' % ok, 'result:%s' % res.x, 'iter:%d' % res.nit, 'estimate:%s' % res.success, "msg:%s" % msg)
+    return res
 
 
 def test_4():
@@ -120,9 +121,9 @@ def test_4():
     # print(items)
     model.set_abc(items, columns=['a', 'b'])
     res = model.estimate_theta(method='CG', options={'maxiter': 20, 'disp': False})
-    ok = all(res.x < 20) and all(res.x > -20)
-    print('test:%s' % ok, 'result:%s' % res.x, 'iter:%d' % res.nit, 'estimate:%s' % res.success, "msg:%s" % msg)
-    return ok
+    # ok = all(res.x < 20) and all(res.x > -20)
+    # print('test:%s' % ok, 'result:%s' % res.x, 'iter:%d' % res.nit, 'estimate:%s' % res.success, "msg:%s" % msg)
+    return res
 
 
 def test_5():
@@ -144,9 +145,9 @@ def test_5():
     model2.set_abc(items)
 
     res = model2.estimate_theta(method='CG', options={'maxiter': 20, 'disp': False})
-    ok = all(res.x < 20) and all(res.x > -20)
-    print('test:%s' % ok, 'result:%s' % res.x, 'iter:%d' % res.nit, 'estimate:%s' % res.success, "msg:%s" % msg)
-    return ok
+    # ok = all(res.x < 20) and all(res.x > -20)
+    # print('test:%s' % ok, 'result:%s' % res.x, 'iter:%d' % res.nit, 'estimate:%s' % res.success, "msg:%s" % msg)
+    return res
 
 
 def test_6():
@@ -169,9 +170,9 @@ def test_6():
     model2.set_abc(items)
 
     res = model2.estimate_theta(method='CG', options={'maxiter': 20, 'disp': False})
-    ok = all(res.x < 20) and all(res.x > -20)
-    print('test:%s' % ok, 'result:%s' % res.x, 'iter:%d' % res.nit, 'estimate:%s' % res.success, "msg:%s" % msg)
-    return ok
+    # ok = all(res.x < 20) and all(res.x > -20)
+    # print('test:%s' % ok, 'result:%s' % res.x, 'iter:%d' % res.nit, 'estimate:%s' % res.success, "msg:%s" % msg)
+    return res
 
 
 if __name__ == "__main__":

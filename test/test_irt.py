@@ -15,7 +15,9 @@ import pandas as pd
 import numpy as np
 from talirt.model import irt
 __version__ = 1.0
-
+import ibis
+ibis.options.sql.default_limit = None
+impala_client = ibis.impala.connect(host='192.168.23.236', port=21050, user='app_bi')
 
 def init_option():
     """
@@ -33,19 +35,19 @@ def init_option():
 
 
 def main(options):
-    from talirt.model import irt
-    import matplotlib.pyplot as plt
-    users = np.random.randint(low=0, high=3, size=20)
-    items = np.random.randint(low=0, high=5, size=20)
-    answers = np.random.randint(low=0, high=2, size=20)
-    response = pd.DataFrame({'user_id': users, 'item_id': items, 'answer': answers}).drop_duplicates(
-        ['item_id', 'user_id'])
-    model2 = irt.UIrt2PL(response, D=1.702)
-    model2.set_abc(pd.DataFrame({'a': np.ones(5), 'b': [1,2,3,4,5]}), columns=['a', 'b'])
-
-    res = model2.estimate_theta(method='CG', options={'maxiter': 20, 'disp': True})
-
-
+    # from talirt.model import irt
+    # import matplotlib.pyplot as plt
+    # users = np.random.randint(low=0, high=3, size=20)
+    # items = np.random.randint(low=0, high=5, size=20)
+    # answers = np.random.randint(low=0, high=2, size=20)
+    # response = pd.DataFrame({'user_id': users, 'item_id': items, 'answer': answers}).drop_duplicates(
+    #     ['item_id', 'user_id'])
+    # model2 = irt.UIrt2PL(response, D=1.702)
+    # model2.set_abc(pd.DataFrame({'a': np.ones(5), 'b': [1,2,3,4,5]}), columns=['a', 'b'])
+    #
+    # res = model2.estimate_theta(method='CG', options={'maxiter': 20, 'disp': True})
+    #
+    test_2()
 
 def test_1():
     model = irt.UIrt2PL()
@@ -69,7 +71,7 @@ def test_1():
         for count in range(1,11):
 
             response = pd.DataFrame({'user_id': [1] * count, 'item_id': np.arange(count), 'answer': [1] * count})
-            model2 = UIrt2PL(response)
+            model2 = irt.UIrt2PL(response)
             model2.set_abc(pd.DataFrame({'a': np.ones(count), 'b': [diffculty]*count}))
 
             res=model2.estimate_theta(method='CG',options={'maxiter':20,'disp':False})
@@ -97,6 +99,59 @@ def test_1():
     print(pd.DataFrame(report))
 
 
+
+def test_2():
+    ## 从impala 拉取尖子班答题记录
+    param = {"year": 2018, "city_name": "杭州", "grade_name": "初中一年级", "subject_name": "数学", 'term_name': "春季班",
+             "level_name": ""}
+    _sql = """
+            select
+
+                level_name,
+                fk_course,
+                c_sortorder,
+                fk_student as stu_id,
+                stu_name,
+                fk_question as item_id,
+                difficulty as b,
+                1 as a,
+                answer
+
+            from
+                (select 
+                    lev_name as level_name,
+                    fk_course,
+                    c_sortorder,
+                    fk_student,stu_name,
+                    fk_question,
+                    case when asw_first_status='错误' then 0 else 1  end   answer,
+                    difficulty_id as difficulty
+
+                from dwdb.dwd_stdy_ips_level_answ
+               -- join dimdb.dim_level_question lq on lq.fk_question=sa.fk_question and sa.fk_courselevel=lq.lq_cl_id
+                where
+                     fk_year='%(year)s'
+                    and city_name = '%(city_name)s'
+                    and grd_name='%(grade_name)s'
+                    and term_name='%(term_name)s'
+                    and subj_name='%(subject_name)s'
+                    and is_deleted='否'
+                    and lev_name='尖子班'
+                --group by lev_name,fk_course,c_sortorder,fk_student,stu_name,
+                ) sa
+
+            --group by
+            --    level_name,fk_course,c_sortorder,fk_student,stu_name
+    """ % param
+
+    df_response = impala_client.sql(_sql).execute()
+
+    # 验证下有没有重名的学生
+    len(df_response['stu_name'].unique()) == len(df_response['stu_id'].unique())
+    df_response['user_id'] = df_response['stu_name']
+    model = irt.UIrt2PL(df_response, D=1.702)
+    print(model.estimate_theta(method='Newton-CG', options={'disp': False}, join=False))
+    print(model._es_res_theta)
 
 if __name__ == "__main__":
 
