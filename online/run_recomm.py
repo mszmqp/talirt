@@ -862,7 +862,7 @@ class RecommendIRT(RecommendABC):
         z = self.D * (theta - b)
         prob = sigmod(z)
         # items['irt'] = prob
-        return pd.Series(data=prob, dtype="float", index=items.index)
+        return pd.Series(data=prob.flatten(), dtype="float", index=items.index)
 
 
 def recommend(**param):
