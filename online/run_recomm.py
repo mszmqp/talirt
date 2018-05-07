@@ -862,7 +862,7 @@ class RecommendIRT(RecommendABC):
         z = self.D * (theta - b)
         prob = sigmod(z)
         items['irt'] = prob
-        return items
+        return items.loc[:, 'irt']
 
 
 def recommend(**param):
@@ -893,8 +893,8 @@ def recommend(**param):
     # irt_weight[pd.isna(prob_cf)] = 1
     result = []
     for item1, item2 in zip(prob_cf.iteritems(), prob_irt.iteritems()):
-        index_irt, value_irt = item1
-        index_cf, value_cf = item2
+        index_cf, value_cf = item1
+        index_irt, value_irt = item2
         weight_irt = 0.5
         weight_cf = 0.5
         assert index_irt == index_cf
@@ -962,29 +962,3 @@ def test():
 if __name__ == '__main__':
     main()
     quit(0)
-    # test cf_algorithm
-    re_cf = RecommendCF(year='2018', city_id='0571', grade_id='7',
-                        subject_id='ff80808127d77caa0127d7e10f1c00c4',
-                        level_id='ff8080812fc298b5012fd3d3becb1248',
-                        term='1')
-
-    stu = 'ff80808146248e430146271765bb0baa'
-    lq = '8a53ce07d5ff409bbe276a354708f677'
-    df_question = re_cf.fetch_data()
-    dic_user, dic_lq, pred = re_cf.fit(df_question)
-    pred = re_cf.serialize(dic_user, dic_lq, pred)
-    print("CF_ALGORITHM: the score of student: " + stu + " at the item: " + lq + " is " + str(
-        re_cf.predict(stu, lq, True)))
-
-    # test irt_algorithm
-    re_irt = RecommendIRT(year='2018', city_id='0571', grade_id='7',
-                          subject_id='ff80808127d77caa0127d7e10f1c00c4',
-                          level_id='ff8080812fc298b5012fd3d3becb1248',
-                          term='1')
-    stu = '009b1e101aa54843ba61a188941de4b6'
-    lq = '03e61a4dc33b451294c2e3d79f4ec468'
-    df_question = re_irt.obtain_from_csv()
-    lq_diff, weights = re_irt.fit(df_question)
-    theta_stu = re_irt.serialize(weights)
-    print("IRT_ALGORITHM: the probability of student: " + stu + " at the item: " + lq + " is " + str(
-        re_irt.predict(stu, lq_diff, lq, True)))
