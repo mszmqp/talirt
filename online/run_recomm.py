@@ -237,7 +237,7 @@ class SimpleCF:
             vector[vector == -1] = 0
             error = mean_squared_error(prob, vector)
             error_list.append(error)
-        return pd.Series(error_list, index=user_id, name='mse')
+        return pd.Series(error_list, index=user_list, name='mse')
 
 
 class UIrt2PL:
