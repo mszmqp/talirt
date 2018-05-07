@@ -892,22 +892,24 @@ def recommend(**param):
     # cf_weight[pd.isna(prob_irt)] = 1
     # irt_weight[pd.isna(prob_cf)] = 1
     result = []
+    prob_irt.fillna(-1, inplace=True)
+    prob_cf.fillna(-1, inplace=True)
     for item1, item2 in zip(prob_cf.iteritems(), prob_irt.iteritems()):
         index_cf, value_cf = item1
         index_irt, value_irt = item2
         weight_irt = 0.5
         weight_cf = 0.5
         assert index_irt == index_cf
-        if np.isnan(value_irt):
+        # 两个数据都是空
+        if value_irt == -1 and value_cf == -1:
+            continue
+        if value_irt == -1:
             weight_cf = 1
             value_irt = 0
-        if np.isnan(value_cf):
+        if value_cf == -1:
             weight_irt = 1
             value_cf = 0
 
-        # 两个数据都是空
-        if weight_cf == 1 and weight_irt == 1:
-            continue
         value = weight_irt * value_irt + weight_cf * value_cf
         result.append(index_cf, value)
 
