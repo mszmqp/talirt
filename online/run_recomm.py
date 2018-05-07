@@ -217,6 +217,28 @@ class SimpleCF:
         obj.response_matrix = response_matrix
         return obj
 
+    def mse(self, user=None):
+        from sklearn.metrics import mean_squared_error
+        if user is None:
+            user_list = list(self.response_matrix.index)
+        elif isinstance(user, str):
+            user_list = [user]
+        else:
+            user_list = user
+
+        item_list = list(self.response_matrix.columns)
+        error_list = []
+
+        for user_id in user_list:
+            prob, vector = self.predict(user_id, item_list)
+            answered = vector != 0
+            vector = vector[answered]
+            prob = prob[answered]
+            vector[vector == -1] = 0
+            error = mean_squared_error(prob, vector)
+            error_list.append(error)
+        return pd.Series(error_list, index=user_id, name='mse')
+
 
 class UIrt2PL:
 
