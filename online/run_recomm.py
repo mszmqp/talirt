@@ -42,6 +42,8 @@ path_data = './data/'
 
 """
 
+_sim_threshold = 0.0
+
 
 def log(*args):
     print(' '.join(args), file=sys.stderr)
@@ -101,6 +103,7 @@ class RedisDB(DBABC):
 
 
 class SimpleCF:
+    default_value = None
 
     def __init__(self, response: pd.DataFrame = None, sequential=True):
         """
@@ -150,15 +153,19 @@ class SimpleCF:
         # 矩阵中没有目标学生的记录
         if not self.response_matrix.index.contains(stu_id):
             log('CF', 'stu_not_in_matrix')
-            return (None, None)
+            prob = pd.Series(data=[self.default_value] * len(items), index=items)
+            return prob, None
+
+        # 目标学生的向量
+        stu_vector_df = self.response_matrix.loc[stu_id, :]
 
         # 候选题目集合没出现在矩阵中
         if self.response_matrix.columns.intersection(items).empty:
             log('CF', 'items_not_in_matrix')
-            return (None, None)
+            # 返回的预测概率都是0.5
+            prob = pd.Series(data=[self.default_value] * len(items), index=items)
+            return prob, stu_vector_df
 
-        # 目标学生的向量
-        stu_vector_df = self.response_matrix.loc[stu_id, :]
         stu_vector = stu_vector_df.values.flatten()
         stu_vector = stu_vector.reshape(len(stu_vector), 1)
         # 目标学生在矩阵中的位置
@@ -174,15 +181,17 @@ class SimpleCF:
 
         # 相似度>0.8以上的学生记录,只保留候选题目集合
         # todo 不按相似度过滤可以扩大召回，反正后面有把相似度作为权重相乘
-        selected = sim_score.flatten() > 0.0
+        global _sim_threshold
+        selected = sim_score.flatten() >= _sim_threshold
         # 从相似学生list中去掉目标学生自己
         selected[stu_iloc] = False
 
         if not any(selected):
             # 没有与其相似的用户
             log('CF', 'stu_no_sim_stu')
-
-            return (None, None)
+            # 返回的预测概率都是0.5
+            prob = pd.Series(data=[self.default_value] * len(items), index=items)
+            return prob, stu_vector_df
 
         sim_vector = self.response_matrix.loc[selected, items]
 
@@ -193,7 +202,10 @@ class SimpleCF:
         # 这个值的区间是[-1,1],需要转换成[0,1]，转换方法为 x-min/interval,
         prob = (prob + 1) / 2
 
-        # prob 是pandas的series对象,其index是题目id，value是作答概率，其中有空值存在
+        # prob 是pandas的series对象,其index是题目id，value是作答概率，
+        # 其中有空值存在,空值就是没有预测出来结果，我们设置为0.5的概率值
+        if self.default_value is not None:
+            prob.fillna(self.default_value, inplace=True)
         return prob, stu_vector_df
 
     def serialize(self):
@@ -851,6 +863,31 @@ class RecommendIRT(RecommendABC):
         prob = sigmod(z)
         items['irt'] = prob
         return items
+
+
+def recommend(**param):
+    global _candidate_items, _stu_response_items, _level_response
+
+    candidate_items = load_candidate_items(**param)
+    stu_response = load_stu_response(**param)
+
+    # 从候选集合中剔除已作答过的题目
+    candidate_items.drop(stu_response, inplace=True, errors='ignore')
+
+    # IRT 推荐策略
+    rec_irt = RecommendIRT(**param)
+    rec_irt.load_model()
+    prob_irt, stu_theta = rec_irt.get_rec(stu_id=param['stu_id'], candidate_items=_candidate_items)
+
+    # CF 推荐策略
+    rec_cf = RecommendCF(**param)
+    rec_cf.load_model()
+    prob_cf, stu_vector = rec_cf.get_rec(stu_id=param['stu_id'], candidate_items=_candidate_items)
+
+    irt_weight = 0.5
+    cf_weight = 0.5
+    # prob_cf 会有空值
+    prob_irt * irt_weight + prob_cf * cf_weight
 
 
 def main():
