@@ -174,7 +174,7 @@ class SimpleCF:
 
         # 相似度>0.8以上的学生记录,只保留候选题目集合
         # todo 不按相似度过滤可以扩大召回，反正后面有把相似度作为权重相乘
-        selected = sim_score.flatten() > 0.8
+        selected = sim_score.flatten() > 0.2
         # 从相似学生list中去掉目标学生自己
         selected[stu_iloc] = False
 
