@@ -627,7 +627,7 @@ def load_candidate_items(**kwargs):
 
         """ % kwargs
 
-    _candidate_items = impala_client.sql(_sql).execute().set_index('item_id').loc[:50, :]
+    _candidate_items = impala_client.sql(_sql).execute().set_index('item_id').iloc[:50, :]
     impala_client.close()
     return _candidate_items
 
@@ -924,6 +924,10 @@ def main():
              'knowledge_id': "cb1471bd830c49c2b5ff8b833e3057bd",
              'stu_id': '黄白杰',
              }
+    recommend(**param)
+
+
+def test():
     # 这两份数据是所有策略都要用的，所以单独进行
     global _candidate_items, _stu_response_items, _level_response
 
