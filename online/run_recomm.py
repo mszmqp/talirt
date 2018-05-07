@@ -897,6 +897,8 @@ def recommend(**param):
     for item1, item2 in zip(prob_cf.iteritems(), prob_irt.iteritems()):
         index_cf, value_cf = item1
         index_irt, value_irt = item2
+        value_cf = float(value_cf)
+        value_irt = float(value_irt)
         weight_irt = 0.5
         weight_cf = 0.5
         assert index_irt == index_cf
