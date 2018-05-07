@@ -43,6 +43,10 @@ path_data = './data/'
 """
 
 
+def log(*args):
+    print(' '.join(args), file=sys.stderr)
+
+
 class DBABC(object):
     def save(self, data, year, city_id, grade_id, subject_id, level_id, term_id):
         pass
@@ -144,11 +148,13 @@ class SimpleCF:
         #     return None
 
         # 矩阵中没有目标学生的记录
-        if self.response_matrix.index.contains(stu_id):
+        if not self.response_matrix.index.contains(stu_id):
+            log('CF', 'stu_not_in_matrix')
             return (None, None)
 
         # 候选题目集合没出现在矩阵中
         if self.response_matrix.columns.intersection(items).empty:
+            log('CF', 'items_not_in_matrix')
             return (None, None)
 
         # 目标学生的向量
@@ -174,6 +180,8 @@ class SimpleCF:
 
         if not all(selected):
             # 没有与其相似的用户
+            log('CF', 'stu_no_sim_stus')
+
             return (None, None)
 
         sim_vector = self.response_matrix.loc[selected, items]
@@ -799,7 +807,7 @@ class RecommendIRT(RecommendABC):
         stu_thetas = self.load_model()
         theta = stu_thetas.get(stu_id, None)
         if theta is None:
-            return (None,None)
+            return (None, None)
 
         probs = self._predict(theta, candidate_items)
         return probs, theta
