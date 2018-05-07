@@ -103,7 +103,7 @@ class RedisDB(DBABC):
 
 
 class SimpleCF:
-    default_value = None
+    default_value = pd.NaT
 
     def __init__(self, response: pd.DataFrame = None, sequential=True):
         """
@@ -627,7 +627,7 @@ def load_candidate_items(**kwargs):
 
         """ % kwargs
 
-    _candidate_items = impala_client.sql(_sql).execute().set_index('item_id')
+    _candidate_items = impala_client.sql(_sql).execute().set_index('item_id').loc[:50, :]
     impala_client.close()
     return _candidate_items
 
@@ -883,11 +883,35 @@ def recommend(**param):
     rec_cf = RecommendCF(**param)
     rec_cf.load_model()
     prob_cf, stu_vector = rec_cf.get_rec(stu_id=param['stu_id'], candidate_items=_candidate_items)
+    items_count = len(_candidate_items)
 
-    irt_weight = 0.5
-    cf_weight = 0.5
-    # prob_cf 会有空值
-    prob_irt * irt_weight + prob_cf * cf_weight
+    # irt_weight = 0.5
+    # irt_weight = np.array([0.5]*items_count)
+    # cf_weight = np.array([0.5]*items_count)
+    #
+    # cf_weight[pd.isna(prob_irt)] = 1
+    # irt_weight[pd.isna(prob_cf)] = 1
+    result = []
+    for item1, item2 in zip(prob_cf.iteritems(), prob_irt.iteritems()):
+        index_irt, value_irt = item1
+        index_cf, value_cf = item2
+        weight_irt = 0.5
+        weight_cf = 0.5
+        assert index_irt == index_cf
+        if np.isnan(value_irt):
+            weight_cf = 1
+            value_irt = 0
+        if np.isnan(value_cf):
+            weight_irt = 1
+            value_cf = 0
+
+        # 两个数据都是空
+        if weight_cf == 1 and weight_irt == 1:
+            continue
+        value = weight_irt * value_irt + weight_cf * value_cf
+        result.append(index_cf, value)
+
+        print(index_cf, value)
 
 
 def main():
