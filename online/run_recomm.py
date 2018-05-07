@@ -178,9 +178,9 @@ class SimpleCF:
         # 从相似学生list中去掉目标学生自己
         selected[stu_iloc] = False
 
-        if not all(selected):
+        if not any(selected):
             # 没有与其相似的用户
-            log('CF', 'stu_no_sim_stus')
+            log('CF', 'stu_no_sim_stu')
 
             return (None, None)
 
