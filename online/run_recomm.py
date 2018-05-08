@@ -966,8 +966,8 @@ def test_level(**param):
     # 这两份数据是所有策略都要用的，所以单独进行
     global _candidate_items, _stu_response_items, _level_response
 
-    load_level_response(**param)
-    _level_response.to_pickle('level_response.bin')
+    # load_level_response(**param)
+    # _level_response.to_pickle('level_response.bin')
     _level_response = pd.read_pickle('level_response.bin')
 
     candidate_items = load_candidate_items(**param)
@@ -983,7 +983,7 @@ def test_level(**param):
 
     for stu_id in train_data.loc[:, 'user_id'].unique()[:3]:
         param['stu_id'] = stu_id
-        user_info = rec_obj.model_irt.user_vector[stu_id, :]
+        user_info = rec_obj.model_irt.user_vector[stu_id]
         stu_response = load_stu_response(**param)
         # 从候选集合中剔除已作答过的题目
         stu_candidate_items = candidate_items.drop(stu_response.index, errors='ignore')
