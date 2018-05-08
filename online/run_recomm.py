@@ -731,7 +731,7 @@ def load_level_response(**kwargs):
     return _level_response
 
 
-def load_stu_response(**kwargs):
+def load_stu_response(stu_id, level_response=None):
     """
     获取当前学生的答题记录
     Parameters
@@ -742,11 +742,12 @@ def load_stu_response(**kwargs):
     -------
 
     """
-    global _stu_response_items
-    if _stu_response_items is not None:
-        return _stu_response_items
-    stu_id = kwargs['stu_id']
-    level_response = load_level_response(**kwargs)
+    global _stu_response_items, _level_response
+    # if _stu_response_items is not None:
+    #     return _stu_response_items
+    # stu_id = kwargs['stu_id']
+    if level_response is None:
+        level_response = _level_response
     _stu_response_items = level_response.loc[level_response['user_id'] == stu_id, ['item_id', 'b', 'answer']]
     return _stu_response_items.drop_duplicates(subset=['item_id']).set_index('item_id')
 
@@ -801,13 +802,19 @@ class Recommend(object):
         self.db.save_bin('cf', key, self.model_cf.to_pickle())
 
     def select(self, stu_cur_acc, candidate_items):
-        if stu_cur_acc > 0.95:
-            return candidate_items[candidate_items['prob'] < 0.5].sort_values('prob', ascending=False)
-        if stu_cur_acc < 0.6:
-            return candidate_items[candidate_items['prob'] > 0.9].sort_values('prob', ascending=False)
 
-        return candidate_items[(candidate_items['prob'] >= 0.5) & (candidate_items['prob'] <= 0.9)].sort_values('prob',
-                                                                                                                ascending=False)
+        if stu_cur_acc > 0.95:
+            result = candidate_items[candidate_items['prob'] < 0.5].sort_values('prob', ascending=False)
+        elif stu_cur_acc < 0.6:
+            result = candidate_items.sort_values('prob', ascending=False)
+        else:
+            result = candidate_items[(candidate_items['prob'] >= 0.5) & (candidate_items['prob'] <= 0.9)].sort_values(
+                'prob',
+                ascending=False)
+        if len(result) == 0:
+            result = candidate_items.sort_values('prob', ascending=False)
+
+        return result
 
     def get_rec(self, stu_id: str, stu_acc, candidate_items: pd.DataFrame):
         """
@@ -884,16 +891,16 @@ def metric(rec_obj, train_data, test_data):
     y_prob = y_prob[selected]
     y_true = test_data.loc[:, 'answer'][selected]
 
-    print("irt", 'mse', metrics.mean_squared_error(y_true, y_prob))
+    print("irt", 'mse', metrics.mean_squared_error(y_true, y_prob),file=sys.stderr)
     threshold = 0.5
     y_pred = y_prob.copy()
     y_pred[y_pred > threshold] = 1
     y_pred[y_pred <= threshold] = 0
 
-    print("irt", 'acc', metrics.accuracy_score(y_true, y_pred))
-    # print(pd.value_counts(y_true))
+    print("irt", 'acc', metrics.accuracy_score(y_true, y_pred),file=sys.stderr)
+
     fpr, tpr, thresholds = metrics.roc_curve(y_true, y_prob, pos_label=1)
-    print("irt", 'auc', metrics.auc(fpr, tpr))
+    print("irt", 'auc', metrics.auc(fpr, tpr),file=sys.stderr)
 
 
 def main(options):
@@ -904,11 +911,11 @@ def main(options):
              'level_id': 'ff8080812fc298b5012fd3d3becb1248',
              'term_id': '1',
              'knowledge_id': "cb1471bd830c49c2b5ff8b833e3057bd",
-             'stu_id': '黄白杰',
+             'stu_id': '殷烨嵘',
              }
     # online(**param)
-
-    test_level(**param)
+    test_one(**param)
+    # test_level(**param)
 
 
 def test_one(**param):
@@ -919,14 +926,14 @@ def test_one(**param):
     # _level_response.to_pickle('level_response.bin')
     _level_response = pd.read_pickle('level_response.bin')
 
-    stu_response = load_stu_response(**param)
+    train_data = _level_response.loc[_level_response['c_sortorder'] < 6, :]
+    test_data = _level_response.loc[_level_response['c_sortorder'] >= 6, :]
+
+    stu_response = load_stu_response(param['stu_id'], train_data)
     stu_acc = stu_response.loc[:, 'answer'].sum() / len(stu_response)
     candidate_items = load_candidate_items(**param)
     # 从候选集合中剔除已作答过的题目
     candidate_items.drop(stu_response.index, inplace=True, errors='ignore')
-
-    train_data = _level_response.loc[_level_response['c_sortorder'] < 6, :]
-    test_data = _level_response.loc[_level_response['c_sortorder'] >= 6, :]
 
     rec_obj = Recommend(db=DiskDB(), param=param)
     print('-' * 10, 'train', '-' * 10, file=sys.stderr)
@@ -945,18 +952,16 @@ def test_one(**param):
     rec_obj.load_model()
     print(rec_obj.model_irt.user_vector.loc[param['stu_id'], :], file=sys.stderr)
 
-    print('-' * 10, 'predict', '-' * 10, file=sys.stderr)
+    # print('-' * 10, 'predict', '-' * 10, file=sys.stderr)
+    print('-' * 10, 'recommend', '-' * 10, file=sys.stderr)
 
     result = rec_obj.get_rec(param['stu_id'], stu_acc=stu_acc, candidate_items=candidate_items)
 
-    print(candidate_items.sort_values('prob'), file=sys.stderr)
-
-    print('-' * 10, 'recommd', '-' * 10, file=sys.stderr)
-
+    # print(candidate_items.sort_values('prob'), file=sys.stderr)
     print(result, file=sys.stderr)
 
     # print(json.dumps(result))
-    print('-' * 10, 'metrix', '-' * 10, file=sys.stderr)
+    print('-' * 10, 'metric', '-' * 10, file=sys.stderr)
 
     metric(rec_obj, train_data=train_data, test_data=test_data)
     return
@@ -981,19 +986,32 @@ def test_level(**param):
 
     metric(rec_obj, train_data=train_data, test_data=test_data)
 
-    for stu_id in train_data.loc[:, 'user_id'].unique()[:3]:
+    rec_difficulty = []
+    for stu_id in list(rec_obj.model_irt.user_vector.index):
         param['stu_id'] = stu_id
-        user_info = rec_obj.model_irt.user_vector.loc[stu_id, :]
-        stu_response = load_stu_response(**param)
+        # user_info = rec_obj.model_irt.user_vector.loc[stu_id, :]
+        stu_response = load_stu_response(param['stu_id'], train_data)
         # 从候选集合中剔除已作答过的题目
         stu_candidate_items = candidate_items.drop(stu_response.index, errors='ignore')
 
         stu_acc = stu_response.loc[:, 'answer'].sum() / len(stu_response)
 
         result = rec_obj.get_rec(stu_id, stu_acc=stu_acc, candidate_items=stu_candidate_items)
-        rec_difficulty = result.iloc[0, 'b']
-        user_info['rec_difficulty'] = rec_difficulty
-        print(user_info, file=sys.stderr)
+        if len(result) == 0:
+            rec_d = -1
+        else:
+            rec_d = result.iloc[0]['b']
+        # user_info['rec_difficulty'] = rec_difficulty
+        rec_difficulty.append(rec_d)
+
+    user_info = rec_obj.model_irt.user_vector
+    user_info['rec_b'] = rec_difficulty
+    file_name = '推荐结果测试.xlsx'
+    writer = pd.ExcelWriter(file_name)
+    user_info.to_excel(writer, encoding="UTF-8")
+    writer.save()
+
+    # print(user_info, file=sys.stderr)
 
     # rec_obj.save_model()
 
