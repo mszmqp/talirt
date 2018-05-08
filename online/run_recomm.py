@@ -32,13 +32,13 @@ from scipy.optimize import minimize
 # from tqdm import tqdm
 import tempfile
 import abc
+import argparse
 
-sys.path.append("../")
+# sys.path.append("../")
 
-path_data = './data/'
+# path_data = './data/'
 """
 模型输入数据进行训练
-
 
 """
 
@@ -49,89 +49,85 @@ def log(*args):
     print(' '.join(args), file=sys.stderr)
 
 
-class DBABC(object):
-    def save(self, data, year, city_id, grade_id, subject_id, level_id, term_id):
-        pass
+class DiskDB:
 
-    def load(self, year, city_id, grade_id, subject_id, level_id, term_id):
-        pass
-
-
-class MemoryDB(DBABC):
-
-    def __init__(self, table):
-        self.path = os.path.join('/tmp/cache_learn', table)
+    def __init__(self, path='./cache_learn'):
+        self.path = path
         if not os.path.exists(self.path):
             os.makedirs(self.path)
 
-    def save_json(self, data, year, city_id, grade_id, subject_id, level_id, term_id):
-        file_name = '_'.join([str(year), str(city_id), str(grade_id), str(subject_id), str(level_id), str(term_id)])
-        with open(os.path.join(self.path, file_name), 'w') as fh:
-            json.dump(data, fh)
+    def save_json(self, table, key, value):
+        path = os.path.join(self.path, table)
+        os.makedirs(path, exist_ok=True)
+        file_name = os.path.join(path, key)
+        with open(file_name, 'w') as fh:
+            json.dump(value, fh)
 
-    def save_bin(self, data, year, city_id, grade_id, subject_id, level_id, term_id):
-        file_name = '_'.join([str(year), str(city_id), str(grade_id), str(subject_id), str(level_id), str(term_id)])
+    def save_bin(self, table, key, value):
+        path = os.path.join(self.path, table)
+        os.makedirs(path, exist_ok=True)
+        file_name = os.path.join(path, key)
+        with open(file_name, 'wb') as fh:
+            fh.write(value)
 
-        with open(os.path.join(self.path, file_name), 'wb') as fh:
-            fh.write(data)
-
-    def load_json(self, year, city_id, grade_id, subject_id, level_id, term_id):
-        file_name = '_'.join([str(year), str(city_id), str(grade_id), str(subject_id), str(level_id), str(term_id)])
-        with open(os.path.join(self.path, file_name), 'r') as fh:
+    def load_json(self, table, key):
+        file_name = os.path.join(self.path, table, key)
+        with open(file_name, 'r') as fh:
             return json.load(fh)
 
-    def load_bin(self, year, city_id, grade_id, subject_id, level_id, term_id):
-        file_name = '_'.join([str(year), str(city_id), str(grade_id), str(subject_id), str(level_id), str(term_id)])
-        with open(os.path.join(self.path, file_name), 'rb') as fh:
+    def load_bin(self, table, key):
+        file_name = os.path.join(self.path, table, key)
+        with open(file_name, 'rb') as fh:
             return fh.read()
 
-    def file_path(self, year, city_id, grade_id, subject_id, level_id, term_id):
-        file_name = '_'.join([str(year), str(city_id), str(grade_id), str(subject_id), str(level_id), str(term_id)])
+    # def save_json(self, data, year, city_id, grade_id, subject_id, level_id, term_id):
+    #     file_name = '_'.join([str(year), str(city_id), str(grade_id), str(subject_id), str(level_id), str(term_id)])
+    #
 
-        return os.path.join(self.path, file_name)
+    # def save_bin(self, data, year, city_id, grade_id, subject_id, level_id, term_id):
+    #     file_name = '_'.join([str(year), str(city_id), str(grade_id), str(subject_id), str(level_id), str(term_id)])
+    #
+    #     with open(os.path.join(self.path, file_name), 'wb') as fh:
+    #         fh.write(data)
+    #
+    # def load_json(self, year, city_id, grade_id, subject_id, level_id, term_id):
+    #     file_name = '_'.join([str(year), str(city_id), str(grade_id), str(subject_id), str(level_id), str(term_id)])
+    #     with open(os.path.join(self.path, file_name), 'r') as fh:
+    #         return json.load(fh)
 
+    # def load_bin(self, year, city_id, grade_id, subject_id, level_id, term_id):
+    #     file_name = '_'.join([str(year), str(city_id), str(grade_id), str(subject_id), str(level_id), str(term_id)])
+    #     with open(os.path.join(self.path, file_name), 'rb') as fh:
+    #         return fh.read()
 
-class DiskDB(MemoryDB):
-    def __init__(self, table, path='./cache_learn/'):
-        self.path = os.path.join(path, table)
-        if not os.path.exists(self.path):
-            os.makedirs(self.path, exist_ok=True)
-
-
-class RedisDB(DBABC):
-    pass
+    # def file_path(self, year, city_id, grade_id, subject_id, level_id, term_id):
+    #     file_name = '_'.join([str(year), str(city_id), str(grade_id), str(subject_id), str(level_id), str(term_id)])
+    #
+    #     return os.path.join(self.path, file_name)
 
 
 class SimpleCF:
-    default_value = pd.NaT
+    default_value = np.nan
 
-    def __init__(self, response: pd.DataFrame = None, sequential=True):
+    def fit(self, response: pd.DataFrame, sequential=True):
         """
         :param response_df: 作答数据，必须包含三列 user_id item_id answer
         D=1.702
         """
+        assert response is not None
         self.response_matrix = None
-        if response is not None:
-            if sequential:
-                self.response_matrix = response.pivot(index="user_id", columns="item_id", values='answer')
 
-            else:
-                self.response_matrix = response
-                self.response_matrix.index.name = 'user_id'
+        if sequential:
+            self.response_matrix = response.pivot(index="user_id", columns="item_id", values='answer')
+
+        else:
+            self.response_matrix = response
+            self.response_matrix.index.name = 'user_id'
 
             # 答错用-1表示，答对用1表述，未作答用0
-            self.response_matrix[self.response_matrix == 0] = -1
-            self.response_matrix.fillna(0, inplace=True)
-            # 矩阵中应该不包含全是0的行，否则不能求模
-
-            # 被试者id
-            # self._user_ids = list(self.response_matrix.index)
-            # self.user_count = len(self._user_ids)
-            # 项目id
-            # self._item_ids = list(self.response_matrix.columns)
-            # self.item_count = len(self._item_ids)
-
-    def fit(self):
+        self.response_matrix[self.response_matrix == 0] = -1
+        self.response_matrix.fillna(0, inplace=True)
+        # 矩阵中应该不包含全是0的行，否则不能求模
         return True
 
     def predict(self, stu_id, items):
@@ -147,9 +143,13 @@ class SimpleCF:
 
         """
 
-        # if 'item_id' not in self.response_matrix.columns:
-        #     return None
-
+        assert self.response_matrix is not None
+        if isinstance(items, pd.DataFrame):
+            items = items.index
+        elif isinstance(items, pd.Series) or isinstance(items, list):
+            pass
+        else:
+            raise ValueError('items 类型错误')
         # 矩阵中没有目标学生的记录
         if not self.response_matrix.index.contains(stu_id):
             log('CF', 'stu_not_in_matrix')
@@ -208,7 +208,7 @@ class SimpleCF:
             prob.fillna(self.default_value, inplace=True)
         return prob, stu_vector_df
 
-    def serialize(self):
+    def to_pickle(self):
         fh = tempfile.TemporaryFile(mode='w+b')
         self.response_matrix.to_pickle(path=fh)
         fh.seek(0)
@@ -217,7 +217,7 @@ class SimpleCF:
         return data
 
     @classmethod
-    def unserialize(cls, data):
+    def from_pickle(cls, data):
         fh = tempfile.TemporaryFile(mode='w+b')
         fh.write(data)
         fh.seek(0)
@@ -253,65 +253,60 @@ class SimpleCF:
 
 
 class UIrt2PL:
+    def __init__(self, D=1.702):
+        self.D = D
+        self.k = 1
+        self.user_vector = None
+        self.item_vector = None
 
-    def __init__(self, response: pd.DataFrame = None, sequential=True, k=1, D=1.702):
+    def fit(self, response: pd.DataFrame, sequential=True):
         """
         :param response_df: 作答数据，必须包含三列 user_id item_id answer
         D=1.702
         """
-        if response is not None:
-            if sequential:
-                if 'user_id' not in response.columns or 'item_id' not in response.columns or 'answer' not in response.columns:
-                    raise ValueError("input dataframe have no user_id or item_id  or answer")
+        assert response is not None
 
-                self.response_sequence = response[['user_id', 'item_id', 'answer']]
-                self.response_matrix = self.response_sequence.pivot(index="user_id", columns="item_id", values='answer')
-
-            else:
-                self.response_matrix = response.copy()
-
-                self.response_matrix.index.name = 'user_id'
-                # 矩阵形式生成序列数据
-                self.response_sequence = pd.melt(self.response_matrix.reset_index(), id_vars=['user_id'],
-                                                 var_name="item_id",
-                                                 value_name='answer')
-                # 去掉空值
-                self.response_sequence.dropna(inplace=True)
-
-            # 被试者id
-            self._user_ids = list(self.response_matrix.index)
-            self.user_count = len(self._user_ids)
-            # 项目id
-            self._item_ids = list(self.response_matrix.columns)
-            self.item_count = len(self._item_ids)
-            self._init_model()
-            labels = set(response.columns).intersection(set(['a', 'b', 'c']))
-            if sequential and labels:
-                item_info = response[['item_id'] + list(labels)].drop_duplicates(subset=['item_id'])
-                item_info.set_index('item_id', inplace=True)
-                self.set_abc(item_info, columns=list(labels))
+        if sequential:
+            self.response_sequence = response[['user_id', 'item_id', 'answer']]
+            self.response_matrix = self.response_sequence.pivot(index="user_id", columns="item_id", values='answer')
 
         else:
+            self.response_matrix = response.copy()
+            self.response_matrix.index.name = 'user_id'
+            # 矩阵形式生成序列数据
+            self.response_sequence = pd.melt(self.response_matrix.reset_index(), id_vars=['user_id'],
+                                             var_name="item_id",
+                                             value_name='answer')
+            # 去掉空值
+            self.response_sequence.dropna(inplace=True)
 
-            self.user_vector = None
-            self.item_vector = None
-        self.trace = None
-        self.D = D
-        self.k = k
+        # 
+        self._init_model()
+        labels = set(response.columns).intersection(set(['a', 'b', 'c']))
+        if sequential and labels:
+            item_info = response[['item_id'] + list(labels)].drop_duplicates(subset=['item_id'])
+            item_info.set_index('item_id', inplace=True)
+            self.set_abc(item_info, columns=list(labels))
+
+        return self.estimate_theta()
 
     def _init_model(self):
         assert self.response_sequence is not None
+        user_ids = list(self.response_matrix.index)
+        user_count = len(user_ids)
+        item_ids = list(self.response_matrix.columns)
+        item_count = len(item_ids)
         self.user_vector = pd.DataFrame({
-            'iloc': np.arange(self.user_count),
-            'user_id': self._user_ids,
-            'theta': np.zeros(self.user_count)},
-            index=self._user_ids)
+            'iloc': np.arange(user_count),
+            'user_id': user_ids,
+            'theta': np.zeros(user_count)},
+            index=user_ids)
         self.item_vector = pd.DataFrame(
-            {'iloc': np.arange(self.item_count),
-             'item_id': self._item_ids,
-             'a': np.ones(self.item_count),
-             'b': np.zeros(self.item_count),
-             'c': np.zeros(self.item_count)}, index=self._item_ids)
+            {'iloc': np.arange(item_count),
+             'item_id': item_ids,
+             'a': np.ones(item_count),
+             'b': np.zeros(item_count),
+             'c': np.zeros(item_count)}, index=item_ids)
 
         self.response_sequence = self.response_sequence.join(self.user_vector['iloc'].rename('user_iloc'), on='user_id',
                                                              how='left')
@@ -346,15 +341,15 @@ class UIrt2PL:
 
         if self.user_vector is None:
             assert isinstance(values, pd.DataFrame), "values的类型必须是pandas.DataFrame"
-            self.user_count = len(values)
-            self._user_ids = list(values.index)
+            user_count = len(values)
+            user_ids = list(values.index)
 
             self.user_vector = pd.DataFrame({
-                'iloc': np.arange(self.user_count),
-                'user_id': self._user_ids,
+                'iloc': np.arange(user_count),
+                'user_id': user_ids,
                 'theta': values.loc[:, 'theta'].values.flatten(),
             },
-                index=self._user_ids)
+                index=user_ids)
 
         else:
             if isinstance(values, pd.DataFrame):
@@ -394,18 +389,18 @@ class UIrt2PL:
 
         if self.item_vector is None:
             assert isinstance(values, pd.DataFrame), "values的类型必须是pandas.DataFrame"
-            self.item_count = len(values)
-            self._item_ids = list(values.index)
+            item_count = len(values)
+            item_ids = list(values.index)
 
             self.item_vector = pd.DataFrame({
-                'iloc': np.arange(self.item_count),
-                'item_id': self._item_ids,
-                'a': np.ones(self.item_count),
-                'b': np.zeros(self.item_count),
-                'c': np.zeros(self.item_count),
+                'iloc': np.arange(item_count),
+                'item_id': item_ids,
+                'a': np.ones(item_count),
+                'b': np.zeros(item_count),
+                'c': np.zeros(item_count),
 
             },
-                index=self._item_ids)
+                index=item_ids)
 
             self.item_vector.loc[:, columns] = values.loc[:, columns].values
 
@@ -439,20 +434,44 @@ class UIrt2PL:
         s = (1 - item_v['c'].values) * e / (1.0 + e) + item_v['c'].values
         return s
 
-    def predict_proba_x(self, users, items):
+    def predict(self, users, items):
+        if isinstance(items, pd.DataFrame):
+            self.set_items(items)
+        if isinstance(users, pd.DataFrame):
+            self.set_theta(users)
+
         user_count = len(users)
         item_count = len(items)
         theta = self.user_vector.loc[users, 'theta'].values.reshape((user_count, 1))
         a = self.item_vector.loc[items, 'a'].values.reshape((1, item_count))
         b = self.item_vector.loc[items, 'b'].values.reshape((1, item_count))
-        c = self.item_vector.loc[items, 'c'].values.reshape((1, item_count))
-        c = c.repeat(user_count, axis=0)
+        # c = self.item_vector.loc[items, 'c'].values.reshape((1, item_count))
+        # c = c.repeat(user_count, axis=0)
         z = a.repeat(user_count, axis=0) * (
                 theta.repeat(item_count, axis=1) - b.repeat(user_count, axis=0))
+        prob_matrix = sigmod(z)
+        # e = np.exp(z)
+        # s =   e / (1.0 + e)
+        return prob_matrix
 
-        e = np.exp(z)
-        s = c + (1 - c) * e / (1.0 + e)
-        return s
+    def predict_simple(self, stu_id, items: pd.DataFrame):
+        """
+
+        Parameters
+        ----------
+        theta
+        items
+
+        Returns
+        -------
+
+        """
+        theta = self.user_vector.loc[stu_id, 'theta']
+        b = items.loc[:, ['b']].values
+        z = self.D * (theta - b)
+        prob = sigmod(z)
+        # items['irt'] = prob
+        return pd.Series(data=prob.flatten(), index=items.index), theta
 
     def _prob(self, theta: np.ndarray, a: np.ndarray, b: np.ndarray, c: np.ndarray = None):
         """
@@ -538,15 +557,15 @@ class UIrt2PL:
         -------
 
         """
-
+        item_count = len(self.item_vector)
         if 'a' in self.item_vector.columns:
-            a = self.item_vector.loc[:, 'a'].values.reshape(1, self.item_count)
+            a = self.item_vector.loc[:, 'a'].values.reshape(1, item_count)
         else:
             a = None
 
-        b = self.item_vector.loc[:, 'b'].values.reshape(1, self.item_count)
+        b = self.item_vector.loc[:, 'b'].values.reshape(1, item_count)
         # if 'c' in self.item_vector.columns:
-        #     c = self.item_vector.loc[:, 'c'].values.reshape(1, self.item_count)
+        #     c = self.item_vector.loc[:, 'c'].values.reshape(1, item_count)
         # else:
         #     c = None
 
@@ -568,20 +587,40 @@ class UIrt2PL:
 
         return all(success)
 
-    def fit(self):
-        return self.estimate_theta()
-
-    def serialize(self):
+    def to_dict(self):
         return self.user_vector['theta'].to_dict()
 
-    def unserialize(self, serialize_data):
-
+    @classmethod
+    def from_dict(cls, serialize_data):
+        obj = cls()
         index = []
         theta = []
         for key, value in serialize_data.items():
             index.append(key)
             theta.append(value)
-        self.set_theta(pd.DataFrame({'theta': theta}, index=index))
+        obj.set_theta(pd.DataFrame({'theta': theta}, index=index))
+        return obj
+
+    def to_pickle(self):
+        fh = tempfile.TemporaryFile(mode='w+b')
+        self.user_vector.to_pickle(path=fh)
+        fh.seek(0)
+        data = fh.read()
+        fh.close()
+        return data
+
+    @classmethod
+    def from_pickle(cls, data):
+        fh = tempfile.TemporaryFile(mode='w+b')
+        fh.write(data)
+        fh.seek(0)
+        user_vector = pd.read_pickle(fh)
+        fh.close()
+        obj = cls()
+        # cf构造函数 需要把0-1作答结果转成-1，1的形式，
+        # 这里不能用构造函数传入数据
+        obj.user_vector = user_vector
+        return obj
 
 
 _candidate_items = None
@@ -654,9 +693,8 @@ def load_level_response(**kwargs):
 
     _sql = """
                 select
-
+                    sa.c_sortorder,
                     fk_student as stu_id,
-
                     stu_name as user_id,
                     fk_question as item_id,
                     difficulty_id as b,
@@ -706,82 +744,54 @@ def load_stu_response(**kwargs):
     return _stu_response_items
 
 
-class RecommendABC(object):
-    model = None
-    db = None
+class Recommend(object):
+    model_irt = None
+    model_cf = None
+    probs = {}
 
-    def __init__(self, **kwargs):
-        self.param = kwargs
-        self.year = kwargs['year']
-        self.city_id = kwargs['city_id']
-        self.grade_id = kwargs['grade_id']
-        self.subject_id = kwargs['subject_id']
-        self.level_id = kwargs['level_id']
-        self.term_id = kwargs['term_id']
-        self.knowledge_id = kwargs['knowledge_id']
+    def __init__(self, db, param):
+        self.db = db
+        self.param = param
+        self.year = param['year']
+        self.city_id = param['city_id']
+        self.grade_id = param['grade_id']
+        self.subject_id = param['subject_id']
+        self.level_id = param['level_id']
+        self.term_id = param['term_id']
+        self.knowledge_id = param['knowledge_id']
 
-    @abc.abstractmethod
-    def train_model(self, response: pd.DataFrame):
-        raise NotImplemented
-
-    @abc.abstractmethod
-    def load_model(self):
-        raise NotImplemented
-
-    @abc.abstractmethod
-    def save_model(self):
-        """
-        模型数据持久化保存
-        Returns
-        -------
-
-        """
-        raise NotImplemented
-
-    @abc.abstractmethod
-    def get_rec(self, stu_id: str, candidate_items: pd.DataFrame):
-        """
-        Parameters
-        ----------
-        stu_id
-        items : 可以为空，已经作答过的题目不用返回
-        Returns
-        -------
-        """
-        raise NotImplemented
-
-
-class RecommendCF(RecommendABC):
-    db = DiskDB(table='cf')
-
-    def train_model(self, response: pd.DataFrame):
-        if response is None:
-            response = load_level_response(**self.param)
-        self.model = SimpleCF(response=response, sequential=True)
-        ok = self.model.fit()
-        return ok
+    def train_model(self, response: pd.DataFrame, sequential=True):
+        self.model_irt = UIrt2PL()
+        self.model_cf = SimpleCF()
+        return all([self.model_cf.fit(response=response, sequential=sequential),
+                    self.model_irt.fit(response=response, sequential=sequential)])
 
     def load_model(self):
-        data = self.db.load_bin(year=self.year,
-                                city_id=self.city_id,
-                                grade_id=self.grade_id,
-                                subject_id=self.subject_id,
-                                level_id=self.level_id,
-                                term_id=self.term_id)
-        self.model = SimpleCF.unserialize(data)
+        key = '_'.join(
+            [str(self.year),
+             str(self.city_id),
+             str(self.grade_id),
+             str(self.subject_id),
+             str(self.term_id),
+             str(self.level_id),
+             ])
 
+        self.model_irt = UIrt2PL.from_dict(self.db.load_json('irt', key=key))
+        self.model_cf = SimpleCF.from_pickle(self.db.load_bin('cf', key=key))
         # return True
 
     def save_model(self):
-        data = self.model.serialize()
-        self.db.save_bin(data=data,
-                         year=self.year,
-                         city_id=self.city_id,
-                         grade_id=self.grade_id,
-                         subject_id=self.subject_id,
-                         level_id=self.level_id,
-                         term_id=self.term_id
-                         )
+        key = '_'.join(
+            [str(self.year),
+             str(self.city_id),
+             str(self.grade_id),
+             str(self.subject_id),
+             str(self.term_id),
+             str(self.level_id),
+             ])
+
+        self.db.save_json('irt', key, self.model_irt.to_dict())
+        self.db.save_bin('cf', key, self.model_cf.to_pickle())
 
     def get_rec(self, stu_id: str, candidate_items: pd.DataFrame):
         """
@@ -795,77 +805,40 @@ class RecommendCF(RecommendABC):
         -------
 
         """
-        if self.model is None:
-            self.load_model()
-        if self.model is None:
-            return (None, None)
-        return self.model.predict(stu_id=stu_id, items=candidate_items.index)
+        prob_irt, stu_theta = self.model_irt.predict_simple(stu_id, candidate_items)
+        prob_cf, stu_vector = self.model_cf.predict(stu_id, candidate_items)
+        self.probs['irt'] = prob_irt
+        self.probs['cf'] = prob_cf
+        result = []
+        prob_irt.fillna(-1, inplace=True)
+        prob_cf.fillna(-1, inplace=True)
+        for item1, item2 in zip(prob_cf.iteritems(), prob_irt.iteritems()):
+            index_cf, value_cf = item1
+            index_irt, value_irt = item2
+            value_cf = float(value_cf)
+            value_irt = float(value_irt)
+            weight_irt = 0.5
+            weight_cf = 0.5
+            assert index_irt == index_cf
+            # 两个数据都是空
+            if value_irt == -1 and value_cf == -1:
+                continue
+            if value_irt == -1:
+                weight_cf = 1
+                value_irt = 0
+            if value_cf == -1:
+                weight_irt = 1
+                value_cf = 0
+
+            value = weight_irt * value_irt + weight_cf * value_cf
+            result.append((index_cf, value))
+
+            # print(index_cf, value)
+
+        return result
 
 
-class RecommendIRT(RecommendABC):
-    '''
-    # 示例程序为从csv读取文件
-    '''
-    db = DiskDB(table='irt')
-    D = 1.702
-
-    def train_model(self, response: pd.DataFrame):
-        self.model = UIrt2PL(response, sequential=True, D=self.D)
-        ok = self.model.fit()
-        # print("train", ok, file=sys.stderr)
-        return ok
-
-    def info(self):
-        print(self.model.user_vector.describe(), file=sys.stderr)
-
-    def load_model(self):
-        stu_theta = self.db.load_json(year=self.year,
-                                      city_id=self.city_id,
-                                      grade_id=self.grade_id,
-                                      subject_id=self.subject_id,
-                                      level_id=self.level_id,
-                                      term_id=self.term_id)
-
-        return stu_theta
-
-    def save_model(self):
-        data = self.model.serialize()
-        self.db.save_json(data=data, year=self.year,
-                          city_id=self.city_id,
-                          grade_id=self.grade_id,
-                          subject_id=self.subject_id,
-                          level_id=self.level_id,
-                          term_id=self.term_id)
-
-    def get_rec(self, stu_id: str, candidate_items: pd.DataFrame):
-        stu_thetas = self.load_model()
-        theta = stu_thetas.get(stu_id, None)
-        if theta is None:
-            return (None, None)
-
-        probs = self._predict(theta, candidate_items)
-        return probs, theta
-
-    def _predict(self, theta, items: pd.DataFrame):
-        """
-        把_predict直接写在推荐类里，这样在线上就不用再创建model对象了，应该能节省点时间
-        Parameters
-        ----------
-        theta
-        items
-
-        Returns
-        -------
-
-        """
-        b = items.loc[:, ['b']].values
-        z = self.D * (theta - b)
-        prob = sigmod(z)
-        # items['irt'] = prob
-        return pd.Series(data=prob.flatten(), dtype="float", index=items.index)
-
-
-def recommend(**param):
+def online(**param):
     global _candidate_items, _stu_response_items, _level_response
 
     candidate_items = load_candidate_items(**param)
@@ -873,52 +846,13 @@ def recommend(**param):
 
     # 从候选集合中剔除已作答过的题目
     candidate_items.drop(stu_response, inplace=True, errors='ignore')
-
-    # IRT 推荐策略
-    rec_irt = RecommendIRT(**param)
-    rec_irt.load_model()
-    prob_irt, stu_theta = rec_irt.get_rec(stu_id=param['stu_id'], candidate_items=_candidate_items)
-
-    # CF 推荐策略
-    rec_cf = RecommendCF(**param)
-    rec_cf.load_model()
-    prob_cf, stu_vector = rec_cf.get_rec(stu_id=param['stu_id'], candidate_items=_candidate_items)
-    items_count = len(_candidate_items)
-
-    # irt_weight = 0.5
-    # irt_weight = np.array([0.5]*items_count)
-    # cf_weight = np.array([0.5]*items_count)
-    #
-    # cf_weight[pd.isna(prob_irt)] = 1
-    # irt_weight[pd.isna(prob_cf)] = 1
-    result = []
-    prob_irt.fillna(-1, inplace=True)
-    prob_cf.fillna(-1, inplace=True)
-    for item1, item2 in zip(prob_cf.iteritems(), prob_irt.iteritems()):
-        index_cf, value_cf = item1
-        index_irt, value_irt = item2
-        value_cf = float(value_cf)
-        value_irt = float(value_irt)
-        weight_irt = 0.5
-        weight_cf = 0.5
-        assert index_irt == index_cf
-        # 两个数据都是空
-        if value_irt == -1 and value_cf == -1:
-            continue
-        if value_irt == -1:
-            weight_cf = 1
-            value_irt = 0
-        if value_cf == -1:
-            weight_irt = 1
-            value_cf = 0
-
-        value = weight_irt * value_irt + weight_cf * value_cf
-        result.append(index_cf, value)
-
-        print(index_cf, value)
+    rec_obj = Recommend(db=DiskDB(), param=param)
+    rec_obj.load_model()
+    result = rec_obj.get_rec(param['stu_id'], candidate_items)
+    print(json.dumps(result))
 
 
-def main():
+def main(options):
     param = {'year': '2018',
              'city_id': '0571',
              'grade_id': '7',
@@ -928,41 +862,88 @@ def main():
              'knowledge_id': "cb1471bd830c49c2b5ff8b833e3057bd",
              'stu_id': '黄白杰',
              }
-    recommend(**param)
+    # online(**param)
+
+    test(**param)
 
 
-def test():
+def test(**param):
     # 这两份数据是所有策略都要用的，所以单独进行
     global _candidate_items, _stu_response_items, _level_response
 
-    candidate_items = load_candidate_items(**param)
+    # load_level_response(**param)
+    # _level_response.to_pickle('level_response.bin')
+    _level_response = pd.read_pickle('level_response.bin')
+
     stu_response = load_stu_response(**param)
+
+    candidate_items = load_candidate_items(**param)
+    # 从候选集合中剔除已作答过的题目
+    candidate_items.drop(stu_response, inplace=True, errors='ignore')
     # 从候选集合中剔除已作答过的题目
     candidate_items.drop(stu_response, inplace=True, errors='ignore')
 
-    re_irt = RecommendIRT(**param)
-    # 训练模型
-    re_irt.train_model(response=_level_response)
-    # 保存模型
-    re_irt.save_model()
-    # debug 打印训练结果概述
-    re_irt.info()
-    # 获取作答概率
-    probs, theta = re_irt.get_rec(stu_id='黄白杰', candidate_items=_candidate_items)
+    train_data = _level_response.loc[_level_response['c_sortorder'] < 6, :]
+    test_data = _level_response.loc[_level_response['c_sortorder'] >= 6, :]
 
-    print(theta)
-    print(probs)
+    rec_obj = Recommend(db=DiskDB(), param=param)
+    print('-' * 10, 'train', '-' * 10, file=sys.stderr)
 
-    print('-' * 10, "cf", '-' * 10)
-    re_cf = RecommendCF(**param)
-    re_cf.train_model(response=_level_response)
-    re_cf.save_model()
-    re_cf.load_model()
-    cf_probs, stu_vector = re_cf.get_rec(stu_id='黄白杰', candidate_items=_candidate_items)
-    print(cf_probs)
+    ok = rec_obj.train_model(train_data)
+    print('train_model', ok, file=sys.stderr)
+    print(rec_obj.model_irt.user_vector.loc[param['stu_id'], :], file=sys.stderr)
+
+    print('-' * 10, 'save', '-' * 10, file=sys.stderr)
+
+    rec_obj.save_model()
+
+    print('-' * 10, 'load', '-' * 10, file=sys.stderr)
+
+    rec_obj.load_model()
+    print(rec_obj.model_irt.user_vector.loc[param['stu_id'], :], file=sys.stderr)
+
+    print('-' * 10, 'predict', '-' * 10, file=sys.stderr)
+
+    result = rec_obj.get_rec(param['stu_id'], candidate_items)
+
+    print(rec_obj.probs['irt'], file=sys.stderr)
+
+    # print(json.dumps(result))
+
     return
 
 
+def metric(**param):
+    pass
+
+
+# c_sortorder
+
+
+def init_option():
+    """
+    初始化命令行参数项
+    Returns:
+        OptionParser 的parser对象
+    """
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-i", "--input", dest="input",
+                        help=u"输入文件；默认标准输入设备")
+    parser.add_argument("-o", "--output", dest="output",
+                        help=u"输出文件；默认标准输出设备")
+
+    return parser
+
+
 if __name__ == '__main__':
-    main()
-    quit(0)
+
+    parser = init_option()
+    options = parser.parse_args()
+
+    if options.input:
+
+        options.input = open(options.input)
+    else:
+        options.input = sys.stdin
+    main(options)
