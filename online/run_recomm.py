@@ -881,7 +881,7 @@ def online(**param):
     rec_obj = Recommend(db=DiskDB(), param=param)
     rec_obj.load_model()
     result = rec_obj.get_rec(param['stu_id'], candidate_items)
-    print(json.dumps(result))
+    print(json.dumps(result.to_dict()))
 
 
 def metric(rec_obj, train_data, test_data):
