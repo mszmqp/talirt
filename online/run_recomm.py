@@ -872,12 +872,12 @@ class Recommend(object):
 
 def online(**param):
     global _candidate_items, _stu_response_items, _level_response
-
+    _level_response = pd.read_pickle('level_response.bin')
     candidate_items = load_candidate_items(**param)
-    stu_response = load_stu_response(**param)
+    stu_response = load_stu_response(param['stu_id'])
 
     # 从候选集合中剔除已作答过的题目
-    candidate_items.drop(stu_response, inplace=True, errors='ignore')
+    candidate_items.drop(stu_response.index, inplace=True, errors='ignore')
     rec_obj = Recommend(db=DiskDB(), param=param)
     rec_obj.load_model()
     result = rec_obj.get_rec(param['stu_id'], candidate_items)
@@ -915,8 +915,8 @@ def main(options):
              'knowledge_id': "cb1471bd830c49c2b5ff8b833e3057bd",
              'stu_id': '殷烨嵘',
              }
-    # online(**param)
-    test_one(**param)
+    online(**param)
+    # test_one(**param)
     # test_level(**param)
 
 
@@ -938,12 +938,12 @@ def test_one(**param):
     candidate_items.drop(stu_response.index, inplace=True, errors='ignore')
 
     rec_obj = Recommend(db=DiskDB(), param=param)
-    print('-' * 10, 'train', '-' * 10, file=sys.stderr)
+    # print('-' * 10, 'train', '-' * 10, file=sys.stderr)
 
     ok = rec_obj.train_model(train_data)
     print('train_model', ok, file=sys.stderr)
 
-    print(rec_obj.model_irt.user_vector.loc[param['stu_id'], :], file=sys.stderr)
+    # print(rec_obj.model_irt.user_vector.loc[param['stu_id'], :], file=sys.stderr)
 
     print('-' * 10, 'save', '-' * 10, file=sys.stderr)
 
