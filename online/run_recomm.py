@@ -714,7 +714,7 @@ def load_level_response(**kwargs):
                         and dim_subject.old_subj_id='%(subject_id)s'
                         and sa.is_deleted='否'
                         and dim_classlevel.old_lev_id='%(level_id)s'
-                        and asw_first_status_id=1
+                        
 
 
         """ % kwargs
