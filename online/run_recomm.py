@@ -674,6 +674,7 @@ def load_candidate_items(**kwargs):
         """ % kwargs
 
     _candidate_items = impala_client.sql(_sql).execute().set_index('item_id').iloc[:50, :]
+
     impala_client.close()
     return _candidate_items
 
@@ -874,13 +875,14 @@ def online(**param):
     global _candidate_items, _stu_response_items, _level_response
     _level_response = pd.read_pickle('level_response.bin')
     candidate_items = load_candidate_items(**param)
+    candidate_items.to_pickle('candidate_items.bin')
     stu_response = load_stu_response(param['stu_id'])
-
+    stu_acc = stu_response.loc[:, 'answer'].sum() / len(stu_response)
     # 从候选集合中剔除已作答过的题目
     candidate_items.drop(stu_response.index, inplace=True, errors='ignore')
     rec_obj = Recommend(db=DiskDB(), param=param)
     rec_obj.load_model()
-    result = rec_obj.get_rec(param['stu_id'], candidate_items)
+    result = rec_obj.get_rec(stu_id=param['stu_id'], stu_acc=stu_acc, candidate_items=candidate_items)
     print(json.dumps(result.to_dict()))
 
 
@@ -893,16 +895,16 @@ def metric(rec_obj, train_data, test_data):
     y_prob = y_prob[selected]
     y_true = test_data.loc[:, 'answer'][selected]
 
-    print("irt", 'mse', metrics.mean_squared_error(y_true, y_prob),file=sys.stderr)
+    print("irt", 'mse', metrics.mean_squared_error(y_true, y_prob), file=sys.stderr)
     threshold = 0.5
     y_pred = y_prob.copy()
     y_pred[y_pred > threshold] = 1
     y_pred[y_pred <= threshold] = 0
 
-    print("irt", 'acc', metrics.accuracy_score(y_true, y_pred),file=sys.stderr)
+    print("irt", 'acc', metrics.accuracy_score(y_true, y_pred), file=sys.stderr)
 
     fpr, tpr, thresholds = metrics.roc_curve(y_true, y_prob, pos_label=1)
-    print("irt", 'auc', metrics.auc(fpr, tpr),file=sys.stderr)
+    print("irt", 'auc', metrics.auc(fpr, tpr), file=sys.stderr)
 
 
 def main(options):
