@@ -80,31 +80,6 @@ class DiskDB:
         with open(file_name, 'rb') as fh:
             return fh.read()
 
-    # def save_json(self, data, year, city_id, grade_id, subject_id, level_id, term_id):
-    #     file_name = '_'.join([str(year), str(city_id), str(grade_id), str(subject_id), str(level_id), str(term_id)])
-    #
-
-    # def save_bin(self, data, year, city_id, grade_id, subject_id, level_id, term_id):
-    #     file_name = '_'.join([str(year), str(city_id), str(grade_id), str(subject_id), str(level_id), str(term_id)])
-    #
-    #     with open(os.path.join(self.path, file_name), 'wb') as fh:
-    #         fh.write(data)
-    #
-    # def load_json(self, year, city_id, grade_id, subject_id, level_id, term_id):
-    #     file_name = '_'.join([str(year), str(city_id), str(grade_id), str(subject_id), str(level_id), str(term_id)])
-    #     with open(os.path.join(self.path, file_name), 'r') as fh:
-    #         return json.load(fh)
-
-    # def load_bin(self, year, city_id, grade_id, subject_id, level_id, term_id):
-    #     file_name = '_'.join([str(year), str(city_id), str(grade_id), str(subject_id), str(level_id), str(term_id)])
-    #     with open(os.path.join(self.path, file_name), 'rb') as fh:
-    #         return fh.read()
-
-    # def file_path(self, year, city_id, grade_id, subject_id, level_id, term_id):
-    #     file_name = '_'.join([str(year), str(city_id), str(grade_id), str(subject_id), str(level_id), str(term_id)])
-    #
-    #     return os.path.join(self.path, file_name)
-
 
 class SimpleCF:
     default_value = np.nan
@@ -267,7 +242,7 @@ class UIrt2PL:
         assert response is not None
 
         if sequential:
-            self.response_sequence = response[['user_id', 'item_id', 'answer']]
+            self.response_sequence = response[['user_id', 'item_id', 'answer', 'a', 'b']]
             self.response_matrix = self.response_sequence.pivot(index="user_id", columns="item_id", values='answer')
 
         else:
@@ -315,9 +290,11 @@ class UIrt2PL:
         # 统计每个应试者的作答情况
         user_stat = self.response_sequence.groupby('user_id')['answer'].aggregate(['count', 'sum']).rename(
             columns={'sum': 'right'})
+
         self.user_vector = self.user_vector.join(user_stat, how='left')
         self.user_vector.fillna({'count': 0, 'right': 0}, inplace=True)
         self.user_vector['accuracy'] = self.user_vector['right'] / self.user_vector['count']
+
         # 统计每个项目的作答情况
         item_stat = self.response_sequence.groupby('item_id')['answer'].aggregate(['count', 'sum']).rename(
             columns={'sum': 'right'})
@@ -718,7 +695,7 @@ def load_level_response(**kwargs):
 
 
         """ % kwargs
-    print(_sql, file=sys.stderr)
+    # print(_sql, file=sys.stderr)
     _level_response = impala_client.sql(_sql).execute()
     impala_client.close()
     return _level_response
