@@ -573,7 +573,7 @@ class UIrt2PL:
             yy = y.dropna()
             # len(y) == len(y.dropna())
             # 全对的情况
-            if yy.sum() == len(yy.dropna()):
+            if yy.sum() == len(yy):
                 theta = self.response_sequence.loc[self.response_sequence['user_id'] == index, 'b'].max() + 0.5
             else:
                 theta = self.user_vector.loc[index, 'theta']
