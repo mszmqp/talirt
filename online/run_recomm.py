@@ -565,7 +565,7 @@ class UIrt2PL:
 
         success = []
 
-        self._es_res_theta = []
+        # self._es_res_theta = []
 
         # 每个人独立估计
         for index, row in self.response_matrix.iterrows():
@@ -575,6 +575,8 @@ class UIrt2PL:
             # 全对的情况
             if yy.sum() == len(yy):
                 theta = self.response_sequence.loc[self.response_sequence['user_id'] == index, 'b'].max() + 0.5
+                success.append(True)
+                # self._es_res_theta.append(res)
             else:
                 y = row.values.reshape(1, len(row))
                 theta = self.user_vector.loc[index, 'theta']
@@ -582,34 +584,15 @@ class UIrt2PL:
                 res = minimize(self._object_func, x0=[theta], args=(y, a, b), jac=self._jac_theta,
                                bounds=bounds, options=options, tol=tol)
                 theta = res.x[0]
+                success.append(res.success)
 
+                # self._es_res_theta.append(res)
             # 全错估计值会小于0
             theta = 0 if theta < 0 else theta
 
             self.user_vector.loc[index, 'theta'] = theta
-            success.append(res.success)
-            self._es_res_theta.append(res)
 
         return all(success)
-
-    def metric_mse(self, test_data: pd.DataFrame):
-        from sklearn.metrics import mean_squared_error
-        y_prob = self.predict_s(test_data.loc[:, 'user_id'], test_data.loc[:, ['a', 'b']])
-        selected = np.isfinite(y_prob)
-        return mean_squared_error(test_data.loc[:, 'answer'][selected], y_prob[selected])
-
-    def metric_accuracy_score(self, test_data: pd.DataFrame, threshold=0.5):
-        from sklearn.metrics import accuracy_score
-        y_prob = self.predict_s(test_data.loc[:, 'user_id'], test_data.loc[:, ['a', 'b']])
-        selected = np.isfinite(y_prob)
-
-        y_pred = y_prob[selected]
-        y_pred[y_pred > threshold] = 1
-        y_pred[y_pred <= threshold] = 0
-        y_true = test_data.loc[:, 'answer'][selected]
-        score = accuracy_score(y_true, y_pred)
-
-        return score
 
     def to_dict(self):
         return self.user_vector['theta'].to_dict()
@@ -764,8 +747,8 @@ def load_stu_response(**kwargs):
         return _stu_response_items
     stu_id = kwargs['stu_id']
     level_response = load_level_response(**kwargs)
-    _stu_response_items = level_response.loc[level_response['user_id'] == stu_id, 'item_id'].unique()
-    return _stu_response_items
+    _stu_response_items = level_response.loc[level_response['user_id'] == stu_id, ['item_id', 'b', 'answer']]
+    return _stu_response_items.drop_duplicates(subset=['item_id']).set_index('item_id')
 
 
 class Recommend(object):
@@ -817,7 +800,16 @@ class Recommend(object):
         self.db.save_json('irt', key, self.model_irt.to_dict())
         self.db.save_bin('cf', key, self.model_cf.to_pickle())
 
-    def get_rec(self, stu_id: str, candidate_items: pd.DataFrame):
+    def select(self, stu_cur_acc, candidate_items):
+        if stu_cur_acc > 0.95:
+            return candidate_items[candidate_items['prob'] < 0.5].sort_values('prob', ascending=False)
+        if stu_cur_acc < 0.6:
+            return candidate_items[candidate_items['prob'] > 0.9].sort_values('prob', ascending=False)
+
+        return candidate_items[(candidate_items['prob'] >= 0.5) & (candidate_items['prob'] <= 0.9)].sort_values('prob',
+                                                                                                                ascending=False)
+
+    def get_rec(self, stu_id: str, stu_acc, candidate_items: pd.DataFrame):
         """
 
         Parameters
@@ -831,6 +823,10 @@ class Recommend(object):
         """
         prob_irt, stu_theta = self.model_irt.predict_simple(stu_id, candidate_items)
         prob_cf, stu_vector = self.model_cf.predict(stu_id, candidate_items)
+        candidate_items['irt'] = prob_irt
+        candidate_items['cf'] = prob_cf
+        merge_prob = []
+
         self.probs['irt'] = prob_irt
         self.probs['cf'] = prob_cf
         result = []
@@ -846,6 +842,7 @@ class Recommend(object):
             assert index_irt == index_cf
             # 两个数据都是空
             if value_irt == -1 and value_cf == -1:
+                merge_prob.append(np.nan)
                 continue
             if value_irt == -1:
                 weight_cf = 1
@@ -855,10 +852,12 @@ class Recommend(object):
                 value_cf = 0
 
             value = weight_irt * value_irt + weight_cf * value_cf
-            result.append((index_cf, value))
+            merge_prob.append(value)
 
+            # result.append((index_cf, value))
             # print(index_cf, value)
-
+        candidate_items['prob'] = merge_prob
+        result = self.select(stu_acc, candidate_items)
         return result
 
 
@@ -876,6 +875,27 @@ def online(**param):
     print(json.dumps(result))
 
 
+def metric(rec_obj, train_data, test_data):
+    from sklearn import metrics
+
+    y_prob = rec_obj.model_irt.predict_s(test_data.loc[:, 'user_id'], test_data.loc[:, ['a', 'b']])
+
+    selected = np.isfinite(y_prob)
+    y_prob = y_prob[selected]
+    y_true = test_data.loc[:, 'answer'][selected]
+
+    print("irt", 'mse', metrics.mean_squared_error(y_true, y_prob))
+    threshold = 0.5
+    y_pred = y_prob.copy()
+    y_pred[y_pred > threshold] = 1
+    y_pred[y_pred <= threshold] = 0
+
+    print("irt", 'acc', metrics.accuracy_score(y_true, y_pred))
+    # print(pd.value_counts(y_true))
+    fpr, tpr, thresholds = metrics.roc_curve(y_true, y_prob, pos_label=1)
+    print("irt", 'auc', metrics.auc(fpr, tpr))
+
+
 def main(options):
     param = {'year': '2018',
              'city_id': '0571',
@@ -888,10 +908,10 @@ def main(options):
              }
     # online(**param)
 
-    test(**param)
+    test_level(**param)
 
 
-def test(**param):
+def test_one(**param):
     # 这两份数据是所有策略都要用的，所以单独进行
     global _candidate_items, _stu_response_items, _level_response
 
@@ -900,12 +920,10 @@ def test(**param):
     _level_response = pd.read_pickle('level_response.bin')
 
     stu_response = load_stu_response(**param)
-
+    stu_acc = stu_response.loc[:, 'answer'].sum() / len(stu_response)
     candidate_items = load_candidate_items(**param)
     # 从候选集合中剔除已作答过的题目
-    candidate_items.drop(stu_response, inplace=True, errors='ignore')
-    # 从候选集合中剔除已作答过的题目
-    candidate_items.drop(stu_response, inplace=True, errors='ignore')
+    candidate_items.drop(stu_response.index, inplace=True, errors='ignore')
 
     train_data = _level_response.loc[_level_response['c_sortorder'] < 6, :]
     test_data = _level_response.loc[_level_response['c_sortorder'] >= 6, :]
@@ -915,6 +933,7 @@ def test(**param):
 
     ok = rec_obj.train_model(train_data)
     print('train_model', ok, file=sys.stderr)
+
     print(rec_obj.model_irt.user_vector.loc[param['stu_id'], :], file=sys.stderr)
 
     print('-' * 10, 'save', '-' * 10, file=sys.stderr)
@@ -928,17 +947,66 @@ def test(**param):
 
     print('-' * 10, 'predict', '-' * 10, file=sys.stderr)
 
-    result = rec_obj.get_rec(param['stu_id'], candidate_items)
+    result = rec_obj.get_rec(param['stu_id'], stu_acc=stu_acc, candidate_items=candidate_items)
 
-    print(rec_obj.probs['irt'], file=sys.stderr)
+    print(candidate_items.sort_values('prob'), file=sys.stderr)
+
+    print('-' * 10, 'recommd', '-' * 10, file=sys.stderr)
+
+    print(result, file=sys.stderr)
 
     # print(json.dumps(result))
+    print('-' * 10, 'metrix', '-' * 10, file=sys.stderr)
 
+    metric(rec_obj, train_data=train_data, test_data=test_data)
     return
 
 
-def metric(**param):
-    pass
+def test_level(**param):
+    # 这两份数据是所有策略都要用的，所以单独进行
+    global _candidate_items, _stu_response_items, _level_response
+
+    # load_level_response(**param)
+    # _level_response.to_pickle('level_response.bin')
+    _level_response = pd.read_pickle('level_response.bin')
+
+    candidate_items = load_candidate_items(**param)
+
+    train_data = _level_response.loc[_level_response['c_sortorder'] < 6, :]
+    test_data = _level_response.loc[_level_response['c_sortorder'] >= 6, :]
+
+    rec_obj = Recommend(db=DiskDB(), param=param)
+
+    ok = rec_obj.train_model(train_data)
+
+    metric(rec_obj, train_data=train_data, test_data=test_data)
+
+    for stu_id in train_data.loc[:, 'user_id'].unique()[:3]:
+        param['stu_id'] = stu_id
+        user_info = rec_obj.model_irt.user_vector[stu_id, :]
+        stu_response = load_stu_response(**param)
+        # 从候选集合中剔除已作答过的题目
+        stu_candidate_items = candidate_items.drop(stu_response.index, errors='ignore')
+
+        stu_acc = stu_response.loc[:, 'answer'].sum() / len(stu_response)
+
+        result = rec_obj.get_rec(stu_id, stu_acc=stu_acc, candidate_items=stu_candidate_items)
+        rec_difficulty = result.iloc[0, 'b']
+        user_info['rec_difficulty'] = rec_difficulty
+        print(user_info, file=sys.stderr)
+
+    # rec_obj.save_model()
+
+    # rec_obj.load_model()
+
+    # print(candidate_items.sort_values('prob'), file=sys.stderr)
+
+    # print(result, file=sys.stderr)
+
+    # print(json.dumps(result))
+    # print('-' * 10, 'metrix', '-' * 10, file=sys.stderr)
+
+    return
 
 
 # c_sortorder
