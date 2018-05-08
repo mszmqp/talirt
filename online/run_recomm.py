@@ -570,12 +570,21 @@ class UIrt2PL:
         for index, row in self.response_matrix.iterrows():
             # 注意y可能有缺失值
             y = row.values.reshape(1, len(row))
-            theta = self.user_vector.loc[index, 'theta']
+            yy = y.dropna()
+            # len(y) == len(y.dropna())
+            # 全对的情况
+            if yy.sum() == len(yy.dropna()):
+                theta = self.response_sequence.loc[self.response_sequence['user_id'] == index, 'b'].max() + 0.5
+            else:
+                theta = self.user_vector.loc[index, 'theta']
 
-            res = minimize(self._object_func, x0=[theta], args=(y, a, b), jac=self._jac_theta,
-                           bounds=bounds, options=options, tol=tol)
-            theta = res.x[0]
+                res = minimize(self._object_func, x0=[theta], args=(y, a, b), jac=self._jac_theta,
+                               bounds=bounds, options=options, tol=tol)
+                theta = res.x[0]
+
+            # 全错估计值会小于0
             theta = 0 if theta < 0 else theta
+
             self.user_vector.loc[index, 'theta'] = theta
             success.append(res.success)
             self._es_res_theta.append(res)
