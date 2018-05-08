@@ -673,7 +673,7 @@ def load_candidate_items(**kwargs):
 
         """ % kwargs
 
-    _candidate_items = impala_client.sql(_sql).execute().set_index('item_id').iloc[:50, :]
+    _candidate_items = impala_client.sql(_sql).execute().set_index('item_id').iloc[:100, :]
 
     impala_client.close()
     return _candidate_items
@@ -883,7 +883,7 @@ def online(**param):
     rec_obj = Recommend(db=DiskDB(), param=param)
     rec_obj.load_model()
     result = rec_obj.get_rec(stu_id=param['stu_id'], stu_acc=stu_acc, candidate_items=candidate_items)
-    print(json.dumps(result.to_dict()))
+    print(result.to_json())
 
 
 def metric(rec_obj, train_data, test_data):
