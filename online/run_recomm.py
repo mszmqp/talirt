@@ -784,7 +784,8 @@ class Recommend(object):
              str(self.level_id),
              ])
 
-        self.model_irt = UIrt2PL.from_dict(self.db.load_json('irt', key=key))
+        # self.model_irt = UIrt2PL.from_dict(self.db.load_json('irt', key=key))
+        self.model_irt = UIrt2PL.from_pickle(self.db.load_bin('irt', key=key))
         self.model_cf = SimpleCF.from_pickle(self.db.load_bin('cf', key=key))
         # return True
 
@@ -798,7 +799,8 @@ class Recommend(object):
              str(self.level_id),
              ])
 
-        self.db.save_json('irt', key, self.model_irt.to_dict())
+        # self.db.save_json('irt', key, self.model_irt.to_dict())
+        self.db.save_bin('irt', key, self.model_irt.to_pickle())
         self.db.save_bin('cf', key, self.model_cf.to_pickle())
 
     def select(self, stu_cur_acc, candidate_items):
