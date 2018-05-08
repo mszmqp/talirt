@@ -718,7 +718,7 @@ def load_level_response(**kwargs):
 
 
         """ % kwargs
-
+    print(_sql, file=sys.stderr)
     _level_response = impala_client.sql(_sql).execute()
     impala_client.close()
     return _level_response
