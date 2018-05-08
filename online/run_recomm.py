@@ -699,7 +699,7 @@ def load_level_response(**kwargs):
                     fk_question as item_id,
                     difficulty_id as b,
                     1 as a,
-                    case when asw_first_status_id =2 then 0 else 1  end   answer
+                    case when asw_first_status_id =1 then 1 else 0  end   answer
                 from dwdb.dwd_stdy_ips_level_answ sa
                 join dimdb.dim_grade on sa.fk_grade=dim_grade.pk_grade
                 join dimdb.dim_term on sa.fk_term=dim_term.pk_term
