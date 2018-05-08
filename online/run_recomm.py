@@ -288,12 +288,24 @@ class UIrt2PL:
         self.response_sequence = self.response_sequence.join(self.item_vector['iloc'].rename('item_iloc'), on='item_id',
                                                              how='left')
         # 统计每个应试者的作答情况
-        user_stat = self.response_sequence.groupby('user_id')['answer'].aggregate(['count', 'sum']).rename(
-            columns={'sum': 'right'})
+        # user_stat = self.response_sequence.groupby('user_id')['answer'].aggregate(['count', 'sum']).rename(
+        #     columns={'sum': 'right'})
 
-        self.user_vector = self.user_vector.join(user_stat, how='left')
-        self.user_vector.fillna({'count': 0, 'right': 0}, inplace=True)
-        self.user_vector['accuracy'] = self.user_vector['right'] / self.user_vector['count']
+        x = self.response_sequence.groupby(['user_id', 'b']).aggregate({'answer': ['count', 'sum']})
+        y = x.unstack()
+        y.columns = ['_'.join([str(x) for x in col[1:]]).strip().replace('sum', 'right') for col in y.columns.values]
+
+        for i in range(1, 6):
+            if 'right_%d' % i in y.columns:
+                y['accuracy_%d' % i] = y['right_%d' % i] / y['count_%d' % i]
+
+        y['count_all'] = y.filter(regex='^count_', axis=1).sum(axis=1)
+        y['right_all'] = y.filter(regex='^right_', axis=1).sum(axis=1)
+        y['accuracy_all'] = y['right_all'] / y['count_all']
+
+        self.user_vector = self.user_vector.join(y, how='left')
+        # self.user_vector.fillna({'count': 0, 'right': 0}, inplace=True)
+        # self.user_vector['accuracy'] = self.user_vector['right'] / self.user_vector['count']
 
         # 统计每个项目的作答情况
         item_stat = self.response_sequence.groupby('item_id')['answer'].aggregate(['count', 'sum']).rename(
