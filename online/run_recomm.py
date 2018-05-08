@@ -569,13 +569,13 @@ class UIrt2PL:
         # 每个人独立估计
         for index, row in self.response_matrix.iterrows():
             # 注意y可能有缺失值
-            y = row.values.reshape(1, len(row))
-            yy = y.dropna()
+            yy = row.dropna()
             # len(y) == len(y.dropna())
             # 全对的情况
             if yy.sum() == len(yy):
                 theta = self.response_sequence.loc[self.response_sequence['user_id'] == index, 'b'].max() + 0.5
             else:
+                y = row.values.reshape(1, len(row))
                 theta = self.user_vector.loc[index, 'theta']
 
                 res = minimize(self._object_func, x0=[theta], args=(y, a, b), jac=self._jac_theta,
