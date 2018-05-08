@@ -874,8 +874,9 @@ class Recommend(object):
 def online(**param):
     global _candidate_items, _stu_response_items, _level_response
     _level_response = pd.read_pickle('level_response.bin')
-    candidate_items = load_candidate_items(**param)
-    candidate_items.to_pickle('candidate_items.bin')
+    # candidate_items = load_candidate_items(**param)
+    # candidate_items.to_pickle('candidate_items.bin')
+    candidate_items=pd.read_pickle('candidate_items.bin')
     stu_response = load_stu_response(param['stu_id'])
     stu_acc = stu_response.loc[:, 'answer'].sum() / len(stu_response)
     # 从候选集合中剔除已作答过的题目
