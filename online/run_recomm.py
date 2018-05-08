@@ -416,6 +416,7 @@ class UIrt2PL:
         assert n == m, "should length(users)==length(items)"
 
         user_v = self.user_vector.loc[users, ['theta']]
+
         if isinstance(items, pd.DataFrame) and set(items.columns).intersection(set(['a', 'b'])):
             item_v = items.loc[:, ['a', 'b']]
         else:
@@ -594,8 +595,8 @@ class UIrt2PL:
     def metric(self, test_data: pd.DataFrame):
         from sklearn.metrics import mean_squared_error
         y_prob = self.predict_s(test_data.loc[:, 'user_id'], test_data.loc[:, ['a', 'b']])
-
-        return mean_squared_error(test_data.loc[:, 'answer'], y_prob)
+        selected = np.isfinite(y_prob)
+        return mean_squared_error(test_data.loc[:, 'answer'][selected], y_prob[selected])
 
     def to_dict(self):
         return self.user_vector['theta'].to_dict()
