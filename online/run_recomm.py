@@ -966,8 +966,8 @@ def test_level(**param):
     # 这两份数据是所有策略都要用的，所以单独进行
     global _candidate_items, _stu_response_items, _level_response
 
-    # load_level_response(**param)
-    # _level_response.to_pickle('level_response.bin')
+    load_level_response(**param)
+    _level_response.to_pickle('level_response.bin')
     _level_response = pd.read_pickle('level_response.bin')
 
     candidate_items = load_candidate_items(**param)
