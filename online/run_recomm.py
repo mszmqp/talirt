@@ -410,20 +410,24 @@ class UIrt2PL:
     def set_users(self, users: pd.DataFrame):
         self.user_vector = users
 
-    def predict_proba(self, users, items):
+    def predict_s(self, users, items):
         n = len(users)
         m = len(items)
         assert n == m, "should length(users)==length(items)"
 
         user_v = self.user_vector.loc[users, ['theta']]
-        item_v = self.item_vector.loc[items, ['a', 'b', 'c']]
+        if isinstance(items, pd.DataFrame) and set(items.columns).intersection(set(['a', 'b'])):
+            item_v = items.loc[:, ['a', 'b', 'c']]
+        else:
+            item_v = self.item_vector.loc[items, ['a', 'b', 'c']]
+
         z = item_v['a'].values * (user_v['theta'].values - item_v['b'].values)
         # z = alpha * (theta - beta)
         e = np.exp(z)
         s = (1 - item_v['c'].values) * e / (1.0 + e) + item_v['c'].values
         return s
 
-    def predict(self, users, items):
+    def predict_x(self, users, items):
         if isinstance(items, pd.DataFrame):
             self.set_items(items)
         if isinstance(users, pd.DataFrame):
@@ -575,6 +579,12 @@ class UIrt2PL:
             self._es_res_theta.append(res)
 
         return all(success)
+
+    def metric(self, test_data: pd.DataFrame):
+        from sklearn.metrics import mean_squared_error
+        y_prob = self.predict_s(test_data.loc[:, 'user_id'], test_data.loc[:, ['a', 'b', 'c']])
+
+        return mean_squared_error(test_data.loc[:, 'answer'], y_prob)
 
     def to_dict(self):
         return self.user_vector['theta'].to_dict()
