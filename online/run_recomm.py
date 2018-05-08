@@ -574,7 +574,9 @@ class UIrt2PL:
 
             res = minimize(self._object_func, x0=[theta], args=(y, a, b), jac=self._jac_theta,
                            bounds=bounds, options=options, tol=tol)
-            self.user_vector.loc[index, 'theta'] = res.x[0]
+            theta = res.x[0]
+            theta = 0 if theta < 0 else theta
+            self.user_vector.loc[index, 'theta'] = theta
             success.append(res.success)
             self._es_res_theta.append(res)
 
