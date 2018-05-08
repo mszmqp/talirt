@@ -417,14 +417,14 @@ class UIrt2PL:
 
         user_v = self.user_vector.loc[users, ['theta']]
         if isinstance(items, pd.DataFrame) and set(items.columns).intersection(set(['a', 'b'])):
-            item_v = items.loc[:, ['a', 'b', 'c']]
+            item_v = items.loc[:, ['a', 'b']]
         else:
-            item_v = self.item_vector.loc[items, ['a', 'b', 'c']]
+            item_v = self.item_vector.loc[items, ['a', 'b']]
 
         z = item_v['a'].values * (user_v['theta'].values - item_v['b'].values)
         # z = alpha * (theta - beta)
         e = np.exp(z)
-        s = (1 - item_v['c'].values) * e / (1.0 + e) + item_v['c'].values
+        s = e / (1.0 + e)
         return s
 
     def predict_x(self, users, items):
@@ -582,7 +582,7 @@ class UIrt2PL:
 
     def metric(self, test_data: pd.DataFrame):
         from sklearn.metrics import mean_squared_error
-        y_prob = self.predict_s(test_data.loc[:, 'user_id'], test_data.loc[:, ['a', 'b', 'c']])
+        y_prob = self.predict_s(test_data.loc[:, 'user_id'], test_data.loc[:, ['a', 'b']])
 
         return mean_squared_error(test_data.loc[:, 'answer'], y_prob)
 
