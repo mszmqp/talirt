@@ -592,11 +592,24 @@ class UIrt2PL:
 
         return all(success)
 
-    def metric(self, test_data: pd.DataFrame):
+    def metric_mse(self, test_data: pd.DataFrame):
         from sklearn.metrics import mean_squared_error
         y_prob = self.predict_s(test_data.loc[:, 'user_id'], test_data.loc[:, ['a', 'b']])
         selected = np.isfinite(y_prob)
         return mean_squared_error(test_data.loc[:, 'answer'][selected], y_prob[selected])
+
+    def metric_accuracy_score(self, test_data: pd.DataFrame, threshold=0.5):
+        from sklearn.metrics import accuracy_score
+        y_prob = self.predict_s(test_data.loc[:, 'user_id'], test_data.loc[:, ['a', 'b']])
+        selected = np.isfinite(y_prob)
+
+        y_pred = y_prob[selected]
+        y_pred[y_pred > threshold] = 1
+        y_pred[y_pred <= threshold] = 0
+        y_true = test_data.loc[:, 'answer'][selected]
+        score = accuracy_score(y_true, y_pred)
+
+        return score
 
     def to_dict(self):
         return self.user_vector['theta'].to_dict()

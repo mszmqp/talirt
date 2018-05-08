@@ -12,7 +12,7 @@ Date:    2018/4/12 10:21
 import sys
 import argparse
 from sklearn import metrics
-# import matplotlib.pyplot as plt
+
 
 
 class Metric(object):
@@ -39,6 +39,7 @@ class Metric(object):
 
     @classmethod
     def plot_prc(cls, y_true, y_proba):
+        import matplotlib.pyplot as plt
         precision, recall, thresholds = metrics.precision_recall_curve(y_true, y_proba)
         print('=' * 20 + 'precision_recall_curve' + "=" * 20, file=sys.stderr)
 
