@@ -66,9 +66,9 @@ def main(options):
     # pd.DataFrame.from_records([{'id':3,'xx':'a'},{'id':4,'xx':'h'}])
     # pd.DataFrame({'a':[1,4],'b':[3,6]})
 
-    # level_response = run_recomm.load_level_response(**param)
+    level_response = run_recomm.load_level_response(**param)
     # level_response.to_pickle('level_response.bin')
-    level_response = pd.read_pickle('level_response.bin')
+    # level_response = pd.read_pickle('level_response.bin')
 
     train_data = level_response.loc[level_response['c_sortorder'] <= 6, :]
     test_data = level_response.loc[level_response['c_sortorder'] >= 5, :]
