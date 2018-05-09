@@ -70,8 +70,8 @@ def main(options):
     # level_response.to_pickle('level_response.bin')
     level_response = pd.read_pickle('level_response.bin')
 
-    train_data = level_response.loc[level_response['c_sortorder'] < 6, :]
-    test_data = level_response.loc[level_response['c_sortorder'] >= 6, :]
+    train_data = level_response.loc[level_response['c_sortorder'] <= 6, :]
+    test_data = level_response.loc[level_response['c_sortorder'] >= 5, :]
     candidate_items = test_data.loc[:, ['item_id', 'b']].drop_duplicates('item_id')
     param['candidate_items'] = json.loads(candidate_items.to_json())
 
