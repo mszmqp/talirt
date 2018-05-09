@@ -34,14 +34,12 @@ import tempfile
 import abc
 import argparse
 
-# sys.path.append("../")
+import logging
 
-# path_data = './data/'
-"""
-模型输入数据进行训练
-
-"""
-
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger("recommend")
+logger_ch = logging.StreamHandler(stream=sys.stderr)
+logger.addHandler(logger_ch)
 _sim_threshold = 0.0
 
 
@@ -871,16 +869,22 @@ class Recommend(object):
         return result
 
 
-def online(**param):
+def online(param):
     global _candidate_items, _stu_response_items, _level_response
     _level_response = pd.read_pickle('level_response.bin')
     # candidate_items = load_candidate_items(**param)
     # candidate_items.to_pickle('candidate_items.bin')
-    candidate_items=pd.read_pickle('candidate_items.bin')
-    stu_response = load_stu_response(param['stu_id'])
-    stu_acc = stu_response.loc[:, 'answer'].sum() / len(stu_response)
+    # candidate_items = pd.read_pickle('candidate_items.bin')
+    # stu_response = load_stu_response(param['stu_id'])
+    # stu_acc = stu_response.loc[:, 'answer'].sum() / len(stu_response)
     # 从候选集合中剔除已作答过的题目
-    candidate_items.drop(stu_response.index, inplace=True, errors='ignore')
+    # candidate_items.drop(stu_response.index, inplace=True, errors='ignore')
+
+    candidate_items = pd.DataFrame(param['candidate_items'])
+    candidate_items['a'] = 1
+    stu_response = pd.DataFrame(param['stu_response'])
+    stu_acc = stu_response.loc[:, 'answer'].sum() / len(stu_response)
+
     rec_obj = Recommend(db=DiskDB(), param=param)
     rec_obj.load_model()
     result = rec_obj.get_rec(stu_id=param['stu_id'], stu_acc=stu_acc, candidate_items=candidate_items)
@@ -909,27 +913,58 @@ def metric(rec_obj, train_data, test_data):
 
 
 def main(options):
-    param = {'year': '2018',
-             'city_id': '0571',
-             'grade_id': '7',
-             'subject_id': 'ff80808127d77caa0127d7e10f1c00c4',
-             'level_id': 'ff8080812fc298b5012fd3d3becb1248',
-             'term_id': '1',
-             'knowledge_id': "cb1471bd830c49c2b5ff8b833e3057bd",
-             'stu_id': '殷烨嵘',
-             }
-    online(**param)
-    # test_one(**param)
-    # test_level(**param)
+    # param = {'year': '2018',
+    #          'city_id': '0571',
+    #          'grade_id': '7',
+    #          'subject_id': 'ff80808127d77caa0127d7e10f1c00c4',
+    #          'level_id': 'ff8080812fc298b5012fd3d3becb1248',
+    #          'term_id': '1',
+    #          'knowledge_id': "cb1471bd830c49c2b5ff8b833e3057bd",
+    #          'stu_id': '殷烨嵘',
+    #           'stu_response':{'user_id':[],'item_id':[],'answer':[],'b':[]},
+    #           'candidate_items':{'item_id':[],'b':[]},
+    #          }
+
+    # pd.DataFrame.from_records([(3,'a'),(4,'h')])
+    # pd.DataFrame.from_records([{'id':3,'xx':'a'},{'id':4,'xx':'h'}])
+    # pd.DataFrame({'a':[1,4],'b':[3,6]})
+    if options.log == 'info':
+        logger_ch.setLevel(logging.INFO)
+    elif options.log == 'warning':
+        logger_ch.setLevel(logging.WARNING)
+    elif options.log == 'debug':
+        logger_ch.setLevel(logging.DEBUG)
+    elif options.log == 'error':
+        logger_ch.setLevel(logging.ERROR)
+
+    if options.run == 'online':
+        run_func = online
+    elif options.run == 'test_one':
+        run_func = test_one
+    elif options.run == 'test_level':
+        run_func = test_level
+
+    for line in options.input:
+        param = json.loads(line)
+        log_msg_prefix = "%(city_id)s %(subject_id)s %(grade_id)s %(level_id)s %(stu_id)s %(knowledge_id)s" % param
+        _format = '%(asctime)s - %(levelname)s -' + log_msg_prefix + ' %(message)s '
+        formatter = logging.Formatter(fmt=_format, datefmt=None)
+        logger_ch.setFormatter(formatter)
+        run_func(**param)
 
 
 def test_one(**param):
     # 这两份数据是所有策略都要用的，所以单独进行
     global _candidate_items, _stu_response_items, _level_response
 
-    # load_level_response(**param)
+    load_level_response(**param)
     # _level_response.to_pickle('level_response.bin')
     _level_response = pd.read_pickle('level_response.bin')
+
+    # candidate_items = pd.DataFrame(param['candidate_items'])
+    # candidate_items['a'] = 1
+    # stu_response = pd.DataFrame(param['stu_response'])
+    # stu_acc = stu_response.loc[:, 'answer'].sum() / len(stu_response)
 
     train_data = _level_response.loc[_level_response['c_sortorder'] < 6, :]
     test_data = _level_response.loc[_level_response['c_sortorder'] >= 6, :]
@@ -1047,6 +1082,10 @@ def init_option():
                         help=u"输入文件；默认标准输入设备")
     parser.add_argument("-o", "--output", dest="output",
                         help=u"输出文件；默认标准输出设备")
+    parser.add_argument("-r", "--run", dest="run", choices=['online', 'test_one', 'test_level'], default='online',
+                        help=u"运行模式")
+    parser.add_argument("-l", "--log", dest="log", choices=['info', 'warning', 'debug', 'error'], default='info',
+                        help=u"运行模式")
 
     return parser
 
