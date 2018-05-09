@@ -38,16 +38,6 @@ sys.path.append('./')
 import run_recomm
 
 
-class NumpyEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-        if isinstance(obj, np.int64) or isinstance(obj, np.int32) or isinstance(obj, np.int8):
-            return int(obj)
-        if isinstance(obj, np.float):
-            return float(obj)
-        return json.JSONEncoder.default(self, obj)
-
 
 def main(options):
     param = {'year': '2018',

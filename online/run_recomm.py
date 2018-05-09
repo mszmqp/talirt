@@ -987,6 +987,8 @@ def main(options):
         run_func = test_one
     elif options.run == 'test_level':
         run_func = test_level
+    elif options.run == 'train':
+        run_func = train_model
 
     for line in options.input:
         param = json.loads(line)
@@ -1144,6 +1146,8 @@ def train_model(param):
     print('-' * 10, 'save', '-' * 10, file=sys.stderr)
 
     rec_obj.save_model()
+
+
 def init_option():
     """
     初始化命令行参数项
@@ -1156,7 +1160,8 @@ def init_option():
                         help=u"输入文件；默认标准输入设备")
     parser.add_argument("-o", "--output", dest="output",
                         help=u"输出文件；默认标准输出设备")
-    parser.add_argument("-r", "--run", dest="run", choices=['online', 'test_one', 'test_level'], default='online',
+    parser.add_argument("-r", "--run", dest="run", choices=['online', 'train', 'test_one', 'test_level'],
+                        default='online',
                         help=u"运行模式")
     parser.add_argument("-l", "--log", dest="log", choices=['info', 'warning', 'debug', 'error'], default='info',
                         help=u"运行模式")
