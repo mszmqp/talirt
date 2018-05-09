@@ -950,7 +950,7 @@ def main(options):
         _format = '%(asctime)s - %(levelname)s -' + log_msg_prefix + ' %(message)s '
         formatter = logging.Formatter(fmt=_format, datefmt=None)
         logger_ch.setFormatter(formatter)
-        run_func(**param)
+        run_func(param)
 
 
 def test_one(**param):
