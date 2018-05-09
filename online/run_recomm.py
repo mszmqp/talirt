@@ -870,8 +870,8 @@ class Recommend(object):
 
 
 def online(param):
-    global _candidate_items, _stu_response_items, _level_response
-    _level_response = pd.read_pickle('level_response.bin')
+    # global _candidate_items, _stu_response_items, _level_response
+    # _level_response = pd.read_pickle('level_response.bin')
     # candidate_items = load_candidate_items(**param)
     # candidate_items.to_pickle('candidate_items.bin')
     # candidate_items = pd.read_pickle('candidate_items.bin')
