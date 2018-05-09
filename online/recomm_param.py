@@ -47,8 +47,8 @@ def main(options):
              'level_id': 'ff8080812fc298b5012fd3d3becb1248',
              'term_id': '1',
              'knowledge_id': "cb1471bd830c49c2b5ff8b833e3057bd",
-             'stu_id': '殷烨嵘',
-             'stu_response': {'user_id': [], 'item_id': [], 'answer': [], 'b': []},
+             'user_id': '殷烨嵘',
+             'user_response': {'user_id': [], 'item_id': [], 'answer': [], 'b': []},
              'candidate_items': {'item_id': [], 'b': []},
              }
 
@@ -57,31 +57,31 @@ def main(options):
     # pd.DataFrame({'a':[1,4],'b':[3,6]})
 
     level_response = run_recomm.load_level_response(**param)
-    # level_response.to_pickle('level_response.bin')
+    level_response.to_pickle('level_response.bin')
     # level_response = pd.read_pickle('level_response.bin')
 
     train_data = level_response.loc[level_response['c_sortorder'] <= 6, :]
     test_data = level_response.loc[level_response['c_sortorder'] >= 5, :]
     candidate_items = test_data.loc[:, ['item_id', 'b']].drop_duplicates('item_id')
-    param['candidate_items'] = json.loads(candidate_items.to_json())
+    param['candidate_items'] = json.loads(candidate_items.reset_index().to_json())
 
     for user_id in list(train_data.loc[:, 'user_id'].unique()):
-        stu_response = run_recomm.load_stu_response(user_id, train_data)
+        user_response = run_recomm.load_user_response(user_id, train_data)
 
         param['user_id'] = user_id
-        param['stu_response'] = json.loads(stu_response.to_json())
+        param['user_response'] = json.loads(user_response.reset_index().to_json())
         print(json.dumps(param))
     # pd.DataFrame().to
     # candidate_items = pd.DataFrame(param['candidate_items'])
     # candidate_items['a'] = 1
-    # stu_response = pd.DataFrame(param['stu_response'])
-    # stu_acc = stu_response.loc[:, 'answer'].sum() / len(stu_response)
+    # user_response = pd.DataFrame(param['user_response'])
+    # stu_acc = user_response.loc[:, 'answer'].sum() / len(user_response)
 
-    # stu_response = load_stu_response(param['stu_id'], train_data)
-    # stu_acc = stu_response.loc[:, 'answer'].sum() / len(stu_response)
+    # user_response = load_user_response(param['user_id'], train_data)
+    # stu_acc = user_response.loc[:, 'answer'].sum() / len(user_response)
     # candidate_items = load_candidate_items(**param)
     # 从候选集合中剔除已作答过的题目
-    # candidate_items.drop(stu_response.index, inplace=True, errors='ignore')
+    # candidate_items.drop(user_response.index, inplace=True, errors='ignore')
 
 
 def init_option():

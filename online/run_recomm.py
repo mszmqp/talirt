@@ -36,10 +36,11 @@ import argparse
 import traceback
 import logging
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger("recommend")
 logger_ch = logging.StreamHandler(stream=sys.stderr)
-logger.addHandler(logger_ch)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[logger_ch])
+logger = logging.getLogger("recommend")
+# logger.addHandler(logger_ch)
+
 _sim_threshold = 0.0
 
 
@@ -103,12 +104,12 @@ class SimpleCF:
         # 矩阵中应该不包含全是0的行，否则不能求模
         return True
 
-    def predict(self, stu_id, items):
+    def predict(self, user_id, items):
         """
 
         Parameters
         ----------
-        stu_id 目标学生id
+        user_id 目标学生id
         items 候选题目id集合
 
         Returns
@@ -124,17 +125,17 @@ class SimpleCF:
         else:
             raise ValueError('items 类型错误')
         # 矩阵中没有目标学生的记录
-        if not self.response_matrix.index.contains(stu_id):
-            logger.debug('CF', 'stu_not_in_matrix')
+        if not self.response_matrix.index.contains(user_id):
+            logger.debug('CF stu_not_in_matrix')
             prob = pd.Series(data=[self.default_value] * len(items), index=items)
             return prob, None
 
         # 目标学生的向量
-        stu_vector_df = self.response_matrix.loc[stu_id, :]
+        stu_vector_df = self.response_matrix.loc[user_id, :]
 
         # 候选题目集合没出现在矩阵中
         if self.response_matrix.columns.intersection(items).empty:
-            logger.debug('CF', 'items_not_in_matrix')
+            logger.debug('CF items_not_in_matrix')
             # 返回的预测概率都是0.5
             prob = pd.Series(data=[self.default_value] * len(items), index=items)
             return prob, stu_vector_df
@@ -142,7 +143,7 @@ class SimpleCF:
         stu_vector = stu_vector_df.values.flatten()
         stu_vector = stu_vector.reshape(len(stu_vector), 1)
         # 目标学生在矩阵中的位置
-        stu_iloc = self.response_matrix.index.get_loc(stu_id)
+        stu_iloc = self.response_matrix.index.get_loc(user_id)
 
         # 全部学生的向量矩阵
         all_vector = self.response_matrix.values
@@ -161,7 +162,7 @@ class SimpleCF:
 
         if not any(selected):
             # 没有与其相似的用户
-            logger.debug('CF', 'stu_no_sim_stu')
+            logger.debug('CF stu_no_sim_stu')
             # 返回的预测概率都是0.5
             prob = pd.Series(data=[self.default_value] * len(items), index=items)
             return prob, stu_vector_df
@@ -177,7 +178,7 @@ class SimpleCF:
 
         # prob 是pandas的series对象,其index是题目id，value是作答概率，
         # 其中有空值存在,空值就是没有预测出来结果，我们设置为0.5的概率值
-        if self.default_value is not None:
+        if self.default_value is not None and self.default_value is not np.nan:
             prob.fillna(self.default_value, inplace=True)
         return prob, stu_vector_df
 
@@ -446,7 +447,7 @@ class UIrt2PL:
         # s =   e / (1.0 + e)
         return prob_matrix
 
-    def predict_simple(self, stu_id, items: pd.DataFrame):
+    def predict_simple(self, user_id, items: pd.DataFrame):
         """
 
         Parameters
@@ -458,7 +459,10 @@ class UIrt2PL:
         -------
 
         """
-        theta = self.user_vector.loc[stu_id, 'theta']
+        if user_id not in self.user_vector.index:
+            logger.debug('IRT ' + str(user_id) + ' no_irt_theta')
+            return pd.Series(data=[np.nan] * len(items), index=items.index), None
+        theta = self.user_vector.loc[user_id, 'theta']
         b = items.loc[:, ['b']].values
         z = self.D * (theta - b)
         prob = sigmod(z)
@@ -524,10 +528,10 @@ class UIrt2PL:
         y_hat = self._prob(theta=theta, a=a, b=b)
         # 一阶导数
         # 每一列是一个样本，求所有样本的平均值
-        all = self.D * a * (y_hat - y)
+        _all = self.D * a * (y_hat - y)
 
         # 答题记录通常不是满记录的，里面有空值，对于空值设置为0，然后再求sum，这样不影响结果
-        grd = np.sum(np.nan_to_num(all, copy=False), axis=1)
+        grd = np.sum(np.nan_to_num(_all, copy=False), axis=1)
         # grd = grd.reshape(len(grd), 1)
         # print(grd.shape, file=sys.stderr)
         return grd
@@ -629,7 +633,7 @@ class UIrt2PL:
 
 
 _candidate_items = None
-_stu_response_items = None
+_user_response_items = None
 _level_response = None
 
 
@@ -682,7 +686,7 @@ def load_level_response(**kwargs):
     拉取当前班型下的所有答题记录
     Parameters
     ----------
-    stu_id
+    user_id
 
     Returns
     -------
@@ -730,7 +734,7 @@ def load_level_response(**kwargs):
     return _level_response
 
 
-def load_stu_response(stu_id, level_response=None):
+def load_user_response(user_id, level_response=None):
     """
     获取当前学生的答题记录
     Parameters
@@ -741,14 +745,14 @@ def load_stu_response(stu_id, level_response=None):
     -------
 
     """
-    global _stu_response_items, _level_response
-    # if _stu_response_items is not None:
-    #     return _stu_response_items
-    # stu_id = kwargs['stu_id']
+    global _user_response_items, _level_response
+    # if _user_response_items is not None:
+    #     return _user_response_items
+    # user_id = kwargs['user_id']
     if level_response is None:
         level_response = _level_response
-    _stu_response_items = level_response.loc[level_response['user_id'] == stu_id, ['item_id', 'b', 'answer']]
-    return _stu_response_items.drop_duplicates(subset=['item_id']).set_index('item_id')
+    _user_response_items = level_response.loc[level_response['user_id'] == user_id, ['item_id', 'b', 'answer']]
+    return _user_response_items.drop_duplicates(subset=['item_id']).set_index('item_id')
 
 
 class Recommend:
@@ -787,13 +791,13 @@ class Recommend:
         try:
             self.model_irt = UIrt2PL.from_pickle(self.db.load_bin('irt', key=key))
         except Exception as e:
-            logger.error("Recommend", 'log_irt_model_error')
+            logger.error('recommend load_irt_model_error')
             traceback.print_exc(file=sys.stderr)
             return False
         try:
             self.model_cf = SimpleCF.from_pickle(self.db.load_bin('cf', key=key))
         except Exception as e:
-            logger.error("Recommend", 'log_cf_model_error')
+            logger.error("recommend load_cf_model_error")
             traceback.print_exc(file=sys.stderr)
             return False
         return True
@@ -813,17 +817,17 @@ class Recommend:
             self.db.save_bin('irt', key, self.model_irt.to_pickle())
             self.db.save_bin('cf', key, self.model_cf.to_pickle())
         except Exception as e:
-            logger.error("Recommend", 'log_cf_model_error')
+            logger.error('recommend save_model_error')
             traceback.print_exc(file=sys.stderr)
             return False
         return True
 
     @staticmethod
-    def _select(stu_acc: float, candidate_items: pd.DataFrame):
+    def _select(user_acc: float, candidate_items: pd.DataFrame):
 
-        if stu_acc > 0.95:
+        if user_acc > 0.95:
             result = candidate_items[candidate_items['prob'] < 0.5].sort_values('prob', ascending=False)
-        elif stu_acc < 0.6:
+        elif user_acc < 0.6:
             result = candidate_items.sort_values('prob', ascending=False)
         else:
             result = candidate_items[(candidate_items['prob'] >= 0.5) & (candidate_items['prob'] <= 0.9)].sort_values(
@@ -839,20 +843,20 @@ class Recommend:
 
         return candidate_items.loc[candidate_items['b'] == difficulty, :]
 
-    def get_by_model(self, stu_id: str, stu_acc: float, candidate_items: pd.DataFrame):
+    def get_by_model(self, user_id: str, user_acc: float, candidate_items: pd.DataFrame):
         """
 
         Parameters
         ----------
-        stu_id
+        user_id
         candidate_items 要求item_id为index
 
         Returns
         -------
 
         """
-        prob_irt, stu_theta = self.model_irt.predict_simple(stu_id, candidate_items)
-        prob_cf, stu_vector = self.model_cf.predict(stu_id, candidate_items)
+        prob_irt, stu_theta = self.model_irt.predict_simple(user_id, candidate_items)
+        prob_cf, stu_vector = self.model_cf.predict(user_id, candidate_items)
         candidate_items['irt'] = prob_irt
         candidate_items['cf'] = prob_cf
         merge_prob = []
@@ -887,17 +891,17 @@ class Recommend:
             # result.append((index_cf, value))
             # print(index_cf, value)
         candidate_items['prob'] = merge_prob
-        result = self._select(stu_acc, candidate_items)
+        result = self._select(user_acc, candidate_items)
         return result
 
-    def get_by_rule(self, stu_id: str, stu_acc: float, candidate_items: pd.DataFrame):
-        if stu_acc >= 0.95:
+    def get_by_rule(self, user_id: str, user_acc: float, candidate_items: pd.DataFrame):
+        if user_acc >= 0.95:
             top_difficulty = 5
-        elif stu_acc >= 0.9:
+        elif user_acc >= 0.9:
             top_difficulty = 4
-        elif stu_acc >= 0.7:
+        elif user_acc >= 0.7:
             top_difficulty = 3
-        elif stu_acc >= 0.6:
+        elif user_acc >= 0.6:
             top_difficulty = 2
         else:
             top_difficulty = 1
@@ -911,28 +915,22 @@ class Recommend:
 
 
 def online(param):
-    # global _candidate_items, _stu_response_items, _level_response
-    # _level_response = pd.read_pickle('level_response.bin')
-    # candidate_items = load_candidate_items(**param)
-    # candidate_items.to_pickle('candidate_items.bin')
-    # candidate_items = pd.read_pickle('candidate_items.bin')
-    # stu_response = load_stu_response(param['stu_id'])
-    # stu_acc = stu_response.loc[:, 'answer'].sum() / len(stu_response)
-    # 从候选集合中剔除已作答过的题目
-    # candidate_items.drop(stu_response.index, inplace=True, errors='ignore')
-
-    candidate_items = pd.DataFrame(param['candidate_items'])
+    candidate_items = pd.DataFrame(param['candidate_items']).set_index('item_id')
     candidate_items['a'] = 1
-    stu_response = pd.DataFrame(param['stu_response'])
-    stu_acc = stu_response.loc[:, 'answer'].sum() / len(stu_response)
-
+    user_response = pd.DataFrame(param['user_response']).set_index('item_id')
+    # todo 按照作答来源区分正确率，理论上我们只关注在个性化练习模块的正确率
+    if len(user_response):
+        user_acc = user_response.loc[:, 'answer'].sum() / len(user_response)
+    else:
+        user_acc = 0
+    # todo db 要换成redis，并且可以通过参数改变redis的地址
     rec_obj = Recommend(db=DiskDB(), param=param)
     if not rec_obj.load_model():
-        result = rec_obj.get_by_rule(stu_id=param['stu_id'], stu_acc=stu_acc, candidate_items=candidate_items)
+        result = rec_obj.get_by_rule(user_id=param['user_id'], user_acc=user_acc, candidate_items=candidate_items)
     else:
-        result = rec_obj.get_by_model(stu_id=param['stu_id'], stu_acc=stu_acc, candidate_items=candidate_items)
+        result = rec_obj.get_by_model(user_id=param['user_id'], user_acc=user_acc, candidate_items=candidate_items)
 
-    print(result.to_json(orient='records'))
+    print(result.iloc[:3, :].to_json(orient='records'))
 
 
 def metric(rec_obj, train_data, test_data):
@@ -964,8 +962,8 @@ def main(options):
     #          'level_id': 'ff8080812fc298b5012fd3d3becb1248',
     #          'term_id': '1',
     #          'knowledge_id': "cb1471bd830c49c2b5ff8b833e3057bd",
-    #          'stu_id': '殷烨嵘',
-    #           'stu_response':{'user_id':[],'item_id':[],'answer':[],'b':[],'},
+    #          'user_id': '殷烨嵘',
+    #           'user_response':{'user_id':[],'item_id':[],'answer':[],'b':[],'},
     #           'candidate_items':{'item_id':[],'b':[]},
     #          }
 
@@ -992,8 +990,8 @@ def main(options):
 
     for line in options.input:
         param = json.loads(line)
-        log_msg_prefix = "%(city_id)s %(subject_id)s %(grade_id)s %(level_id)s %(stu_id)s %(knowledge_id)s" % param
-        _format = '%(asctime)s - %(levelname)s -' + log_msg_prefix + ' %(message)s '
+        log_msg_prefix = "%(city_id)s %(subject_id)s %(grade_id)s %(level_id)s %(user_id)s %(knowledge_id)s" % param
+        _format = '%(asctime)s - %(levelname)s - %(name)s ' + log_msg_prefix + ' %(message)s '
         formatter = logging.Formatter(fmt=_format, datefmt=None)
         logger_ch.setFormatter(formatter)
         run_func(param)
@@ -1001,7 +999,7 @@ def main(options):
 
 def test_one(param):
     # 这两份数据是所有策略都要用的，所以单独进行
-    global _candidate_items, _stu_response_items, _level_response
+    global _candidate_items, _user_response_items, _level_response
 
     load_level_response(**param)
     # _level_response.to_pickle('level_response.bin')
@@ -1009,17 +1007,17 @@ def test_one(param):
 
     # candidate_items = pd.DataFrame(param['candidate_items'])
     # candidate_items['a'] = 1
-    # stu_response = pd.DataFrame(param['stu_response'])
-    # stu_acc = stu_response.loc[:, 'answer'].sum() / len(stu_response)
+    # user_response = pd.DataFrame(param['user_response'])
+    # user_acc = user_response.loc[:, 'answer'].sum() / len(user_response)
 
     train_data = _level_response.loc[_level_response['c_sortorder'] <= 6, :]
     test_data = _level_response.loc[_level_response['c_sortorder'] >= 5, :]
 
-    stu_response = load_stu_response(param['stu_id'], train_data)
-    stu_acc = stu_response.loc[:, 'answer'].sum() / len(stu_response)
+    user_response = load_user_response(param['user_id'], train_data)
+    user_acc = user_response.loc[:, 'answer'].sum() / len(user_response)
     candidate_items = load_candidate_items(**param)
     # 从候选集合中剔除已作答过的题目
-    candidate_items.drop(stu_response.index, inplace=True, errors='ignore')
+    candidate_items.drop(user_response.index, inplace=True, errors='ignore')
 
     rec_obj = Recommend(db=DiskDB(), param=param)
     # print('-' * 10, 'train', '-' * 10, file=sys.stderr)
@@ -1027,7 +1025,7 @@ def test_one(param):
     ok = rec_obj.train_model(train_data)
     print('train_model', ok, file=sys.stderr)
 
-    # print(rec_obj.model_irt.user_vector.loc[param['stu_id'], :], file=sys.stderr)
+    # print(rec_obj.model_irt.user_vector.loc[param['user_id'], :], file=sys.stderr)
 
     print('-' * 10, 'save', '-' * 10, file=sys.stderr)
 
@@ -1036,12 +1034,12 @@ def test_one(param):
     print('-' * 10, 'load', '-' * 10, file=sys.stderr)
 
     rec_obj.load_model()
-    print(rec_obj.model_irt.user_vector.loc[param['stu_id'], :], file=sys.stderr)
+    print(rec_obj.model_irt.user_vector.loc[param['user_id'], :], file=sys.stderr)
 
     # print('-' * 10, 'predict', '-' * 10, file=sys.stderr)
     print('-' * 10, 'recommend', '-' * 10, file=sys.stderr)
 
-    result = rec_obj.get_rec(param['stu_id'], stu_acc=stu_acc, candidate_items=candidate_items)
+    result = rec_obj.get_rec(param['user_id'], user_acc=user_acc, candidate_items=candidate_items)
 
     # print(candidate_items.sort_values('prob'), file=sys.stderr)
     print(result, file=sys.stderr)
@@ -1055,46 +1053,69 @@ def test_one(param):
 
 def test_level(param):
     # 这两份数据是所有策略都要用的，所以单独进行
-    global _candidate_items, _stu_response_items, _level_response
+    global _candidate_items, _user_response_items, _level_response
 
     # load_level_response(**param)
     # _level_response.to_pickle('level_response.bin')
     _level_response = pd.read_pickle('level_response.bin')
 
-    candidate_items = load_candidate_items(**param)
+    # candidate_items = load_candidate_items(**param)
 
-    train_data = _level_response.loc[_level_response['c_sortorder'] < 6, :]
-    test_data = _level_response.loc[_level_response['c_sortorder'] >= 6, :]
-
+    train_data = _level_response.loc[_level_response['c_sortorder'] <= 6, :]
+    test_data = _level_response.loc[_level_response['c_sortorder'] >= 5, :]
+    candidate_items = test_data.loc[:, ['item_id', 'b']].drop_duplicates('item_id')
     rec_obj = Recommend(db=DiskDB(), param=param)
-
+    # ok = rec_obj.load_model()
     ok = rec_obj.train_model(train_data)
 
     metric(rec_obj, train_data=train_data, test_data=test_data)
 
     rec_difficulty = []
-    for stu_id in list(rec_obj.model_irt.user_vector.index):
-        param['stu_id'] = stu_id
-        # user_info = rec_obj.model_irt.user_vector.loc[stu_id, :]
-        stu_response = load_stu_response(param['stu_id'], train_data)
+    rec_irt = []
+    rec_cf = []
+    rec_prob = []
+    # for user_id in list(_level_response.loc[:, 'user_id'].unique()):
+    for user_id in list(rec_obj.model_irt.user_vector.index):
+        param['user_id'] = user_id
+        # user_info = rec_obj.model_irt.user_vector.loc[user_id, :]
+        user_response = load_user_response(param['user_id'], train_data)
         # 从候选集合中剔除已作答过的题目
-        stu_candidate_items = candidate_items.drop(stu_response.index, errors='ignore')
-
-        stu_acc = stu_response.loc[:, 'answer'].sum() / len(stu_response)
-
-        result = rec_obj.get_rec(stu_id, stu_acc=stu_acc, candidate_items=stu_candidate_items)
-        if len(result) == 0:
-            rec_d = -1
+        stu_candidate_items = candidate_items.drop(user_response.index, errors='ignore')
+        if len(user_response):
+            user_acc = user_response.loc[:, 'answer'].sum() / len(user_response)
         else:
-            rec_d = result.iloc[0]['b']
-        # user_info['rec_difficulty'] = rec_difficulty
-        rec_difficulty.append(rec_d)
+            user_acc = 0
+        result = rec_obj.get_by_model(user_id, user_acc=user_acc, candidate_items=stu_candidate_items)
+        if len(result) == 0:
+            rec_difficulty.append(None)
+            rec_irt.append(None)
+            rec_cf.append(None)
+            rec_prob.append(None)
+        else:
 
-    user_info = rec_obj.model_irt.user_vector
-    user_info['rec_b'] = rec_difficulty
+            rec_difficulty.append(result.iloc[0]['b'])
+            rec_irt.append(result.iloc[0]['irt'])
+            rec_cf.append(result.iloc[0]['cf'])
+            rec_prob.append(result.iloc[0]['prob'])
+
+    old_user_info = rec_obj.model_irt.user_vector
+
+    new_user_info = old_user_info.loc[:, ['theta']].copy()
+    for i in [1, 2, 3, 4, 5, 'all']:
+        if 'count_%s' % i not in old_user_info.columns:
+            continue
+        new_user_info.loc[:, '难度%s' % i] = old_user_info.loc[:, 'right_%s' % i].map(str) + '/' + old_user_info.loc[:,
+                                                                                                 'count_%s' % i].map(
+            str) + '=' + old_user_info.loc[:, 'accuracy_%s' % i].map(lambda x: '%.4f' % x)
+
+    new_user_info.loc[:, '推荐难度'] = rec_difficulty
+    new_user_info.loc[:, 'irt'] = rec_irt
+    new_user_info.loc[:, 'cf'] = rec_cf
+    new_user_info.loc[:, 'prob'] = rec_prob
+
     file_name = '推荐结果测试.xlsx'
     writer = pd.ExcelWriter(file_name)
-    user_info.to_excel(writer, encoding="UTF-8")
+    new_user_info.to_excel(writer, encoding="UTF-8")
     writer.save()
 
     # print(user_info, file=sys.stderr)
@@ -1115,7 +1136,7 @@ def test_level(param):
 
 def train_model(param):
     # 这两份数据是所有策略都要用的，所以单独进行
-    global _candidate_items, _stu_response_items, _level_response
+    global _candidate_items, _user_response_items, _level_response
 
     load_level_response(**param)
     _level_response.to_pickle('level_response.bin')
@@ -1123,25 +1144,25 @@ def train_model(param):
 
     # candidate_items = pd.DataFrame(param['candidate_items'])
     # candidate_items['a'] = 1
-    # stu_response = pd.DataFrame(param['stu_response'])
-    # stu_acc = stu_response.loc[:, 'answer'].sum() / len(stu_response)
+    # user_response = pd.DataFrame(param['user_response'])
+    # user_acc = user_response.loc[:, 'answer'].sum() / len(user_response)
 
     train_data = _level_response.loc[_level_response['c_sortorder'] <= 6, :]
     test_data = _level_response.loc[_level_response['c_sortorder'] >= 5, :]
 
-    stu_response = load_stu_response(param['stu_id'], train_data)
-    # stu_acc = stu_response.loc[:, 'answer'].sum() / len(stu_response)
+    user_response = load_user_response(param['user_id'], train_data)
+    # user_acc = user_response.loc[:, 'answer'].sum() / len(user_response)
     # candidate_items = load_candidate_items(**param)
     # 从候选集合中剔除已作答过的题目
-    # candidate_items.drop(stu_response.index, inplace=True, errors='ignore')
+    # candidate_items.drop(user_response.index, inplace=True, errors='ignore')
 
     rec_obj = Recommend(db=DiskDB(), param=param)
     # print('-' * 10, 'train', '-' * 10, file=sys.stderr)
 
-    ok = rec_obj.train_model(train_data)
+    ok = rec_obj.train_model(_level_response)
     print('train_model', ok, file=sys.stderr)
 
-    # print(rec_obj.model_irt.user_vector.loc[param['stu_id'], :], file=sys.stderr)
+    # print(rec_obj.model_irt.user_vector.loc[param['user_id'], :], file=sys.stderr)
 
     print('-' * 10, 'save', '-' * 10, file=sys.stderr)
 
