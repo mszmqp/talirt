@@ -33,7 +33,7 @@ from scipy.optimize import minimize
 import tempfile
 import abc
 import argparse
-
+import traceback
 import logging
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -43,8 +43,8 @@ logger.addHandler(logger_ch)
 _sim_threshold = 0.0
 
 
-def log(*args):
-    print(' '.join(args), file=sys.stderr)
+# def log(*args):
+#     print(' '.join(args), file=sys.stderr)
 
 
 class DiskDB:
@@ -125,7 +125,7 @@ class SimpleCF:
             raise ValueError('items 类型错误')
         # 矩阵中没有目标学生的记录
         if not self.response_matrix.index.contains(stu_id):
-            log('CF', 'stu_not_in_matrix')
+            logger.debug('CF', 'stu_not_in_matrix')
             prob = pd.Series(data=[self.default_value] * len(items), index=items)
             return prob, None
 
@@ -134,7 +134,7 @@ class SimpleCF:
 
         # 候选题目集合没出现在矩阵中
         if self.response_matrix.columns.intersection(items).empty:
-            log('CF', 'items_not_in_matrix')
+            logger.debug('CF', 'items_not_in_matrix')
             # 返回的预测概率都是0.5
             prob = pd.Series(data=[self.default_value] * len(items), index=items)
             return prob, stu_vector_df
@@ -161,7 +161,7 @@ class SimpleCF:
 
         if not any(selected):
             # 没有与其相似的用户
-            log('CF', 'stu_no_sim_stu')
+            logger.debug('CF', 'stu_no_sim_stu')
             # 返回的预测概率都是0.5
             prob = pd.Series(data=[self.default_value] * len(items), index=items)
             return prob, stu_vector_df
@@ -751,7 +751,7 @@ def load_stu_response(stu_id, level_response=None):
     return _stu_response_items.drop_duplicates(subset=['item_id']).set_index('item_id')
 
 
-class Recommend(object):
+class Recommend:
     model_irt = None
     model_cf = None
     probs = {}
@@ -784,9 +784,19 @@ class Recommend(object):
              ])
 
         # self.model_irt = UIrt2PL.from_dict(self.db.load_json('irt', key=key))
-        self.model_irt = UIrt2PL.from_pickle(self.db.load_bin('irt', key=key))
-        self.model_cf = SimpleCF.from_pickle(self.db.load_bin('cf', key=key))
-        # return True
+        try:
+            self.model_irt = UIrt2PL.from_pickle(self.db.load_bin('irt', key=key))
+        except Exception as e:
+            logger.error("Recommend", 'log_irt_model_error')
+            traceback.print_exc(file=sys.stderr)
+            return False
+        try:
+            self.model_cf = SimpleCF.from_pickle(self.db.load_bin('cf', key=key))
+        except Exception as e:
+            logger.error("Recommend", 'log_cf_model_error')
+            traceback.print_exc(file=sys.stderr)
+            return False
+        return True
 
     def save_model(self):
         key = '_'.join(
@@ -799,14 +809,21 @@ class Recommend(object):
              ])
 
         # self.db.save_json('irt', key, self.model_irt.to_dict())
-        self.db.save_bin('irt', key, self.model_irt.to_pickle())
-        self.db.save_bin('cf', key, self.model_cf.to_pickle())
+        try:
+            self.db.save_bin('irt', key, self.model_irt.to_pickle())
+            self.db.save_bin('cf', key, self.model_cf.to_pickle())
+        except Exception as e:
+            logger.error("Recommend", 'log_cf_model_error')
+            traceback.print_exc(file=sys.stderr)
+            return False
+        return True
 
-    def select(self, stu_cur_acc, candidate_items):
+    @staticmethod
+    def _select(stu_acc: float, candidate_items: pd.DataFrame):
 
-        if stu_cur_acc > 0.95:
+        if stu_acc > 0.95:
             result = candidate_items[candidate_items['prob'] < 0.5].sort_values('prob', ascending=False)
-        elif stu_cur_acc < 0.6:
+        elif stu_acc < 0.6:
             result = candidate_items.sort_values('prob', ascending=False)
         else:
             result = candidate_items[(candidate_items['prob'] >= 0.5) & (candidate_items['prob'] <= 0.9)].sort_values(
@@ -817,7 +834,12 @@ class Recommend(object):
 
         return result
 
-    def get_rec(self, stu_id: str, stu_acc, candidate_items: pd.DataFrame):
+    @staticmethod
+    def _get_items_by_difficulty(difficulty, candidate_items: pd.DataFrame):
+
+        return candidate_items.loc[candidate_items['b'] == difficulty, :]
+
+    def get_by_model(self, stu_id: str, stu_acc: float, candidate_items: pd.DataFrame):
         """
 
         Parameters
@@ -865,8 +887,27 @@ class Recommend(object):
             # result.append((index_cf, value))
             # print(index_cf, value)
         candidate_items['prob'] = merge_prob
-        result = self.select(stu_acc, candidate_items)
+        result = self._select(stu_acc, candidate_items)
         return result
+
+    def get_by_rule(self, stu_id: str, stu_acc: float, candidate_items: pd.DataFrame):
+        if stu_acc >= 0.95:
+            top_difficulty = 5
+        elif stu_acc >= 0.9:
+            top_difficulty = 4
+        elif stu_acc >= 0.7:
+            top_difficulty = 3
+        elif stu_acc >= 0.6:
+            top_difficulty = 2
+        else:
+            top_difficulty = 1
+
+        for i in range(top_difficulty, 0, -1):
+            result = self._get_items_by_difficulty(i, candidate_items)
+            if len(result) > 0:
+                return result
+
+        return candidate_items
 
 
 def online(param):
@@ -886,9 +927,12 @@ def online(param):
     stu_acc = stu_response.loc[:, 'answer'].sum() / len(stu_response)
 
     rec_obj = Recommend(db=DiskDB(), param=param)
-    rec_obj.load_model()
-    result = rec_obj.get_rec(stu_id=param['stu_id'], stu_acc=stu_acc, candidate_items=candidate_items)
-    print(result.to_json())
+    if not rec_obj.load_model():
+        result = rec_obj.get_by_rule(stu_id=param['stu_id'], stu_acc=stu_acc, candidate_items=candidate_items)
+    else:
+        result = rec_obj.get_by_model(stu_id=param['stu_id'], stu_acc=stu_acc, candidate_items=candidate_items)
+
+    print(result.to_json(orient='records'))
 
 
 def metric(rec_obj, train_data, test_data):
@@ -921,7 +965,7 @@ def main(options):
     #          'term_id': '1',
     #          'knowledge_id': "cb1471bd830c49c2b5ff8b833e3057bd",
     #          'stu_id': '殷烨嵘',
-    #           'stu_response':{'user_id':[],'item_id':[],'answer':[],'b':[]},
+    #           'stu_response':{'user_id':[],'item_id':[],'answer':[],'b':[],'},
     #           'candidate_items':{'item_id':[],'b':[]},
     #          }
 
