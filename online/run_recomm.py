@@ -997,7 +997,7 @@ def main(options):
         run_func(param)
 
 
-def test_one(**param):
+def test_one(param):
     # 这两份数据是所有策略都要用的，所以单独进行
     global _candidate_items, _stu_response_items, _level_response
 
@@ -1010,8 +1010,8 @@ def test_one(**param):
     # stu_response = pd.DataFrame(param['stu_response'])
     # stu_acc = stu_response.loc[:, 'answer'].sum() / len(stu_response)
 
-    train_data = _level_response.loc[_level_response['c_sortorder'] < 6, :]
-    test_data = _level_response.loc[_level_response['c_sortorder'] >= 6, :]
+    train_data = _level_response.loc[_level_response['c_sortorder'] <= 6, :]
+    test_data = _level_response.loc[_level_response['c_sortorder'] >= 5, :]
 
     stu_response = load_stu_response(param['stu_id'], train_data)
     stu_acc = stu_response.loc[:, 'answer'].sum() / len(stu_response)
@@ -1051,7 +1051,7 @@ def test_one(**param):
     return
 
 
-def test_level(**param):
+def test_level(param):
     # 这两份数据是所有策略都要用的，所以单独进行
     global _candidate_items, _stu_response_items, _level_response
 
@@ -1111,9 +1111,39 @@ def test_level(**param):
     return
 
 
-# c_sortorder
+def train_model(param):
+    # 这两份数据是所有策略都要用的，所以单独进行
+    global _candidate_items, _stu_response_items, _level_response
 
+    load_level_response(**param)
+    _level_response.to_pickle('level_response.bin')
+    _level_response = pd.read_pickle('level_response.bin')
 
+    # candidate_items = pd.DataFrame(param['candidate_items'])
+    # candidate_items['a'] = 1
+    # stu_response = pd.DataFrame(param['stu_response'])
+    # stu_acc = stu_response.loc[:, 'answer'].sum() / len(stu_response)
+
+    train_data = _level_response.loc[_level_response['c_sortorder'] <= 6, :]
+    test_data = _level_response.loc[_level_response['c_sortorder'] >= 5, :]
+
+    stu_response = load_stu_response(param['stu_id'], train_data)
+    # stu_acc = stu_response.loc[:, 'answer'].sum() / len(stu_response)
+    # candidate_items = load_candidate_items(**param)
+    # 从候选集合中剔除已作答过的题目
+    # candidate_items.drop(stu_response.index, inplace=True, errors='ignore')
+
+    rec_obj = Recommend(db=DiskDB(), param=param)
+    # print('-' * 10, 'train', '-' * 10, file=sys.stderr)
+
+    ok = rec_obj.train_model(train_data)
+    print('train_model', ok, file=sys.stderr)
+
+    # print(rec_obj.model_irt.user_vector.loc[param['stu_id'], :], file=sys.stderr)
+
+    print('-' * 10, 'save', '-' * 10, file=sys.stderr)
+
+    rec_obj.save_model()
 def init_option():
     """
     初始化命令行参数项
