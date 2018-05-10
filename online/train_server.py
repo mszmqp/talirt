@@ -25,6 +25,7 @@ from run_recomm import Recommend, DiskDB, RedisDB
 # import re
 from kafka import KafkaConsumer
 from elasticsearch import Elasticsearch
+from elasticsearch_dsl import Search
 import pandas as pd
 import numpy as np
 import kudu
@@ -193,10 +194,61 @@ class Storage:
         return df_response
 
     def get_stu_by_es(self, param):
-        pass
+        query = {
+            'size': -1,
+            'query':
+                {
+                    'bool': {
+                        'filter': [
+                            {'term': {'sa_year': param['year']}},
+                            {'term': {'sa_city_code': param['city_id']}},
+                            {'term': {'sa_grd_id': param['grade_id']}},
+                            {'term': {'sa_term_id': param['term_id']}},
+                            {'term': {'sa_subj_id': param['subject_id']}},
+                            {'term': {'sa_lev_id': param['level_id']}},
+                            {'term': {'sa_stu_id': param['user_id']}},
+                        ]
+
+                    }
+
+                },
+            '_source': ['sa_stu_id', 'sa_qst_id', 'lq_qst_difct', 'sa_answer_status']
+        }
+        s = Search.from_dict(query).using(self.client_es).doc_type('tb_stu_answer').index('ips')
+        data = [(record.sa_stu_id, record.sa_qst_id, record.lq_qst_difct, record.sa_answer_status,) for record in
+                s.scan()]
+        df = pd.DataFrame(data, columns=['user_id', 'item_id', 'b', 'answer'])
+        df.loc[df['answer'] == 2, 'answer'] = 0
+        df.loc[:, 'a'] = [1] * len(df)
+        return df
 
     def get_level_by_es(self, param):
-        pass
+        query = {
+            'size': -1,
+            'query':
+                {
+                    'bool': {
+                        'filter': [
+                            {'term': {'sa_year': param['year']}},
+                            {'term': {'sa_city_code': param['city_id']}},
+                            {'term': {'sa_grd_id': param['grade_id']}},
+                            {'term': {'sa_term_id': param['term_id']}},
+                            {'term': {'sa_subj_id': param['subject_id']}},
+                            {'term': {'sa_lev_id': param['level_id']}},
+                        ]
+
+                    }
+
+                },
+            '_source': ['sa_stu_id', 'sa_qst_id', 'lq_qst_difct', 'sa_answer_status']
+        }
+        s = Search.from_dict(query).using(self.client_es)
+        data = [(record.sa_stu_id, record.sa_qst_id, record.lq_qst_difct, record.sa_answer_status,) for record in
+                s.scan()]
+        df = pd.DataFrame(data, columns=['user_id', 'item_id', 'b', 'answer'])
+        df.loc[df['answer'] == 2, 'answer'] = 0
+        df.loc[:, 'a'] = [1] * len(df)
+        return df
 
     @staticmethod
     def _tuples_2_dataframe(tuples, names):

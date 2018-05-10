@@ -991,7 +991,7 @@ def main(options):
     #          'term_id': '1',
     #          'knowledge_id': "cb1471bd830c49c2b5ff8b833e3057bd",
     #          'user_id': '殷烨嵘',
-    #           'user_response':{'user_id':[],'item_id':[],'answer':[],'b':[],'},
+    #           'user_response':{'user_id':[],'item_id':[],'answer':[],'b':[],},
     #           'candidate_items':{'item_id':[],'b':[]},
     #          }
 
