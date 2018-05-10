@@ -1167,7 +1167,7 @@ def test_level(param):
 def train_model(param):
     # 这两份数据是所有策略都要用的，所以单独进行
     global _candidate_items, _user_response_items, _level_response
-
+    print('loading response from impala...', file=sys.stderr)
     load_level_response(**param)
     _level_response.to_pickle('level_response.bin')
     _level_response = pd.read_pickle('level_response.bin')
@@ -1188,6 +1188,7 @@ def train_model(param):
 
     rec_obj = Recommend(db=DiskDB(), param=param)
     # print('-' * 10, 'train', '-' * 10, file=sys.stderr)
+    print('training model...', file=sys.stderr)
 
     ok = rec_obj.train_model(_level_response)
     print('train_model', ok, file=sys.stderr)
