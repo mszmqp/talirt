@@ -44,8 +44,6 @@ logger = logging.getLogger("recommend")
 _sim_threshold = 0.0
 
 
-# def log(*args):
-#     print(' '.join(args), file=sys.stderr)
 
 
 class DiskDB:
@@ -1167,6 +1165,8 @@ def train_model(param):
     print('-' * 10, 'save', '-' * 10, file=sys.stderr)
 
     rec_obj.save_model()
+
+
 
 
 def init_option():
