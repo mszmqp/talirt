@@ -168,21 +168,36 @@ def run_forever(options):
         train_func = train_level_model
     elif options.train_type == 'student':
         train_func = None
-    while True:
-        msg = c.poll(1.0)
-
-        if msg is None:
-            logger.info('time out')
-            continue
-        if msg.error():
-            if msg.error().code() == KafkaError._PARTITION_EOF:
+    try:
+        while True:
+            msg = c.poll(1.0)
+            if msg is None:
+                logger.info('time out')
                 continue
-            else:
-                logger.error(msg.error())
-                break
+            if msg.error():
+                if msg.error().code() == KafkaError._PARTITION_EOF:
+                    logger.warning(msg.error())
+                    continue
+                else:
+                    logger.error(msg.error())
+                    break
 
-        print('Received message: {}'.format(msg.value().decode('utf-8')))
-        train_func(msg.value())
+            print('Received message: {}'.format(msg.value().decode('utf-8')))
+            train_func(msg.value())
+    except KeyboardInterrupt:
+        logger.info('KeyboardInterrupt')
+        pass
+
+    logger.info('Closing consumer')
+    # vc.send_records_consumed(immediate=True)
+    # if not vc.use_auto_commit:
+    #     vc.do_commit(immediate=True, asynchronous=False)
+
+    # vc.consumer.close()
+
+    # vc.send({'name': 'shutdown_complete'})
+
+    # vc.dbg('All done')
     c.close()
 
 
