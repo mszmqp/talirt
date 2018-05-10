@@ -27,7 +27,7 @@ log_fmt = '%(asctime)s\tproc %(process)s\t%(levelname)s\t%(message)s'
 formatter = logging.Formatter(log_fmt)
 # 创建TimedRotatingFileHandler对象
 log_file_handler = TimedRotatingFileHandler(filename="train_server.log", when='D', interval=1,
-                                            backupCount=0)
+                                            backupCount=7)
 # log_file_handler.suffix = "-%W.log"
 # log_file_handler.extMatch = re.compile(r"^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}.log$")
 log_file_handler.setFormatter(formatter)
@@ -35,7 +35,7 @@ log_file_handler.setFormatter(formatter)
 logger = logging.getLogger("train_server")
 logger.addHandler(log_file_handler)
 
-from run_recomm import Recommend, DiskDB,RedisDB
+from run_recomm import Recommend, DiskDB, RedisDB
 # from confluent_kafka.kafkatest.verifiable_client import VerifiableClient
 # from confluent_kafka.kafkatest.verifiable_consumer import VerifiableConsumer
 # from confluent_kafka import Consumer, KafkaError
@@ -206,8 +206,8 @@ class Storage:
                      'sa_answer_status': 'answer',
                      })
         df.loc[df['answer'] == 2, 'answer'] = 0
-        df.loc[:, 'a'] = 1
-        df.loc[:, 'b'] = 2
+        df.loc[:, 'a'] = [1] * len(df)
+        df.loc[:, 'b'] = [2] * len(df)
         return df
 
     def get_level_response(self, param):
@@ -258,6 +258,7 @@ def train_level_model(record):
     _storage_time = 0,
     _train_time = 0
     _save_time = 0
+    response_count = 0
 
     _s_time = time.time()
     level_response = storage.get_level_response(param)
@@ -270,6 +271,7 @@ def train_level_model(record):
         logger.warning(' '.join([
             'level',
             key,
+            str(response_count),
             'storage_time:%f' % _storage_time,
             'train_time:%f' % _train_time,
             'save_time:%f' % _save_time,
@@ -278,7 +280,7 @@ def train_level_model(record):
             'no_response'
         ]))
         return False
-
+    response_count = len(level_response)
     rec_obj = Recommend(db=DiskDB(), param=param)
     # print('-' * 10, 'train', '-' * 10, file=sys.stderr)
 
@@ -290,6 +292,7 @@ def train_level_model(record):
         logger.warning(' '.join([
             'level',
             key,
+            str(response_count),
             'storage_time:%f' % _storage_time,
             'train_time:%f' % _train_time,
             'save_time:%f' % _save_time,
@@ -304,6 +307,7 @@ def train_level_model(record):
     logger.info(' '.join([
         'level',
         key,
+        str(response_count),
         'storage_time:%f' % _storage_time,
         'train_time:%f' % _train_time,
         'save_time:%f' % _save_time,
