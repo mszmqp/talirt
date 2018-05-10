@@ -35,7 +35,7 @@ log_file_handler.setFormatter(formatter)
 logger = logging.getLogger("train_server")
 logger.addHandler(log_file_handler)
 
-from run_recomm import Recommend, DiskDB
+from run_recomm import Recommend, DiskDB,RedisDB
 # from confluent_kafka.kafkatest.verifiable_client import VerifiableClient
 # from confluent_kafka.kafkatest.verifiable_consumer import VerifiableConsumer
 # from confluent_kafka import Consumer, KafkaError
@@ -44,6 +44,7 @@ from kafka import KafkaConsumer
 from elasticsearch import Elasticsearch
 import pandas as pd
 import numpy as np
+import kudu
 
 
 class Storage:
@@ -51,14 +52,11 @@ class Storage:
     def __init__(self, bakend='kudu'):
         self.bakend = bakend
         if bakend == 'kudu':
-            import kudu
+
             self.client_kudu = kudu.connect(host='192.168.23.195', port=7051)
         elif bakend == 'es':
             self.client_es = Elasticsearch(
                 ['http://elastic:Y0Vu72W5hIMTBiU@es-cn-mp90i4ycm0007a7ko.elasticsearch.aliyuncs.com:9200/'])
-
-    def get_by_es(self):
-        pass
 
     def get_level_by_kudu(self, param):
 
@@ -124,6 +122,80 @@ class Storage:
         scanner.close()
         return df_response
 
+    def get_stu_by_kudu(self, param):
+
+        """
+        kudu table schema
+          sa_city_code           string NOT NULL
+          sa_class_id            string NOT NULL
+          sa_cuc_id              string NOT NULL
+          sa_id                  string NOT NULL
+          sa_stu_id              string
+          sa_c_id                string
+          sa_cl_id               string
+          sa_lt_id               string
+          sa_qst_id              string
+          sa_qst_num             string
+          sa_lq_id               string
+          sa_start_tm            string
+          sa_elapsed_tm          int32
+          sa_answer_status       int32
+          sa_answer_cont         string
+          sa_score               int32
+          sa_year                string
+          sa_term_id             string
+          sa_grd_id              string
+          sa_subj_id             string
+          sa_lev_id              string
+          sa_detail              string
+          sa_is_deleted          int32
+          sa_is_fixup            int32
+          sa_tutorimgurl         string
+          sa_studentanswerurl    string
+          sa_questiontypestatus  int32
+          sa_tutoraudiourl       string
+          sa_create_time         string
+          sa_knowledge_id        string
+          sa_modify_time         string
+          sa_tutoraudiotime      int32
+          sa_knowledge_id2       string
+          sa_baiduurl            string
+          sa_serverurl           string
+          sa_imgsourcestatus     int32
+          sa_tutorcontent        string
+          mycat_time             string
+          event_op_type          string
+          event_timestamp        int64
+          etl_time               string
+          binlog_pos             int64
+        """
+        table = self.client_kudu.table('ods_ips_tb_stu_answer')
+        scanner = table.scanner()
+        preds = [
+            table['sa_year'] == param['year'],
+            table['sa_city_code'] == param['city_id'],
+            table['sa_grd_id'] == param['grade_id'],
+            table['sa_term_id'] == param['term_id'],
+            table['sa_subj_id'] == param['subject_id'],
+            table['sa_lev_id'] == param['level_id'],
+            table['sa_stu_id'] == param['user_id'],
+        ]
+        scanner.add_predicates(preds)
+        scanner.open()
+        data = scanner.read_all_tuples()
+        if len(data) == 0:
+            logger.warning()
+            return None
+        df_response = self._tuples_2_dataframe(data, table.schema.names)
+        scanner.close()
+        return df_response
+
+    def get_stu_by_es(self, param):
+        pass
+
+    def get_level_by_es(self, param):
+        pass
+
     @staticmethod
     def _tuples_2_dataframe(tuples, names):
 
@@ -138,12 +210,17 @@ class Storage:
         df.loc[:, 'b'] = 2
         return df
 
-    def get_by_stu(self, stu_id):
-        pass
-
-    def get_by_level(self, param):
+    def get_level_response(self, param):
         if self.bakend == 'kudu':
             return self.get_level_by_kudu(param)
+        elif self.bakend == 'es':
+            return self.get_level_by_es(param)
+
+    def get_student_response(self, param):
+        if self.bakend == 'kudu':
+            return self.get_stu_by_kudu(param)
+        elif self.bakend == 'es':
+            return self.get_stu_by_es(param)
 
 
 storage = Storage()
@@ -177,9 +254,30 @@ def train_level_model(record):
         param['subject_id'],
         param['level_id'],
     ])
+
+    _storage_time = 0,
+    _train_time = 0
+    _save_time = 0
+
     _s_time = time.time()
-    level_response = storage.get_by_level(param)
+    level_response = storage.get_level_response(param)
     _storage_time = time.time() - _s_time
+
+    train_ok = None
+    save_ok = None
+
+    if level_response is None or len(level_response) == 0:
+        logger.warning(' '.join([
+            'level',
+            key,
+            'storage_time:%f' % _storage_time,
+            'train_time:%f' % _train_time,
+            'save_time:%f' % _save_time,
+            str(train_ok),
+            str(save_ok),
+            'no_response'
+        ]))
+        return False
 
     rec_obj = Recommend(db=DiskDB(), param=param)
     # print('-' * 10, 'train', '-' * 10, file=sys.stderr)
@@ -188,6 +286,18 @@ def train_level_model(record):
     train_ok = rec_obj.train_model(level_response)
     _train_time = time.time() - _s_time
 
+    if not train_ok:
+        logger.warning(' '.join([
+            'level',
+            key,
+            'storage_time:%f' % _storage_time,
+            'train_time:%f' % _train_time,
+            'save_time:%f' % _save_time,
+            str(train_ok),
+            str(save_ok),
+            'train_failed'
+        ]))
+        return False
     _s_time = time.time()
     save_ok = rec_obj.save_model()
     _save_time = time.time() - _s_time
@@ -200,6 +310,7 @@ def train_level_model(record):
         str(train_ok),
         str(save_ok),
     ]))
+    return save_ok
 
 
 def init_option():

@@ -35,6 +35,7 @@ import abc
 import argparse
 import traceback
 import logging
+import redis
 
 logger_ch = logging.StreamHandler(stream=sys.stderr)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[logger_ch])
@@ -42,8 +43,6 @@ logger = logging.getLogger("recommend")
 # logger.addHandler(logger_ch)
 
 _sim_threshold = 0.0
-
-
 
 
 class DiskDB:
@@ -76,6 +75,19 @@ class DiskDB:
         file_name = os.path.join(self.path, table, key)
         with open(file_name, 'rb') as fh:
             return fh.read()
+
+
+class RedisDB:
+    def __init__(self, host, port=6379, db=0):
+        self.client = redis.Redis(host=host, port=port, db=0)
+
+    def save_bin(self, table, key, value):
+        key = table.strip() + ":" + key
+        self.client.set(key, value)
+
+    def load_bin(self, table, key):
+        key = table.strip() + ":" + key
+        return self.client.get(key)
 
 
 class SimpleCF:
@@ -1165,8 +1177,6 @@ def train_model(param):
     print('-' * 10, 'save', '-' * 10, file=sys.stderr)
 
     rec_obj.save_model()
-
-
 
 
 def init_option():
