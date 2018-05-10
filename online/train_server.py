@@ -18,6 +18,16 @@ import logging
 import os
 import json
 import time
+from run_recomm import Recommend, DiskDB, RedisDB
+# from confluent_kafka.kafkatest.verifiable_client import VerifiableClient
+# from confluent_kafka.kafkatest.verifiable_consumer import VerifiableConsumer
+# from confluent_kafka import Consumer, KafkaError
+# import re
+from kafka import KafkaConsumer
+from elasticsearch import Elasticsearch
+import pandas as pd
+import numpy as np
+import kudu
 
 # logger_ch = logging.StreamHandler(stream=sys.stderr)
 # logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[logger_ch])
@@ -32,19 +42,10 @@ log_file_handler = TimedRotatingFileHandler(filename="train_server.log", when='D
 # log_file_handler.extMatch = re.compile(r"^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}.log$")
 log_file_handler.setFormatter(formatter)
 # logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("train_server")
+logger = logging.getLogger()
+# for hdlr in logger.handlers:
+#     logger.removeHandler(hdlr)
 logger.addHandler(log_file_handler)
-
-from run_recomm import Recommend, DiskDB, RedisDB
-# from confluent_kafka.kafkatest.verifiable_client import VerifiableClient
-# from confluent_kafka.kafkatest.verifiable_consumer import VerifiableConsumer
-# from confluent_kafka import Consumer, KafkaError
-# import re
-from kafka import KafkaConsumer
-from elasticsearch import Elasticsearch
-import pandas as pd
-import numpy as np
-import kudu
 
 
 class Storage:
@@ -52,7 +53,6 @@ class Storage:
     def __init__(self, bakend='kudu'):
         self.bakend = bakend
         if bakend == 'kudu':
-
             self.client_kudu = kudu.connect(host='192.168.23.195', port=7051)
         elif bakend == 'es':
             self.client_es = Elasticsearch(
@@ -281,7 +281,7 @@ def train_level_model(record):
         ]))
         return False
     response_count = len(level_response)
-    rec_obj = Recommend(db=DiskDB(), param=param)
+    rec_obj = Recommend(db=DiskDB(), param=param, logger=logger)
     # print('-' * 10, 'train', '-' * 10, file=sys.stderr)
 
     _s_time = time.time()
@@ -373,6 +373,7 @@ def run_forever(options):
 
 
 def main(options):
+    # options.
     run_forever(options)
 
 

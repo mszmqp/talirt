@@ -37,9 +37,6 @@ import traceback
 import logging
 import redis
 
-logger_ch = logging.StreamHandler(stream=sys.stderr)
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[logger_ch])
-logger = logging.getLogger("recommend")
 # logger.addHandler(logger_ch)
 
 _sim_threshold = 0.0
@@ -92,6 +89,7 @@ class RedisDB:
 
 class SimpleCF:
     default_value = np.nan
+    logger = logging.getLogger()
 
     def fit(self, response: pd.DataFrame, sequential=True):
         """
@@ -136,7 +134,7 @@ class SimpleCF:
             raise ValueError('items 类型错误')
         # 矩阵中没有目标学生的记录
         if not self.response_matrix.index.contains(user_id):
-            logger.debug('CF stu_not_in_matrix')
+            self.logger.debug('CF stu_not_in_matrix')
             prob = pd.Series(data=[self.default_value] * len(items), index=items)
             return prob, None
 
@@ -145,7 +143,7 @@ class SimpleCF:
 
         # 候选题目集合没出现在矩阵中
         if self.response_matrix.columns.intersection(items).empty:
-            logger.debug('CF items_not_in_matrix')
+            self.logger.debug('CF items_not_in_matrix')
             # 返回的预测概率都是0.5
             prob = pd.Series(data=[self.default_value] * len(items), index=items)
             return prob, stu_vector_df
@@ -172,7 +170,7 @@ class SimpleCF:
 
         if not any(selected):
             # 没有与其相似的用户
-            logger.debug('CF stu_no_sim_stu')
+            self.logger.debug('CF stu_no_sim_stu')
             # 返回的预测概率都是0.5
             prob = pd.Series(data=[self.default_value] * len(items), index=items)
             return prob, stu_vector_df
@@ -237,6 +235,8 @@ class SimpleCF:
 
 
 class UIrt2PL:
+    logger = logging.getLogger()
+
     def __init__(self, D=1.702):
         self.D = D
         self.k = 1
@@ -470,7 +470,7 @@ class UIrt2PL:
 
         """
         if user_id not in self.user_vector.index:
-            logger.debug('IRT ' + str(user_id) + ' no_irt_theta')
+            self.logger.debug('IRT ' + str(user_id) + ' no_irt_theta')
             return pd.Series(data=[np.nan] * len(items), index=items.index), None
         theta = self.user_vector.loc[user_id, 'theta']
         b = items.loc[:, ['b']].values
@@ -770,7 +770,24 @@ class Recommend:
     model_cf = None
     probs = {}
 
-    def __init__(self, db, param):
+    @staticmethod
+    def _get_logger(param):
+        log_msg_prefix = "%(city_id)s %(subject_id)s %(grade_id)s %(level_id)s %(user_id)s %(knowledge_id)s" % param
+        _format = '%(asctime)s - %(levelname)s - %(name)s ' + log_msg_prefix + ' %(message)s '
+        formatter = logging.Formatter(fmt=_format, datefmt=None)
+
+        logger = logging.getLogger()
+        if logger.hasHandlers():
+            handler = logger.handlers[0]
+        else:
+            handler = logging.StreamHandler(stream=sys.stderr)
+            logger.addHandler(handler)
+        handler.setFormatter(formatter)
+        # logging.basicConfig(level=logging.INFO, format=_format)
+        logger.setLevel(param.get('log_level', logging.INFO))
+        return logger
+
+    def __init__(self, db, param, logger=None):
         self.db = db
         self.param = param
         self.year = param['year']
@@ -780,6 +797,11 @@ class Recommend:
         self.level_id = param['level_id']
         self.term_id = param['term_id']
         self.knowledge_id = param['knowledge_id']
+        if logger is None:
+            self.logger = self._get_logger(param)
+        else:
+            self.logger = logger
+        # self.logger.setLevel()
 
     def train_model(self, response: pd.DataFrame, sequential=True):
         self.model_irt = UIrt2PL()
@@ -801,13 +823,13 @@ class Recommend:
         try:
             self.model_irt = UIrt2PL.from_pickle(self.db.load_bin('irt', key=key))
         except Exception as e:
-            logger.error('recommend load_irt_model_error')
+            self.logger.error('recommend load_irt_model_error')
             traceback.print_exc(file=sys.stderr)
             return False
         try:
             self.model_cf = SimpleCF.from_pickle(self.db.load_bin('cf', key=key))
         except Exception as e:
-            logger.error("recommend load_cf_model_error")
+            self.logger.error("recommend load_cf_model_error")
             traceback.print_exc(file=sys.stderr)
             return False
         return True
@@ -827,7 +849,7 @@ class Recommend:
             self.db.save_bin('irt', key, self.model_irt.to_pickle())
             self.db.save_bin('cf', key, self.model_cf.to_pickle())
         except Exception as e:
-            logger.error('recommend save_model_error')
+            self.logger.error('recommend save_model_error')
             traceback.print_exc(file=sys.stderr)
             return False
         return True
@@ -980,14 +1002,15 @@ def main(options):
     # pd.DataFrame.from_records([(3,'a'),(4,'h')])
     # pd.DataFrame.from_records([{'id':3,'xx':'a'},{'id':4,'xx':'h'}])
     # pd.DataFrame({'a':[1,4],'b':[3,6]})
+
     if options.log == 'info':
-        logger_ch.setLevel(logging.INFO)
+        log_level = logging.INFO
     elif options.log == 'warning':
-        logger_ch.setLevel(logging.WARNING)
+        log_level = logging.WARNING
     elif options.log == 'debug':
-        logger_ch.setLevel(logging.DEBUG)
+        log_level = logging.DEBUG
     elif options.log == 'error':
-        logger_ch.setLevel(logging.ERROR)
+        log_level = logging.ERROR
 
     if options.run == 'online':
         run_func = online
@@ -1000,10 +1023,7 @@ def main(options):
 
     for line in options.input:
         param = json.loads(line)
-        log_msg_prefix = "%(city_id)s %(subject_id)s %(grade_id)s %(level_id)s %(user_id)s %(knowledge_id)s" % param
-        _format = '%(asctime)s - %(levelname)s - %(name)s ' + log_msg_prefix + ' %(message)s '
-        formatter = logging.Formatter(fmt=_format, datefmt=None)
-        logger_ch.setFormatter(formatter)
+        param['log_level'] = log_level
         run_func(param)
 
 
