@@ -772,8 +772,8 @@ class Recommend:
 
     @staticmethod
     def _get_logger(param):
-        log_msg_prefix = "%(city_id)s %(subject_id)s %(grade_id)s %(level_id)s %(user_id)s %(knowledge_id)s" % param
-        _format = '%(asctime)s - %(levelname)s - %(name)s ' + log_msg_prefix + ' %(message)s '
+        log_msg_prefix = "%(city_id)s %(grade_id)s %(term_id)s %(subject_id)s %(level_id)s %(knowledge_id)s %(user_id)s" % param
+        _format = '%(asctime)s - %(levelname)s ' + log_msg_prefix + ' %(message)s '
         formatter = logging.Formatter(fmt=_format, datefmt=None)
 
         logger = logging.getLogger()
@@ -820,19 +820,20 @@ class Recommend:
              ])
 
         # self.model_irt = UIrt2PL.from_dict(self.db.load_json('irt', key=key))
+        ret = True
         try:
             self.model_irt = UIrt2PL.from_pickle(self.db.load_bin('irt', key=key))
         except Exception as e:
             self.logger.error('recommend load_irt_model_error')
             traceback.print_exc(file=sys.stderr)
-            return False
+            ret = False
         try:
             self.model_cf = SimpleCF.from_pickle(self.db.load_bin('cf', key=key))
         except Exception as e:
             self.logger.error("recommend load_cf_model_error")
             traceback.print_exc(file=sys.stderr)
-            return False
-        return True
+            ret = False
+        return ret
 
     def save_model(self):
         key = '_'.join(
