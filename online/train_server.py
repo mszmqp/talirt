@@ -30,7 +30,6 @@ import numpy as np
 import kudu
 
 # logger_ch = logging.StreamHandler(stream=sys.stderr)
-# logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[logger_ch])
 # logger = logging.getLogger("recommend")
 
 log_fmt = '%(asctime)s\tproc %(process)s\t%(levelname)s\t%(message)s'
@@ -38,14 +37,17 @@ formatter = logging.Formatter(log_fmt)
 # 创建TimedRotatingFileHandler对象
 log_file_handler = TimedRotatingFileHandler(filename="train_server.log", when='D', interval=1,
                                             backupCount=7)
+logging.basicConfig(level=logging.INFO, format=log_fmt,
+                    handlers=[logging.StreamHandler(stream=sys.stderr), log_file_handler])
 # log_file_handler.suffix = "-%W.log"
 # log_file_handler.extMatch = re.compile(r"^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}.log$")
-log_file_handler.setFormatter(formatter)
+# log_file_handler.setFormatter(formatter)
 # logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger()
 # for hdlr in logger.handlers:
 #     logger.removeHandler(hdlr)
-logger.addHandler(log_file_handler)
+# logger.addHandler(log_file_handler)
+
+logger = logging.getLogger()
 
 
 class Storage:
