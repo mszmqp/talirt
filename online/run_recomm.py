@@ -801,6 +801,15 @@ class Recommend:
             self.logger = self._get_logger(param)
         else:
             self.logger = logger
+
+        self.level_key = '_'.join(
+            [str(self.year),
+             str(self.city_id),
+             str(self.grade_id),
+             str(self.subject_id),
+             str(self.term_id),
+             str(self.level_id),
+             ])
         # self.logger.setLevel()
 
     def train_model(self, response: pd.DataFrame, sequential=True):
@@ -810,14 +819,7 @@ class Recommend:
                     self.model_irt.fit(response=response, sequential=sequential)])
 
     def load_model(self):
-        key = '_'.join(
-            [str(self.year),
-             str(self.city_id),
-             str(self.grade_id),
-             str(self.subject_id),
-             str(self.term_id),
-             str(self.level_id),
-             ])
+        key = self.level_key
 
         # self.model_irt = UIrt2PL.from_dict(self.db.load_json('irt', key=key))
         ret = True
@@ -836,14 +838,7 @@ class Recommend:
         return ret
 
     def save_model(self):
-        key = '_'.join(
-            [str(self.year),
-             str(self.city_id),
-             str(self.grade_id),
-             str(self.subject_id),
-             str(self.term_id),
-             str(self.level_id),
-             ])
+        key = self.level_key
 
         # self.db.save_json('irt', key, self.model_irt.to_dict())
         try:
