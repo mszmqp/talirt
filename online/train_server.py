@@ -118,7 +118,7 @@ class Storage:
         scanner.add_predicates(preds)
         scanner.open()
         data = scanner.read_all_tuples()
-        df_response = self._tuples_2_dataframe(data, table.scheme.names)
+        df_response = self._tuples_2_dataframe(data, table.schema.names)
         scanner.close()
         return df_response
 
