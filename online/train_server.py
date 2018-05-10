@@ -16,7 +16,7 @@ from logging.handlers import TimedRotatingFileHandler
 from logging.handlers import RotatingFileHandler
 import logging
 import os
-
+import json
 # logger_ch = logging.StreamHandler(stream=sys.stderr)
 # logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[logger_ch])
 # logger = logging.getLogger("recommend")
@@ -234,7 +234,7 @@ def run_forever(options):
                                                  message.offset, message.key,
                                                  message.value))
 
-            train_func(message.value)
+            train_func(json.loads(message.value))
     except KeyboardInterrupt:
         logger.info('KeyboardInterrupt')
         pass
