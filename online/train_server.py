@@ -129,6 +129,8 @@ def init_option():
                         help=u"输入文件；默认标准输入设备")
     parser.add_argument("-o", "--output", dest="output",
                         help=u"输出文件；默认标准输出设备")
+    parser.add_argument("-t", "--train_model", dest="train_type", choices=['student', 'level'], default='level',
+                        help=u"输出文件；默认标准输出设备")
     parser.add_argument('--topic', action='append', type=str, default='ips.tb_stu_answer')
     parser.add_argument('--group-id', dest='conf_group.id', default="bidev_curriculum_knowledge_practice")
     parser.add_argument('--broker-list', dest='conf_bootstrap.servers',
@@ -162,20 +164,25 @@ def run_forever(options):
     print(args['topic'])
     c.subscribe(args['topic'].split(','))
 
+    if options.train_type == 'level':
+        train_func = train_level_model
+    elif options.train_type == 'student':
+        train_func = None
     while True:
         msg = c.poll(1.0)
 
         if msg is None:
+            logger.info('time out')
             continue
         if msg.error():
             if msg.error().code() == KafkaError._PARTITION_EOF:
                 continue
             else:
-                print(msg.error())
+                logger.error(msg.error())
                 break
 
         print('Received message: {}'.format(msg.value().decode('utf-8')))
-
+        train_func(msg.value())
     c.close()
 
 
