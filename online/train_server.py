@@ -17,6 +17,8 @@ from logging.handlers import RotatingFileHandler
 import logging
 import os
 import json
+import time
+
 # logger_ch = logging.StreamHandler(stream=sys.stderr)
 # logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[logger_ch])
 # logger = logging.getLogger("recommend")
@@ -167,25 +169,37 @@ def train_level_model(record):
         'answer': record['sa_answer_status'],
 
     }
-    key = '_'.join([
-        param['year'],
+    key = ' '.join([
+        # param['year'],
         param['city_id'],
         param['grade_id'],
         param['term_id'],
         param['subject_id'],
         param['level_id'],
     ])
+    _s_time = time.time()
     level_response = storage.get_by_level(param)
+    _storage_time = time.time() - _s_time
 
     rec_obj = Recommend(db=DiskDB(), param=param)
     # print('-' * 10, 'train', '-' * 10, file=sys.stderr)
 
-    ok = rec_obj.train_model(level_response)
+    _s_time = time.time()
+    train_ok = rec_obj.train_model(level_response)
+    _train_time = time.time() - _s_time
 
-    print('train_model', ok, file=sys.stderr)
-    print('-' * 10, 'save', '-' * 10, file=sys.stderr)
-
-    rec_obj.save_model()
+    _s_time = time.time()
+    save_ok = rec_obj.save_model()
+    _save_time = time.time() - _s_time
+    logger.info(' '.join([
+        'level',
+        key,
+        'storage_time:%f' % _storage_time,
+        'train_time:%f' % _train_time,
+        'save_time:%f' % _save_time,
+        str(train_ok),
+        str(save_ok),
+    ]))
 
 
 def init_option():
@@ -230,9 +244,9 @@ def run_forever(options):
         for message in consumer:
             # message value and key are raw bytes -- decode if necessary!
             # e.g., for unicode: `message.value.decode('utf-8')`
-            print("%s:%d:%d: key=%s value=%s" % (message.topic, message.partition,
-                                                 message.offset, message.key,
-                                                 message.value))
+            # print("%s:%d:%d: key=%s value=%s" % (message.topic, message.partition,
+            #                                      message.offset, message.key,
+            #                                      message.value))
 
             train_func(json.loads(message.value))
     except KeyboardInterrupt:
