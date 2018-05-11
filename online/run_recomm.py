@@ -899,7 +899,7 @@ class Recommend:
 
         self.probs['irt'] = prob_irt
         self.probs['cf'] = prob_cf
-        result = []
+        # result = []
         prob_irt.fillna(-1, inplace=True)
         prob_cf.fillna(-1, inplace=True)
         for item1, item2 in zip(prob_cf.iteritems(), prob_irt.iteritems()):
@@ -950,7 +950,7 @@ class Recommend:
         return candidate_items
 
 
-def online(param):
+def online(param, options):
     candidate_items = pd.DataFrame(param['candidate_items']).set_index('item_id')
     candidate_items['a'] = 1
     user_response = pd.DataFrame(param['user_response']).set_index('item_id')
@@ -960,13 +960,34 @@ def online(param):
     else:
         user_acc = 0
     # todo db 要换成redis，并且可以通过参数改变redis的地址
-    rec_obj = Recommend(db=DiskDB(), param=param)
-    if not rec_obj.load_model():
-        result = rec_obj.get_by_rule(user_id=param['user_id'], user_acc=user_acc, candidate_items=candidate_items)
-    else:
-        result = rec_obj.get_by_model(user_id=param['user_id'], user_acc=user_acc, candidate_items=candidate_items)
+    db = RedisDB(host=options.redis_host,
+                 port=int(options.redis_port),
+                 password=options.redis_password,
+                 db=int(options.redis_db))
+    rec_obj = Recommend(db=db, param=param)
+    model_count = 0
+    rule_count = 0
+    try:
+        if rec_obj.load_model():
+            result = rec_obj.get_by_model(user_id=param['user_id'], user_acc=user_acc, candidate_items=candidate_items)
+            model_count = len(result)
 
-    print(result.iloc[:3, :].to_json(orient='records'))
+    except Exception as e:
+        rec_obj.logger.error('recommend model error')
+        traceback.print_exc(file=sys.stderr)
+
+    if model_count == 0:
+        result = rec_obj.get_by_rule(user_id=param['user_id'], user_acc=user_acc, candidate_items=candidate_items)
+        rule_count = len(result)
+
+    rec_obj.logger.info('recommend model:%d rule:%d' % (model_count, rule_count))
+    if len(result) == 0:
+        print(json.dumps([]))
+    elif len(result) > 3:
+        print(result.to_json(orient='records'))
+
+    else:
+        print(result.iloc[:3, :].to_json(orient='records'))
 
 
 def metric(rec_obj, train_data, test_data):
