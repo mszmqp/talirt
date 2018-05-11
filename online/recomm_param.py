@@ -38,7 +38,6 @@ sys.path.append('./')
 import run_recomm
 
 
-
 def main(options):
     param = {'year': '2018',
              'city_id': '0571',
@@ -63,13 +62,13 @@ def main(options):
     train_data = level_response.loc[level_response['c_sortorder'] <= 6, :]
     test_data = level_response.loc[level_response['c_sortorder'] >= 5, :]
     candidate_items = test_data.loc[:, ['item_id', 'b']].drop_duplicates('item_id')
-    param['candidate_items'] = json.loads(candidate_items.reset_index().to_json())
+    param['candidate_items'] = json.loads(candidate_items.reset_index().to_json(orient='records'))
 
     for user_id in list(train_data.loc[:, 'user_id'].unique()):
         user_response = run_recomm.load_user_response(user_id, train_data)
 
         param['user_id'] = user_id
-        param['user_response'] = json.loads(user_response.reset_index().to_json())
+        param['user_response'] = json.loads(user_response.reset_index().to_json(orient='records'))
         print(json.dumps(param))
     # pd.DataFrame().to
     # candidate_items = pd.DataFrame(param['candidate_items'])

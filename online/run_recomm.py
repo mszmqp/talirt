@@ -984,15 +984,15 @@ def online(param, options):
     rec_obj.logger.info('recommend model:%d rule:%d' % (model_count, rule_count))
     if len(result) == 0:
         print(json.dumps([]))
-    elif len(result) <= 3:
+    elif len(result) <= int(options.num):
         result.reset_index(inplace=True)
-        result.rename(columns={'b': 'diffculty', }, inplace=True)
+        result.rename(columns={'b': 'difficulty', }, inplace=True)
         print(result.to_json(orient='records'))
 
     else:
         result.reset_index(inplace=True)
-        result.rename(columns={'b': 'diffculty', }, inplace=True)
-        print(result.iloc[:3, :].to_json(orient='records'))
+        result.rename(columns={'b': 'difficulty', }, inplace=True)
+        print(result.iloc[:int(options.num), :].to_json(orient='records'))
 
 
 def metric(rec_obj, train_data, test_data):
@@ -1241,7 +1241,7 @@ def init_option():
     """
 
     parser = argparse.ArgumentParser(usage="""
-        从标准输入stdin,输入待推荐的(人、答题记录、候选题目)信息.
+        从标准输入(stdin)输入待推荐的(人、答题记录、候选题目)信息.
             输入格式： 输入一个json串
             {'year': '2018',
              'city_id': '0571',
@@ -1260,21 +1260,26 @@ def init_option():
               'candidate_items':[{'item_id':'xx','difficulty':'3'},{...}],
              }
         
-        从标准输出stdout,返回推荐结果；
-            输出格式: json串
-            [ 
-             {"b":1,"index":70,"a":1,"irt":0.8902715644,"cf":0.5308122988,"prob":0.7105419316},
-             {"b":1,"index":262,"a":1,"irt":0.8902715644,"cf":0.5276596098,"prob":0.7089655871},
-             {"b":1,"index":68,"a":1,"irt":0.8902715644,"cf":0.5272390911,"prob":0.7087553278},
-             ]
+        从标准输出(stdout)返回推荐结果；
+            输出格式: json串,目前一次最多返回3条推荐题目，可通过参数-n调整返回数量
+            item_id:题目id
+            difficulty：题目难度
+            其它字段可忽略(策略开发自用)
+            [
+            {"item_id":"5_f89cba3c7fb34097a7d712dbb52c5ff2","difficulty":1,"index":70,"a":1,"irt":0.8902715644,"cf":0.5308122988,"prob":0.7105419316},
+            {"item_id":"5_c8f89b52425e4cebb88f5fc2061377f9","difficulty":1,"index":262,"a":1,"irt":0.8902715644,"cf":0.5276596098,"prob":0.7089655871},
+            {"item_id":"5_8fb9da2403be472b90728be6a7806627","difficulty":1,"index":68,"a":1,"irt":0.8902715644,"cf":0.5272390911,"prob":0.7087553278}
+            ]
             
-        从标准错误stderr，输出日志。
+        从标准错误(stderr)输出日志。
     
     """)
     parser.add_argument("-i", "--input", dest="input",
                         help=u"输入文件；默认标准输入设备")
     parser.add_argument("-o", "--output", dest="output",
                         help=u"输出文件；默认标准输出设备")
+    parser.add_argument("-n", "--num", dest="num", default=3, type=int,
+                        help=u"一次最多返回n条推荐结果，默认为3")
     parser.add_argument("-r", "--run", dest="run", choices=['online', 'train', 'test_one', 'test_level'],
                         default='online',
                         help=u"运行模式")
