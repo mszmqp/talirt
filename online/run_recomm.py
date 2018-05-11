@@ -77,13 +77,16 @@ class DiskDB:
 class RedisDB:
     def __init__(self, host, port=6379, db=1, password='6AZ62ssx'):
         self.client = redis.Redis(host=host, port=port, db=db, password=password)
+        self.logger = logging.getLogger()
 
     def save_bin(self, table, key, value):
         key = table.strip() + ":" + key
+        self.logger.debug('redis read %s' % key)
         self.client.set(key, value)
 
     def load_bin(self, table, key):
         key = table.strip() + ":" + key
+        self.logger.debug('redis save %s' % key)
         return self.client.get(key)
 
 
