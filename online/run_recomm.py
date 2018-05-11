@@ -75,8 +75,8 @@ class DiskDB:
 
 
 class RedisDB:
-    def __init__(self, host, port=6379, db=0):
-        self.client = redis.Redis(host=host, port=port, db=0)
+    def __init__(self, host, port=6379, db=1, password='6AZ62ssx'):
+        self.client = redis.Redis(host=host, port=port, db=db, password=password)
 
     def save_bin(self, table, key, value):
         key = table.strip() + ":" + key
@@ -89,7 +89,11 @@ class RedisDB:
 
 class SimpleCF:
     default_value = np.nan
-    logger = logging.getLogger()
+
+    # logger = logging.getLogger()
+
+    def __init__(self, logger=logging.getLogger()):
+        self.logger = logger
 
     def fit(self, response: pd.DataFrame, sequential=True):
         """
@@ -235,13 +239,14 @@ class SimpleCF:
 
 
 class UIrt2PL:
-    logger = logging.getLogger()
+    # logger = logging.getLogger()
 
-    def __init__(self, D=1.702):
+    def __init__(self, D=1.702, logger=logging.getLogger()):
         self.D = D
         self.k = 1
         self.user_vector = None
         self.item_vector = None
+        self.logger = logger
 
     def fit(self, response: pd.DataFrame, sequential=True):
         """
@@ -1020,10 +1025,10 @@ def main(options):
     for line in options.input:
         param = json.loads(line)
         param['log_level'] = log_level
-        run_func(param)
+        run_func(param, options)
 
 
-def test_one(param):
+def test_one(param, options):
     # 这两份数据是所有策略都要用的，所以单独进行
     global _candidate_items, _user_response_items, _level_response
 
@@ -1077,7 +1082,7 @@ def test_one(param):
     return
 
 
-def test_level(param):
+def test_level(param, options):
     # 这两份数据是所有策略都要用的，所以单独进行
     global _candidate_items, _user_response_items, _level_response
 
@@ -1160,7 +1165,7 @@ def test_level(param):
     return
 
 
-def train_model(param):
+def train_model(param, options):
     # 这两份数据是所有策略都要用的，所以单独进行
     global _candidate_items, _user_response_items, _level_response
     print('loading response from impala...', file=sys.stderr)
@@ -1182,7 +1187,10 @@ def train_model(param):
     # 从候选集合中剔除已作答过的题目
     # candidate_items.drop(user_response.index, inplace=True, errors='ignore')
 
-    rec_obj = Recommend(db=DiskDB(), param=param)
+    rec_obj = Recommend(db=RedisDB(host=options.redis_host,
+                                   port=int(options.redis_port),
+                                   password=options.redis_password,
+                                   db=int(options.redis_db)), param=param)
     # print('-' * 10, 'train', '-' * 10, file=sys.stderr)
     print('training model...', file=sys.stderr)
 
@@ -1214,6 +1222,14 @@ def init_option():
     parser.add_argument("-l", "--log", dest="log", choices=['info', 'warning', 'debug', 'error'], default='info',
                         help=u"运行模式")
 
+    parser.add_argument("--redis-host", dest="redis_host", default='r-2ze393c7086d8214.redis.rds.aliyuncs.com',
+                        help=u"redis host")
+    parser.add_argument("--redis-port", dest="redis_port", default=6379, type=int,
+                        help=u"redis port")
+    parser.add_argument("--redis-password", dest="redis_password", default='6AZ62ssx',
+                        help=u"redis password")
+    parser.add_argument("--redis-db", dest="redis_db", default=1, type=int,
+                        help=u"redis password")
     return parser
 
 
