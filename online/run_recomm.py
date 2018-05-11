@@ -48,6 +48,7 @@ class DiskDB:
         self.path = path
         if not os.path.exists(self.path):
             os.makedirs(self.path)
+        self.logger = logging.getLogger()
 
     def save_json(self, table, key, value):
         path = os.path.join(self.path, table)
@@ -62,6 +63,7 @@ class DiskDB:
         file_name = os.path.join(path, key)
         with open(file_name, 'wb') as fh:
             fh.write(value)
+        self.logger.debug('disk save %s' % file_name)
 
     def load_json(self, table, key):
         file_name = os.path.join(self.path, table, key)
@@ -72,6 +74,7 @@ class DiskDB:
         file_name = os.path.join(self.path, table, key)
         with open(file_name, 'rb') as fh:
             return fh.read()
+        self.logger.debug('disk load %s' % file_name)
 
 
 class RedisDB:
@@ -81,12 +84,12 @@ class RedisDB:
 
     def save_bin(self, table, key, value):
         key = table.strip() + ":" + key
-        self.logger.debug('redis read %s' % key)
+        self.logger.debug('redis save %s' % key)
         self.client.set(key, value)
 
     def load_bin(self, table, key):
         key = table.strip() + ":" + key
-        self.logger.debug('redis save %s' % key)
+        self.logger.debug('redis load %s' % key)
         return self.client.get(key)
 
 

@@ -11,11 +11,10 @@ Date:    2018/5/10 10:09
 """
 import sys
 import argparse
-# import kudu
 from logging.handlers import TimedRotatingFileHandler
-from logging.handlers import RotatingFileHandler
+# from logging.handlers import RotatingFileHandler
 import logging
-import os
+# import os
 import json
 import time
 from run_recomm import Recommend, DiskDB, RedisDB
@@ -27,8 +26,9 @@ from kafka import KafkaConsumer
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Search
 import pandas as pd
-import numpy as np
+# import numpy as np
 import kudu
+import traceback
 
 # logger_ch = logging.StreamHandler(stream=sys.stderr)
 # logger = logging.getLogger("recommend")
@@ -121,6 +121,9 @@ class Storage:
         scanner.add_predicates(preds)
         scanner.open()
         data = scanner.read_all_tuples()
+        if len(data) == 0:
+            logger.warning('kudu_read_empty')
+            return None
         df_response = self._tuples_2_dataframe(data, table.schema.names)
         scanner.close()
         return df_response
@@ -187,7 +190,7 @@ class Storage:
         scanner.open()
         data = scanner.read_all_tuples()
         if len(data) == 0:
-            logger.warning()
+            logger.warning('kudu_read_empty')
             return None
         df_response = self._tuples_2_dataframe(data, table.schema.names)
         scanner.close()
@@ -217,6 +220,9 @@ class Storage:
         s = Search.from_dict(query).using(self.client_es).doc_type('tb_stu_answer').index('ips')
         data = [(record.sa_stu_id, record.sa_qst_id, record.lq_qst_difct, record.sa_answer_status,) for record in
                 s.scan()]
+        if len(data) == 0:
+            logger.warning('es_read_empty')
+            return None
         df = pd.DataFrame(data, columns=['user_id', 'item_id', 'b', 'answer'])
         df.loc[df['answer'] == 2, 'answer'] = 0
         df.loc[:, 'a'] = [1] * len(df)
@@ -245,6 +251,10 @@ class Storage:
         s = Search.from_dict(query).using(self.client_es)
         data = [(record.sa_stu_id, record.sa_qst_id, record.lq_qst_difct, record.sa_answer_status,) for record in
                 s.scan()]
+
+        if len(data) == 0:
+            logger.warning('es_read_empty')
+            return None
         df = pd.DataFrame(data, columns=['user_id', 'item_id', 'b', 'answer'])
         df.loc[df['answer'] == 2, 'answer'] = 0
         df.loc[:, 'a'] = [1] * len(df)
@@ -265,10 +275,17 @@ class Storage:
         return df
 
     def get_level_response(self, param):
-        if self.bakend == 'kudu':
-            return self.get_level_by_kudu(param)
-        elif self.bakend == 'es':
-            return self.get_level_by_es(param)
+        try:
+
+            df = self.get_level_by_kudu(param)
+            if df is None or len(df) == 0:
+                df = self.get_level_by_es(param)
+            return df
+        except Exception as e:
+            logger.error("storage_error")
+            msg = traceback.format_exc()
+            logger.error(msg)
+        return None
 
     def get_student_response(self, param):
         if self.bakend == 'kudu':
@@ -280,7 +297,7 @@ class Storage:
 storage = Storage()
 
 
-def train_level_model(record):
+def train_level_model(record, options):
     table = record['event_tablename']
     # if table not in ['']
     is_deleted = record['sa_is_deleted']
@@ -300,7 +317,7 @@ def train_level_model(record):
         'answer': record['sa_answer_status'],
 
     }
-    key = ' '.join([
+    log_key = ' '.join([
         # param['year'],
         param['city_id'],
         param['grade_id'],
@@ -324,7 +341,7 @@ def train_level_model(record):
     if level_response is None or len(level_response) == 0:
         logger.warning(' '.join([
             'level',
-            key,
+            log_key,
             str(response_count),
             'storage_time:%f' % _storage_time,
             'train_time:%f' % _train_time,
@@ -335,7 +352,13 @@ def train_level_model(record):
         ]))
         return False
     response_count = len(level_response)
-    rec_obj = Recommend(db=DiskDB(), param=param, logger=logger)
+
+    db = RedisDB(host=options.redis_host,
+                 port=int(options.redis_port),
+                 password=options.redis_password,
+                 db=int(options.redis_db))
+
+    rec_obj = Recommend(db=db, param=param, logger=logger)
     # print('-' * 10, 'train', '-' * 10, file=sys.stderr)
 
     _s_time = time.time()
@@ -345,7 +368,7 @@ def train_level_model(record):
     if not train_ok:
         logger.warning(' '.join([
             'level',
-            key,
+            log_key,
             str(response_count),
             'storage_time:%f' % _storage_time,
             'train_time:%f' % _train_time,
@@ -360,7 +383,7 @@ def train_level_model(record):
     _save_time = time.time() - _s_time
     logger.info(' '.join([
         'level',
-        key,
+        log_key,
         str(response_count),
         'storage_time:%f' % _storage_time,
         'train_time:%f' % _train_time,
@@ -389,14 +412,26 @@ def init_option():
     parser.add_argument('--group-id', dest='group', default="bidev_curriculum_knowledge_practice")
     parser.add_argument('--broker-list', dest='servers',
                         default='192.168.14.133:9092,192.168.14.192:9092,192.168.14.193:9092')
-    parser.add_argument('--session-timeout', type=int, dest='conf_session.timeout.ms', default=6000)
-    parser.add_argument('--enable-autocommit', action='store_true', dest='conf_enable.auto.commit', default=False)
-    parser.add_argument('--max-messages', type=int, dest='max_messages', default=-1)
-    parser.add_argument('--assignment-strategy', dest='conf_partition.assignment.strategy')
-    parser.add_argument('--reset-policy', dest='conf_auto.offset.reset', default='earliest')
-    parser.add_argument('--consumer.config', dest='consumer_config')
-    parser.add_argument('-X', nargs=1, dest='extra_conf', action='append', help='Configuration property', default=[])
 
+    # parser.add_argument('--session-timeout', type=int, dest='conf_session.timeout.ms', default=6000)
+    # parser.add_argument('--enable-autocommit', action='store_true', dest='conf_enable.auto.commit', default=False)
+    # parser.add_argument('--max-messages', type=int, dest='max_messages', default=-1)
+    # parser.add_argument('--assignment-strategy', dest='conf_partition.assignment.strategy')
+    # parser.add_argument('--reset-policy', dest='conf_auto.offset.reset', default='earliest')
+    # parser.add_argument('--consumer.config', dest='consumer_config')
+    # parser.add_argument('-X', nargs=1, dest='extra_conf', action='append', help='Configuration property', default=[])
+
+    parser.add_argument("-l", "--log", dest="log", choices=['info', 'warning', 'debug', 'error'], default='info',
+                        help=u"日志级别，默认INFO")
+
+    parser.add_argument("--redis-host", dest="redis_host", default='r-2ze393c7086d8214.redis.rds.aliyuncs.com',
+                        help=u"redis host")
+    parser.add_argument("--redis-port", dest="redis_port", default=6379, type=int,
+                        help=u"redis port")
+    parser.add_argument("--redis-password", dest="redis_password", default='6AZ62ssx',
+                        help=u"redis password")
+    parser.add_argument("--redis-db", dest="redis_db", default=1, type=int,
+                        help=u"redis db,默认是1")
     return parser
 
 
@@ -417,7 +452,7 @@ def run_forever(options):
             #                                      message.offset, message.key,
             #                                      message.value))
 
-            train_func(json.loads(message.value))
+            train_func(json.loads(message.value), options)
     except KeyboardInterrupt:
         logger.info('KeyboardInterrupt')
         pass
