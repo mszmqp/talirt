@@ -1282,9 +1282,9 @@ def init_option():
                         help=u"一次最多返回n条推荐结果，默认为3")
     parser.add_argument("-r", "--run", dest="run", choices=['online', 'train', 'test_one', 'test_level'],
                         default='online',
-                        help=u"运行模式")
+                        help=u"运行模式，online:线上推荐模式，默认值。")
     parser.add_argument("-l", "--log", dest="log", choices=['info', 'warning', 'debug', 'error'], default='info',
-                        help=u"运行模式")
+                        help=u"日志级别，默认INFO")
 
     parser.add_argument("--redis-host", dest="redis_host", default='r-2ze393c7086d8214.redis.rds.aliyuncs.com',
                         help=u"redis host")
@@ -1293,7 +1293,7 @@ def init_option():
     parser.add_argument("--redis-password", dest="redis_password", default='6AZ62ssx',
                         help=u"redis password")
     parser.add_argument("--redis-db", dest="redis_db", default=1, type=int,
-                        help=u"redis password")
+                        help=u"redis db,默认是1")
     return parser
 
 
