@@ -1251,13 +1251,18 @@ def init_option():
              'term_id': '1',
              'knowledge_id': "cb1471bd830c49c2b5ff8b833e3057bd",
              'user_id': 'xxxx', # 学生id
-              # 学生答题记录 user_response后是一个dict，
+             
+              'user_response':[ {'src':'xx','item_id':'xx','answer':1,'difficulty':2},{...}], 
+              # user_response学生答题记录
               # item_id : 题目id
               # difficulty 是题目难度
               # answer 是学生作答结果，0:错误   1:正确
               # src 这条作答结果的来源： 0:ips关卡  1:我们的个性化练习
-              'user_response':[ {'src':'xx','item_id':'xx','answer':1,'difficulty':2},{...}], 
+              
               'candidate_items':[{'item_id':'xx','difficulty':'3'},{...}],
+              # candidate_items 待推荐的候选题目集合。
+              # 注意推荐策略仅从题目难度方面进行推荐。
+              # 请上层业务自行从候选推荐题目集合中过滤掉不适合的题目（比如已经作答过的，题型不合适等等）
              }
         
         从标准输出(stdout)返回推荐结果；
