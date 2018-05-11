@@ -55,10 +55,10 @@ class Storage:
 
     def __init__(self, bakend='kudu'):
         self.bakend = bakend
-        if bakend == 'kudu':
-            self.client_kudu = kudu.connect(host='192.168.23.195', port=7051)
-        elif bakend == 'es':
-            self.client_es = Elasticsearch(
+        #if bakend == 'kudu':
+        self.client_kudu = kudu.connect(host='192.168.23.195', port=7051)
+        #elif bakend == 'es':
+        self.client_es = Elasticsearch(
                 ['http://elastic:Y0Vu72W5hIMTBiU@es-cn-mp90i4ycm0007a7ko.elasticsearch.aliyuncs.com:9200/'])
 
     def get_level_by_kudu(self, param):
