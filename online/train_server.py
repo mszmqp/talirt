@@ -14,7 +14,7 @@ import argparse
 from logging.handlers import TimedRotatingFileHandler
 # from logging.handlers import RotatingFileHandler
 import logging
-# import os
+import os
 import json
 import time
 from run_recomm import Recommend, DiskDB, RedisDB
@@ -33,13 +33,7 @@ import traceback
 # logger_ch = logging.StreamHandler(stream=sys.stderr)
 # logger = logging.getLogger("recommend")
 
-log_fmt = '%(asctime)s\tproc %(process)s\t%(levelname)s\t%(message)s'
-formatter = logging.Formatter(log_fmt)
-# 创建TimedRotatingFileHandler对象
-log_file_handler = TimedRotatingFileHandler(filename="train_server.log", when='D', interval=1,
-                                            backupCount=7)
-logging.basicConfig(level=logging.INFO, format=log_fmt,
-                    handlers=[logging.StreamHandler(stream=sys.stderr), log_file_handler])
+
 # log_file_handler.suffix = "-%W.log"
 # log_file_handler.extMatch = re.compile(r"^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}.log$")
 # log_file_handler.setFormatter(formatter)
@@ -55,11 +49,11 @@ class Storage:
 
     def __init__(self, bakend='kudu'):
         self.bakend = bakend
-        #if bakend == 'kudu':
+        # if bakend == 'kudu':
         self.client_kudu = kudu.connect(host='192.168.23.195', port=7051)
-        #elif bakend == 'es':
+        # elif bakend == 'es':
         self.client_es = Elasticsearch(
-                ['http://elastic:Y0Vu72W5hIMTBiU@es-cn-mp90i4ycm0007a7ko.elasticsearch.aliyuncs.com:9200/'])
+            ['http://elastic:Y0Vu72W5hIMTBiU@es-cn-mp90i4ycm0007a7ko.elasticsearch.aliyuncs.com:9200/'])
 
     def get_level_by_kudu(self, param):
 
@@ -421,9 +415,11 @@ def init_option():
     # parser.add_argument('--consumer.config', dest='consumer_config')
     # parser.add_argument('-X', nargs=1, dest='extra_conf', action='append', help='Configuration property', default=[])
 
-    parser.add_argument("-l", "--log", dest="log", choices=['info', 'warning', 'debug', 'error'], default='info',
+    parser.add_argument("--log-level", dest="log_level", choices=['info', 'warning', 'debug', 'error'],
+                        default='info',
                         help=u"日志级别，默认INFO")
-
+    parser.add_argument("--log-path", dest="log_path", default='.',
+                        help=u"日志存放目录，默认当前目录")
     parser.add_argument("--redis-host", dest="redis_host", default='r-2ze393c7086d8214.redis.rds.aliyuncs.com',
                         help=u"redis host")
     parser.add_argument("--redis-port", dest="redis_port", default=6379, type=int,
@@ -466,6 +462,32 @@ def main(options):
     run_forever(options)
 
 
+def init_logger(options):
+    if options.log_level == 'info':
+        log_level = logging.INFO
+    elif options.log_level == 'warning':
+        log_level = logging.WARNING
+    elif options.log_level == 'debug':
+        log_level = logging.DEBUG
+    elif options.log_level == 'error':
+        log_level = logging.ERROR
+
+    log_fmt = '%(asctime)s\tproc %(process)s\t%(levelname)s\t%(message)s'
+    # formatter = logging.Formatter(log_fmt)
+    if not os.path.exists(options.log_path):
+        os.makedirs(options.log_path)
+    log_name = os.path.join(options.log_path, 'train_server.log')
+
+    # 创建TimedRotatingFileHandler对象
+    log_file_handler = TimedRotatingFileHandler(filename=log_name, when='D', interval=1,
+                                                backupCount=7)
+
+    logging.basicConfig(level=log_level, format=log_fmt,
+                        handlers=[logging.StreamHandler(stream=sys.stderr), log_file_handler])
+    global logger
+    logger = logging.getLogger()
+
+
 if __name__ == "__main__":
 
     parser = init_option()
@@ -476,4 +498,5 @@ if __name__ == "__main__":
         options.input = open(options.input)
     else:
         options.input = sys.stdin
+
     main(options)
