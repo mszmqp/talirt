@@ -955,9 +955,17 @@ def online(param, options):
     candidate_items.rename(columns={'difficulty': 'b'}, inplace=True)
     candidate_items['a'] = 1
     user_response = pd.DataFrame(param['user_response']).set_index('item_id')
-    # todo 按照作答来源区分正确率，理论上我们只关注在个性化练习模块的正确率
+    #  按照作答来源区分正确率，理论上我们只关注在个性化练习模块的正确率
+    # src==1 是我们的作答记录 src==0是ips作答结果
     if len(user_response):
-        user_acc = user_response.loc[:, 'answer'].sum() / len(user_response)
+        if "src" in user_response.columns:
+            our_response = user_response.loc[user_response['src'] == 1, :]
+            if len(our_response):  # 如果有在个性化练习的作答结果，就用这个，否则用全部的
+                user_acc = our_response.loc[:, 'answer'].sum() / len(our_response)
+            else:
+                user_acc = user_response.loc[:, 'answer'].sum() / len(user_response)
+        else:
+            user_acc = user_response.loc[:, 'answer'].sum() / len(user_response)
     else:
         user_acc = 0
     # todo db 要换成redis，并且可以通过参数改变redis的地址
@@ -1255,11 +1263,11 @@ def init_option():
               'user_response':[ {'src':'xx','item_id':'xx','answer':1,'difficulty':2},{...}], 
               # user_response学生答题记录
               # item_id : 题目id
-              # difficulty 是题目难度
-              # answer 是学生作答结果，0:错误   1:正确
-              # src 这条作答结果的来源： 0:ips关卡  1:我们的个性化练习
+              # difficulty 是题目难度 **必须是整型或者浮点型**
+              # answer 是学生作答结果，0:错误   1:正确 **必须是整型**
+              # src 这条作答结果的来源： 0:ips关卡  1:我们的个性化练习 **必须是整型**
               
-              'candidate_items':[{'item_id':'xx','difficulty':'3'},{...}],
+              'candidate_items':[{'item_id':'xx','difficulty':3},{...}],
               # candidate_items 待推荐的候选题目集合。
               # 注意推荐策略仅从题目难度方面进行推荐。
               # 请上层业务自行从候选推荐题目集合中过滤掉不适合的题目（比如已经作答过的，题型不合适等等）
