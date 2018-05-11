@@ -983,7 +983,7 @@ def online(param, options):
     rec_obj.logger.info('recommend model:%d rule:%d' % (model_count, rule_count))
     if len(result) == 0:
         print(json.dumps([]))
-    elif len(result) > 3:
+    elif len(result) <= 3:
         print(result.to_json(orient='records'))
 
     else:
