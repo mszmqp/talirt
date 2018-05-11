@@ -952,6 +952,7 @@ class Recommend:
 
 def online(param, options):
     candidate_items = pd.DataFrame(param['candidate_items']).set_index('item_id')
+    candidate_items.rename(columns={'difficulty': 'b'}, inplace=True)
     candidate_items['a'] = 1
     user_response = pd.DataFrame(param['user_response']).set_index('item_id')
     # todo 按照作答来源区分正确率，理论上我们只关注在个性化练习模块的正确率
@@ -984,9 +985,13 @@ def online(param, options):
     if len(result) == 0:
         print(json.dumps([]))
     elif len(result) <= 3:
+        result.reset_index(inplace=True)
+        result.rename(columns={'b': 'diffculty', }, inplace=True)
         print(result.to_json(orient='records'))
 
     else:
+        result.reset_index(inplace=True)
+        result.rename(columns={'b': 'diffculty', }, inplace=True)
         print(result.iloc[:3, :].to_json(orient='records'))
 
 
@@ -1235,7 +1240,37 @@ def init_option():
         OptionParser 的parser对象
     """
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(usage="""
+        从标准输入stdin,输入待推荐的(人、答题记录、候选题目)信息.
+            输入格式： 输入一个json串
+            {'year': '2018',
+             'city_id': '0571',
+             'grade_id': '7',
+             'subject_id': 'ff80808127d77caa0127d7e10f1c00c4',
+             'level_id': 'ff8080812fc298b5012fd3d3becb1248',
+             'term_id': '1',
+             'knowledge_id': "cb1471bd830c49c2b5ff8b833e3057bd",
+             'user_id': 'xxxx', # 学生id
+              # 学生答题记录 user_response后是一个dict，
+              # item_id : 题目id
+              # difficulty 是题目难度
+              # answer 是学生作答结果，0:错误   1:正确
+              # src 这条作答结果的来源： 0:ips关卡  1:我们的个性化练习
+              'user_response':[ {'src':'xx','item_id':'xx','answer':1,'difficulty':2},{...}], 
+              'candidate_items':[{'item_id':'xx','difficulty':'3'},{...}],
+             }
+        
+        从标准输出stdout,返回推荐结果；
+            输出格式: json串
+            [ 
+             {"b":1,"index":70,"a":1,"irt":0.8902715644,"cf":0.5308122988,"prob":0.7105419316},
+             {"b":1,"index":262,"a":1,"irt":0.8902715644,"cf":0.5276596098,"prob":0.7089655871},
+             {"b":1,"index":68,"a":1,"irt":0.8902715644,"cf":0.5272390911,"prob":0.7087553278},
+             ]
+            
+        从标准错误stderr，输出日志。
+    
+    """)
     parser.add_argument("-i", "--input", dest="input",
                         help=u"输入文件；默认标准输入设备")
     parser.add_argument("-o", "--output", dest="output",
