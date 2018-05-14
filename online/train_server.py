@@ -18,15 +18,10 @@ import os
 import json
 import time
 from run_recomm import Recommend, DiskDB, RedisDB
-# from confluent_kafka.kafkatest.verifiable_client import VerifiableClient
-# from confluent_kafka.kafkatest.verifiable_consumer import VerifiableConsumer
-# from confluent_kafka import Consumer, KafkaError
-# import re
 from kafka import KafkaConsumer
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Search
 import pandas as pd
-# import numpy as np
 import kudu
 import traceback
 
