@@ -454,6 +454,7 @@ def run_forever(options):
 
 def main(options):
     # options.
+    init_logger(options)
     run_forever(options)
 
 
