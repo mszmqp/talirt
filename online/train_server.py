@@ -314,7 +314,19 @@ def train_level_model(record, options):
         param['subject_id'],
         param['level_id'],
     ])
-
+    if int(param['grade_id']) <= 3:
+        logger.info(' '.join([
+            'level',
+            log_key,
+            '0',
+            'storage_time:0',
+            'train_time:0',
+            'save_time:0',
+            'True',
+            "False",
+            'skip_grade'
+        ]))
+        return True
     _storage_time = 0,
     _train_time = 0
     _save_time = 0
