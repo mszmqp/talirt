@@ -110,6 +110,7 @@ class BaseIrt(object):
         self.item_vector.set_index('item_id', inplace=True)
         self.item_count = len(self.item_vector)
         self.item_ids = list(self.item_vector.index)
+
         if 'a' not in labels:
             self.item_vector.loc[:, 'a'] = 1
         if 'b' not in labels:
@@ -134,6 +135,9 @@ class BaseIrt(object):
         self.user_ids = list(self.user_vector.index)
         if 'theta' not in labels:
             self.item_vector.loc[:, 'theta'] = 0
+
+        self.item_vector.loc[:, 'iloc'] = np.arange(self.item_count)
+        self.user_vector.loc[:, 'iloc'] = np.arange(self.user_count)
 
         self.response_sequence = self.response_sequence.join(self.user_vector['iloc'].rename('user_iloc'), on='user_id',
                                                              how='left')
