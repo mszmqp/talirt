@@ -24,13 +24,13 @@ import kudu
 import redis
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Search
-
+import traceback
 
 class Storage:
 
     def __init__(self, options=None, logger=logging.getLogger()):
         self.logger = logger
-        self.bakend = bakend
+        # self.bakend = bakend
         # if bakend == 'kudu':
 
         if options is not None:
@@ -273,10 +273,10 @@ class Storage:
         return None
 
     def get_student_response(self, param):
-        if self.bakend == 'kudu':
-            return self.get_stu_by_kudu(param)
-        elif self.bakend == 'es':
-            return self.get_stu_by_es(param)
+        # if self.bakend == 'kudu':
+        #     return self.get_stu_by_kudu(param)
+        # elif self.bakend == 'es':
+        #     return self.get_stu_by_es(param)
 
     def get_level_by_impala(self, param):
         """
