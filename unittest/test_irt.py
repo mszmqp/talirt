@@ -13,18 +13,20 @@ import sys
 import argparse
 import pandas as pd
 import numpy as np
+
 sys.path.append('./')
-from talirt.model import irt
+# from talirt.model import irt
 import matplotlib.pyplot as plt
 import time
 import logging
 
 __version__ = 1.0
-import kudu
+
 import redis
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Search
 import traceback
+
 
 class Storage:
 
@@ -41,7 +43,7 @@ class Storage:
             self.kudu_table = 'tb_stu_answer_recommend'
             self.es_index = 'ips'
             self.es_doctype = 'tb_stu_answer'
-
+        import kudu
         self.client_kudu = kudu.connect(
             host=['iz2ze5otogu0m1iff5wcttz', 'iz2ze5otogu0m1iff5wctvz', 'iz2ze5otogu0m1iff5wctsz'], port=7051)
         # elif bakend == 'es':
@@ -392,10 +394,12 @@ def dump_reponse():
 def main(options):
     # dump_reponse()
     response = pd.read_pickle("response.pk")
-
-    model = irt.UIrt2PL()
+    # import pyximport
+    # pyximport.install(setup_args={'include_dirs': np.get_include()})
+    from talirt.model import cirt
+    model = cirt.UIrt2PL()
     start = time.time()
-    ret = model.fit(response=response, orient='records', estimate='user',progressbar=False)
+    ret = model.fit(response=response, orient='records', estimate='user', progressbar=False)
     end = time.time()
     print(ret, end - start)
     return

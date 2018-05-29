@@ -266,7 +266,7 @@ class BaseIrt(object):
 
     @classmethod
     def load(cls, path):
-        model = cls(response=None)
+        model = cls()
         model.load_model(path)
         return model
 
@@ -614,6 +614,7 @@ class UIrt2PL(BaseIrt):
     def __init__(self, **kwargs):
         super(UIrt2PL, self).__init__(**kwargs)
         self.model = 'U2PL'
+        self.k = 1
 
     def estimate_both_em(self, max_iter=1000, tol=1e-5):
         pass
@@ -648,35 +649,18 @@ class UIrt2PL(BaseIrt):
 
             self.trace = pm.sample(**kwargs)
 
-            # run an interactive MCMC sampling session
-            # m.isample()
-
         # self.alpha = self.trace['a'].mean(axis=0)[0, :]
         self.item_vector['a'] = self.trace['a'].mean(axis=0)[0, :]
         # self.beta = self.trace['b'].mean(axis=0)[0, :]
         self.item_vector['b'] = self.trace['b'].mean(axis=0)[0, :]
         self.user_vector['theta'] = self.trace['theta'].mean(axis=0)[:, 0]
 
-        # print(pm.summary(self.trace))
-        # _ = pm.traceplot(trace)
-
-    def predict_proba_x(self, users, items):
-        user_count = len(users)
-        item_count = len(items)
-        theta = self.user_vector.loc[users, 'theta'].values.reshape((user_count, 1))
-        a = self.item_vector.loc[items, 'a'].values.reshape((1, item_count))
-        b = self.item_vector.loc[items, 'b'].values.reshape((1, item_count))
-        c = self.item_vector.loc[items, 'c'].values.reshape((1, item_count))
-        c = c.repeat(user_count, axis=0)
-        z = a.repeat(user_count, axis=0) * (
-                theta.repeat(item_count, axis=1) - b.repeat(user_count, axis=0))
-
-        e = np.exp(z)
-        s = c + (1 - c) * e / (1.0 + e)
-        return s
-
 
 class UIrt3PL(UIrt2PL):
+    def __init__(self, **kwargs):
+        super(UIrt3PL, self).__init__(**kwargs)
+        self.model = 'U3PL'
+        self.k = 1
 
     def estimate_both_mcmc(self, **kwargs):
         """
