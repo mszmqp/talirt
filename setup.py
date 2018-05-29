@@ -9,5 +9,7 @@ from Cython.Build import cythonize
 
 setup(
     name='talirt',
-    ext_modules=cythonize('talirt/model/cirt.pyx')
+    ext_modules=cythonize('talirt/model/cirt.pyx'),
+    include_dirs=['/usr/local/python3/lib/python3.6/site-packages/numpy/core/include/',
+                  '~/anaconda3/lib/python3.6/site-packages/numpy/core/include/']
 )
