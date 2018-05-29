@@ -395,7 +395,7 @@ def main(options):
 
     model = irt.UIrt2PL()
     start = time.time()
-    ret = model.fit(response=response, orient='records', estimate='user',)
+    ret = model.fit(response=response, orient='records', estimate='user',progressbar=False)
     end = time.time()
     print(ret, end - start)
     return
