@@ -13,6 +13,7 @@ import sys
 import argparse
 import pandas as pd
 import numpy as np
+sys.path.append('./')
 from talirt.model import irt
 import matplotlib.pyplot as plt
 import time
