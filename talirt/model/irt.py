@@ -100,6 +100,9 @@ class BaseIrt(object):
             pass
         elif estimate == 'both':
             ret = self.estimate_both_mcmc(**kwargs)
+        else:
+            raise ValueError('unknown estimate ' + estimate)
+
         return ret
 
     def _init_model(self):

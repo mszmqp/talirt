@@ -390,12 +390,12 @@ def dump_reponse():
 
 
 def main(options):
-    dump_reponse()
+    # dump_reponse()
     response = pd.read_pickle("response.pk")
 
     model = irt.UIrt2PL()
     start = time.time()
-    ret = model.fit(response=response, orient='records', estimate='theta')
+    ret = model.fit(response=response, orient='records', estimate='user')
     end = time.time()
     print(ret, end - start)
     return
