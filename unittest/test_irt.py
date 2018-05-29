@@ -273,6 +273,7 @@ class Storage:
         return None
 
     def get_student_response(self, param):
+        pass
         # if self.bakend == 'kudu':
         #     return self.get_stu_by_kudu(param)
         # elif self.bakend == 'es':
