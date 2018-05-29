@@ -108,7 +108,7 @@ class BaseIrt(object):
     def _init_model(self):
         assert self.response_sequence is not None
 
-        labels = set(self.response_sequence.columns).intersection(set(['item_id', 'a', 'b', 'c']))
+        labels = set(self.response_sequence.columns).intersection({'item_id', 'a', 'b', 'c'})
         self.item_vector = self.response_sequence[list(labels)].drop_duplicates(subset=['item_id'])
         self.item_vector.set_index('item_id', inplace=True)
         self.item_count = len(self.item_vector)
@@ -131,13 +131,13 @@ class BaseIrt(object):
         else:
             raise ValueError("unknown model " + self.model)
 
-        labels = set(self.response_sequence.columns).intersection(set(['user_id', 'theta']))
+        labels = set(self.response_sequence.columns).intersection({'user_id', 'theta'})
         self.user_vector = self.response_sequence[list(labels)].drop_duplicates(subset=['user_id'])
         self.user_vector.set_index('user_id', inplace=True)
         self.user_count = len(self.user_vector)
         self.user_ids = list(self.user_vector.index)
         if 'theta' not in labels:
-            self.item_vector.loc[:, 'theta'] = 0
+            self.user_vector.loc[:, 'theta'] = 0
 
         self.item_vector.loc[:, 'iloc'] = np.arange(self.item_count)
         self.user_vector.loc[:, 'iloc'] = np.arange(self.user_count)
