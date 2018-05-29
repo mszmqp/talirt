@@ -17,6 +17,7 @@ from talirt.utils.pymc import TextTrace, SQLiteTrace
 from pymc3.sampling import _cpu_count
 from scipy.optimize import minimize
 from tqdm import tqdm
+import logging
 
 """
 多维IRT模型中，能力值theta的先验分布是
@@ -40,64 +41,99 @@ vals = pm.MvNormal('vals', mu=mu, cov=cov, shape=(5, 2))
 
 class BaseIrt(object):
 
-    def __init__(self, response: pd.DataFrame = None, sequential=True, k=1, D=1):
+    def __init__(self, k=1, D=1):
         """
         :param response_df: 作答数据，必须包含三列 user_id item_id answer
         D=1.702
         """
-        if response is not None:
-            if sequential:
-                if 'user_id' not in response.columns or 'item_id' not in response.columns or 'answer' not in response.columns:
-                    raise ValueError("input dataframe have no user_id or item_id  or answer")
-
-                self.response_sequence = response[['user_id', 'item_id', 'answer']]
-                self.response_matrix = self.response_sequence.pivot(index="user_id", columns="item_id", values='answer')
-
-            else:
-                self.response_matrix = response.copy()
-
-                self.response_matrix.index.name = 'user_id'
-                # 矩阵形式生成序列数据
-                self.response_sequence = pd.melt(self.response_matrix.reset_index(), id_vars=['user_id'],
-                                                 var_name="item_id",
-                                                 value_name='answer')
-                # 去掉空值
-                self.response_sequence.dropna(inplace=True)
-
-            # 被试者id
-            self._user_ids = list(self.response_matrix.index)
-            self.user_count = len(self._user_ids)
-            # 项目id
-            self._item_ids = list(self.response_matrix.columns)
-            self.item_count = len(self._item_ids)
-            self._init_model()
-            labels = set(response.columns).intersection(set(['a', 'b', 'c']))
-            if sequential and labels:
-                item_info = response[['item_id'] + list(labels)].drop_duplicates(subset=['item_id'])
-                item_info.set_index('item_id', inplace=True)
-                self.set_abc(item_info, columns=list(labels))
-
-        else:
-
-            self.user_vector = None
-            self.item_vector = None
-        self.trace = None
+        self.D = D
+        self.k = 1
+        self.user_vector = None
+        self.item_vector = None
+        self.item_count = 0
+        self.user_count = 0
+        self.item_ids = None
+        self.user_ids = None
+        self.response_matrix = None
+        self.response_sequence = None
+        self.logger = logging.getLogger()
+        self.model = "2PL"
         self.D = D
         self.k = k
 
+    def fit(self, response: pd.DataFrame, orient="records", estimate="user", **kwargs):
+
+        """
+        :param response_df: 作答数据，必须包含三列 user_id item_id answer
+        D=1.702
+        """
+        assert response is not None
+
+        if orient == 'records':
+            assert len({'user_id', 'item_id', 'answer'}.intersection(set(response.columns))) == 3
+            if 'difficulty' in response.columns and 'b' not in response.columns:
+                response.rename(columns={'difficulty': 'b'}, inplace=True)
+
+            if 'a' not in response.columns:
+                response.loc[:, 'a'] = 1
+            _columns = list(
+                {'user_id', 'item_id', 'answer', 'a', 'b', 'c', 'theta'}.intersection(set(response.columns)))
+            self.response_sequence = response.loc[:, _columns]
+            self.response_matrix = self.response_sequence.pivot(index="user_id", columns="item_id", values='answer')
+        elif orient == 'matrix':
+            self.response_matrix = response.copy()
+            self.response_matrix.index.name = 'user_id'
+            # 矩阵形式生成序列数据
+            self.response_sequence = pd.melt(self.response_matrix.reset_index(), id_vars=['user_id'],
+                                             var_name="item_id",
+                                             value_name='answer')
+            # 去掉空值
+            self.response_sequence.dropna(inplace=True)
+
+        #
+        self._init_model()
+
+        if estimate == 'user':
+            ret, _ = self.estimate_theta(**kwargs)
+
+        elif estimate == 'item':
+            pass
+        elif estimate == 'both':
+            ret = self.estimate_both_mcmc(**kwargs)
+        return ret
+
     def _init_model(self):
         assert self.response_sequence is not None
-        self.user_vector = pd.DataFrame({
-            'iloc': np.arange(self.user_count),
-            'user_id': self._user_ids,
-            'theta': np.zeros(self.user_count)},
-            index=self._user_ids)
-        self.item_vector = pd.DataFrame(
-            {'iloc': np.arange(self.item_count),
-             'item_id': self._item_ids,
-             'a': np.ones(self.item_count),
-             'b': np.zeros(self.item_count),
-             'c': np.zeros(self.item_count)}, index=self._item_ids)
+
+        labels = set(self.response_sequence.columns).intersection(set(['item_id', 'a', 'b', 'c']))
+        self.item_vector = self.response_sequence[list(labels)].drop_duplicates(subset=['item_id'])
+        self.item_vector.set_index('item_id', inplace=True)
+        self.item_count = len(self.item_vector)
+        self.item_ids = list(self.item_vector.index)
+        if 'a' not in labels:
+            self.item_vector.loc[:, 'a'] = 1
+        if 'b' not in labels:
+            self.item_vector.loc[:, 'b'] = 0
+        if 'c' not in labels:
+            self.item_vector.loc[:, 'c'] = 0
+
+        if self.model == "U1PL":
+            self.item_vector.loc[:, 'a'] = 1
+            self.item_vector.loc[:, 'c'] = 0
+        elif self.model == "U2PL":
+            self.item_vector.loc[:, 'c'] = 0
+        elif self.model == "U3PL":
+            pass
+        else:
+            raise ValueError("unknown model " + self.model)
+
+        labels = set(self.response_sequence.columns).intersection(set(['user_id', 'theta']))
+        self.user_vector = self.response_sequence[list(labels)].drop_duplicates(subset=['user_id'])
+        self.user_vector.set_index('user_id', inplace=True)
+        self.user_count = len(self.user_vector)
+        self.user_ids = list(self.user_vector.index)
+        if 'theta' not in labels:
+            self.item_vector.loc[:, 'theta'] = 0
 
         self.response_sequence = self.response_sequence.join(self.user_vector['iloc'].rename('user_iloc'), on='user_id',
                                                              how='left')
@@ -133,14 +169,14 @@ class BaseIrt(object):
         if self.user_vector is None:
             assert isinstance(values, pd.DataFrame), "values的类型必须是pandas.DataFrame"
             self.user_count = len(values)
-            self._user_ids = list(values.index)
+            self.user_ids = list(values.index)
 
             self.user_vector = pd.DataFrame({
                 'iloc': np.arange(self.user_count),
-                'user_id': self._user_ids,
+                'user_id': self.user_ids,
                 'theta': values.loc[:, 'theta'].values.flatten(),
             },
-                index=self._user_ids)
+                index=self.user_ids)
 
         else:
             if isinstance(values, pd.DataFrame):
@@ -148,6 +184,7 @@ class BaseIrt(object):
                 self.user_vector.loc[values.index, 'theta'] = values.loc[:, 'theta'].values.flatten()
 
             elif isinstance(values, np.ndarray):
+                assert len(self.user_vector) == len(values)
                 self.user_vector.loc[:, 'theta'] = values.flatten()
 
             else:
@@ -181,17 +218,17 @@ class BaseIrt(object):
         if self.item_vector is None:
             assert isinstance(values, pd.DataFrame), "values的类型必须是pandas.DataFrame"
             self.item_count = len(values)
-            self._item_ids = list(values.index)
+            self.item_ids = list(values.index)
 
             self.item_vector = pd.DataFrame({
                 'iloc': np.arange(self.item_count),
-                'item_id': self._item_ids,
+                'item_id': self.item_ids,
                 'a': np.ones(self.item_count),
                 'b': np.zeros(self.item_count),
                 'c': np.zeros(self.item_count),
 
             },
-                index=self._item_ids)
+                index=self.item_ids)
 
             self.item_vector.loc[:, columns] = values.loc[:, columns].values
 
@@ -217,8 +254,8 @@ class BaseIrt(object):
         self.user_vector = pd.read_pickle(os.path.join(path, 'user_vector.pl'))
         self.user_count = len(self.user_vector)
         self.item_count = len(self.item_vector)
-        self._user_ids = self.user_vector['user_id'].unique()
-        self._item_ids = self.item_vector['item_id'].unique()
+        self.user_ids = self.user_vector['user_id'].unique()
+        self.item_ids = self.item_vector['item_id'].unique()
 
     @classmethod
     def load(cls, path):
@@ -242,21 +279,6 @@ class BaseIrt(object):
     def name(self):
         return type(self).__name__
 
-    @abc.abstractmethod
-    def predict_proba(self, users, items):
-        raise NotImplemented
-
-    @abc.abstractmethod
-    def predict_proba_x(self, users, items):
-        raise NotImplemented
-
-    @classmethod
-    def predict(cls, users, items, threshold=0.5):
-        proba = cls.predict_proba(users, items)
-        proba[proba >= threshold] = 1
-        proba[proba < threshold] = 0
-        return proba
-
     def get_trace(self, model, chains, trace_class=SQLiteTrace):
         return None
         trace_name = "trace_" + self.name() + '.db'
@@ -265,7 +287,7 @@ class BaseIrt(object):
         return MultiTrace([trace_class(chain=i, name=trace_name, model=model) for i in range(chains)])
 
     @abc.abstractmethod
-    def estimate_mcmc(self, **kwargs):
+    def estimate_both_mcmc(self, **kwargs):
         """Draw samples from the posterior using the given step methods.
 
         Multiple step methods are supported via compound step methods.
@@ -386,120 +408,7 @@ class BaseIrt(object):
         """
         raise NotImplemented
 
-    def _object_func(self, y: np.ndarray, theta: np.ndarray, a: np.ndarray = None, b: np.ndarray = None,
-                     c: np.ndarray = None):
-        """
-        目标函数
-        Parameters
-        ----------
-        theta
-        a
-        b
-        c
-
-        Returns
-        -------
-
-        """
-        raise NotImplemented
-
-    def _jac_theta(self, y: np.ndarray, theta: np.ndarray, a: np.ndarray = None, b: np.ndarray = None,
-                   c: np.ndarray = None):
-        """
-        返回雅克比矩阵，也就是一阶导数
-        Returns
-        -------
-
-        """
-        raise NotImplemented
-
-    def _hessian_theta(self, y: np.ndarray, theta: np.ndarray, a: np.ndarray = None, b: np.ndarray = None,
-                       c: np.ndarray = None):
-        """
-        返回海森矩阵，也就是二阶导数
-        Returns
-        -------
-
-        """
-        raise NotImplemented
-
-
-class UIrt2PL(BaseIrt):
-
-    def estimate_em(self, max_iter=1000, tol=1e-5):
-        pass
-
-    def estimate_mcmc(self, **kwargs):
-        """
-        参数说明参考 http://docs.pymc.io/api/inference.html#module-pymc3.sampling
-        :param kwargs:
-        :return:
-        """
-        basic_model = pm.Model()
-        with basic_model:
-            # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(5, 17)
-            # theta (proficiency params) are sampled from a normal distribution
-            theta = pm.Normal("theta", mu=0, sd=1, shape=(self.user_count, 1))
-            # a = pm.Normal("a", mu=1, tau=1, shape=(1, self.item_count))
-            a = pm.Lognormal("a", mu=0, tau=1, shape=(1, self.item_count))
-            b = pm.Normal("b", mu=0, sd=1, shape=(1, self.item_count))
-            # z = pm.Deterministic(name="z", var=a.repeat(self.user_count, axis=0) * (
-            #         theta.repeat(self.item_count, axis=1) - b.repeat(self.user_count, axis=0)))
-            # irt = pm.Deterministic(name="irt",
-            #                        var=pm.math.sigmoid(z))
-            irt = pm.Deterministic(name="irt", var=pm.math.sigmoid(theta * a - a * b))
-            output = pm.Deterministic(name="output",
-                                      var=as_tensor_variable(irt)[
-                                          self.response_sequence['user_iloc'], self.response_sequence['item_iloc']])
-            # observed = pm.Bernoulli('observed', p=irt, observed=self.response_matrix)
-            observed = pm.Bernoulli('observed', p=output, observed=self.response_sequence["answer"].values)
-
-            kwargs['discard_tuned_samples'] = False
-            # kwargs['start'] = pm.find_MAP()
-
-            self.trace = pm.sample(**kwargs)
-
-            # run an interactive MCMC sampling session
-            # m.isample()
-
-        # self.alpha = self.trace['a'].mean(axis=0)[0, :]
-        self.item_vector['a'] = self.trace['a'].mean(axis=0)[0, :]
-        # self.beta = self.trace['b'].mean(axis=0)[0, :]
-        self.item_vector['b'] = self.trace['b'].mean(axis=0)[0, :]
-        self.user_vector['theta'] = self.trace['theta'].mean(axis=0)[:, 0]
-
-        # print(pm.summary(self.trace))
-        # _ = pm.traceplot(trace)
-
-    def predict_proba(self, users, items):
-        n = len(users)
-        m = len(items)
-        assert n == m, "should length(users)==length(items)"
-
-        user_v = self.user_vector.loc[users, ['theta']]
-        item_v = self.item_vector.loc[items, ['a', 'b', 'c']]
-        z = item_v['a'].values * (user_v['theta'].values - item_v['b'].values)
-        # z = alpha * (theta - beta)
-        e = np.exp(z)
-        s = (1 - item_v['c'].values) * e / (1.0 + e) + item_v['c'].values
-        return s
-
-    def predict_proba_x(self, users, items):
-        user_count = len(users)
-        item_count = len(items)
-        theta = self.user_vector.loc[users, 'theta'].values.reshape((user_count, 1))
-        a = self.item_vector.loc[items, 'a'].values.reshape((1, item_count))
-        b = self.item_vector.loc[items, 'b'].values.reshape((1, item_count))
-        c = self.item_vector.loc[items, 'c'].values.reshape((1, item_count))
-        c = c.repeat(user_count, axis=0)
-        z = a.repeat(user_count, axis=0) * (
-                theta.repeat(item_count, axis=1) - b.repeat(user_count, axis=0))
-
-        e = np.exp(z)
-        s = c + (1 - c) * e / (1.0 + e)
-        return s
-
-    def _prob(self, theta: np.ndarray, a: np.ndarray, b: np.ndarray, c: np.ndarray = None):
+    def _prob(self, theta: np.ndarray, a: np.ndarray, b: np.ndarray, c: np.ndarray):
         """
 
         Parameters
@@ -543,7 +452,7 @@ class UIrt2PL(BaseIrt):
         """
 
         # 预测值
-        y_hat = self._prob(theta=theta, a=a, b=b)
+        y_hat = self._prob(theta=theta, a=a, b=b, c=c)
         # 答题记录通常不是满记录的，里面有空值，对于空值设置为0，然后再求sum，这样不影响结果
         obj = y * np.log(y_hat) + (1 - y) * np.log(1 - y_hat)
         # 用where处理不了空值，如果是空值，where认为是真
@@ -555,7 +464,7 @@ class UIrt2PL(BaseIrt):
     def _jac_theta(self, theta: np.ndarray, y: np.ndarray, a: np.ndarray = None, b: np.ndarray = None,
                    c: np.ndarray = None):
         # 预测值
-        y_hat = self._prob(theta=theta, a=a, b=b)
+        y_hat = self._prob(theta=theta, a=a, b=b, c=c)
         # 一阶导数
         # 每一列是一个样本，求所有样本的平均值
         all = self.D * a * (y_hat - y)
@@ -570,7 +479,7 @@ class UIrt2PL(BaseIrt):
                        c: np.ndarray = None):
         theta = theta.reshape(len(theta), 1)
         # 预测值
-        y_hat = self._prob(theta=theta, a=a, b=b)
+        y_hat = self._prob(theta=theta, a=a, b=b, c=c)
 
         # return np.sum(y_hat * (1 - y_hat) * self.D ** 2 * a * a, axis=1)
         # 答题记录通常不是满记录的，里面有空值，对于空值设置为0，然后再求sum，这样不影响结果
@@ -599,17 +508,20 @@ class UIrt2PL(BaseIrt):
         """
         if method not in ["CG", "Newton-CG", "L-BFGS-B"]:
             raise ValueError('不支持的优化算法')
-
-        if 'a' in self.item_vector.columns:
-            a = self.item_vector.loc[:, 'a'].values.reshape(1, self.item_count)
+        item_count = len(self.item_vector)
+        if self.model == "U1PL":
+            a = np.ones(shape=(1, item_count))
+            b = self.item_vector.loc[:, 'b'].values.reshape(1, item_count)
+        elif self.model == "U2PL":
+            a = self.item_vector.loc[:, 'a'].values.reshape(1, item_count)
+            b = self.item_vector.loc[:, 'b'].values.reshape(1, item_count)
+            c = np.zeros(shape=(1, self.item_count))
+        elif self.model == "U3PL":
+            a = self.item_vector.loc[:, 'a'].values.reshape(1, item_count)
+            b = self.item_vector.loc[:, 'b'].values.reshape(1, item_count)
+            c = self.item_vector.loc[:, 'c'].values.reshape(1, item_count)
         else:
-            a = None
-
-        b = self.item_vector.loc[:, 'b'].values.reshape(1, self.item_count)
-        if 'c' in self.item_vector.columns:
-            c = self.item_vector.loc[:, 'c'].values.reshape(1, self.item_count)
-        else:
-            c = None
+            raise ValueError("unknown model " + self.model)
 
         if method == "Newton-CG":
             hessian = self._hessian_theta
@@ -618,7 +530,6 @@ class UIrt2PL(BaseIrt):
 
         success = []
 
-        self._es_res_theta = []
         # if join:
         #
         #     # 注意y可能有缺失值
@@ -641,23 +552,126 @@ class UIrt2PL(BaseIrt):
         else:
             iter_rows = self.response_matrix.iterrows()
         # 每个人独立估计
+        res_list = []
         for index, row in iter_rows:
             # 注意y可能有缺失值
             y = row.values.reshape(1, len(row))
             theta = self.user_vector.loc[index, 'theta']
 
-            res = minimize(self._object_func, x0=[theta], args=(y, a, b, c), method=method, jac=self._jac_theta,
+            res = minimize(self._object_func, x0=np.array([theta]), args=(y, a, b, c), method=method,
+                           jac=self._jac_theta,
                            bounds=bounds, hess=hessian, options=options, tol=tol)
             self.user_vector.loc[index, 'theta'] = res.x[0]
             success.append(res.success)
-            self._es_res_theta.append(res)
+            res_list.append(res)
 
-        return all(success)
+        return all(success), res_list
+
+    def predict_records(self, users, items):
+        n = len(users)
+        m = len(items)
+        assert n == m, "should length(users)==length(items)"
+
+        user_v = self.user_vector.loc[users, ['theta']]
+        item_v = self.item_vector.loc[items, ['a', 'b', 'c']]
+        theta = user_v['theta'].values
+
+        a = item_v['a'].values
+        b = item_v['b'].values
+        c = item_v['c'].values
+
+        z = self.D * a * (theta - b)
+        e = np.exp(z)
+        s = (1 - c) * e / (1.0 + e) + c
+        return s
+
+    def predict_matrix(self, users, items):
+        user_count = len(users)
+        item_count = len(items)
+        theta = self.user_vector.loc[users, 'theta'].values.reshape((user_count, 1))
+        a = self.item_vector.loc[items, 'a'].values.reshape((1, item_count))
+        b = self.item_vector.loc[items, 'b'].values.reshape((1, item_count))
+        c = self.item_vector.loc[items, 'c'].values.reshape((1, item_count))
+
+        z = a.repeat(user_count, axis=0) * (
+                theta.repeat(item_count, axis=1) - b.repeat(user_count, axis=0))
+
+        e = np.exp(z)
+        c = c.repeat(user_count, axis=0)
+        s = c + (1 - c) * e / (1.0 + e)
+        return s
+
+
+class UIrt2PL(BaseIrt):
+
+    def __init__(self, **kwargs):
+        super(UIrt2PL, self).__init__(**kwargs)
+        self.model = 'U2PL'
+
+    def estimate_both_em(self, max_iter=1000, tol=1e-5):
+        pass
+
+    def estimate_both_mcmc(self, **kwargs):
+        """
+        参数说明参考 http://docs.pymc.io/api/inference.html#module-pymc3.sampling
+        :param kwargs:
+        :return:
+        """
+        basic_model = pm.Model()
+        with basic_model:
+            # 我们假设 \theta\sim N(0, 1) ， a \sim lognormal(0, 1) （对数正态分布），b\sim N(0, 1) ， c\sim beta(5, 17)
+            # theta (proficiency params) are sampled from a normal distribution
+            theta = pm.Normal("theta", mu=0, sd=1, shape=(self.user_count, 1))
+            # a = pm.Normal("a", mu=1, tau=1, shape=(1, self.item_count))
+            a = pm.Lognormal("a", mu=0, tau=1, shape=(1, self.item_count))
+            b = pm.Normal("b", mu=0, sd=1, shape=(1, self.item_count))
+            # z = pm.Deterministic(name="z", var=a.repeat(self.user_count, axis=0) * (
+            #         theta.repeat(self.item_count, axis=1) - b.repeat(self.user_count, axis=0)))
+            # irt = pm.Deterministic(name="irt",
+            #                        var=pm.math.sigmoid(z))
+            irt = pm.Deterministic(name="irt", var=pm.math.sigmoid(theta * a - a * b))
+            output = pm.Deterministic(name="output",
+                                      var=as_tensor_variable(irt)[
+                                          self.response_sequence['user_iloc'], self.response_sequence['item_iloc']])
+            # observed = pm.Bernoulli('observed', p=irt, observed=self.response_matrix)
+            observed = pm.Bernoulli('observed', p=output, observed=self.response_sequence["answer"].values)
+
+            kwargs['discard_tuned_samples'] = False
+            # kwargs['start'] = pm.find_MAP()
+
+            self.trace = pm.sample(**kwargs)
+
+            # run an interactive MCMC sampling session
+            # m.isample()
+
+        # self.alpha = self.trace['a'].mean(axis=0)[0, :]
+        self.item_vector['a'] = self.trace['a'].mean(axis=0)[0, :]
+        # self.beta = self.trace['b'].mean(axis=0)[0, :]
+        self.item_vector['b'] = self.trace['b'].mean(axis=0)[0, :]
+        self.user_vector['theta'] = self.trace['theta'].mean(axis=0)[:, 0]
+
+        # print(pm.summary(self.trace))
+        # _ = pm.traceplot(trace)
+
+    def predict_proba_x(self, users, items):
+        user_count = len(users)
+        item_count = len(items)
+        theta = self.user_vector.loc[users, 'theta'].values.reshape((user_count, 1))
+        a = self.item_vector.loc[items, 'a'].values.reshape((1, item_count))
+        b = self.item_vector.loc[items, 'b'].values.reshape((1, item_count))
+        c = self.item_vector.loc[items, 'c'].values.reshape((1, item_count))
+        c = c.repeat(user_count, axis=0)
+        z = a.repeat(user_count, axis=0) * (
+                theta.repeat(item_count, axis=1) - b.repeat(user_count, axis=0))
+
+        e = np.exp(z)
+        s = c + (1 - c) * e / (1.0 + e)
+        return s
 
 
 class UIrt3PL(UIrt2PL):
 
-    def estimate_mcmc(self, **kwargs):
+    def estimate_both_mcmc(self, **kwargs):
         """
         参数说明参考 http://docs.pymc.io/api/inference.html#module-pymc3.sampling
         :param kwargs:

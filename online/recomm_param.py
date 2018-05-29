@@ -47,8 +47,8 @@ def main(options):
              'term_id': '1',
              'knowledge_id': "cb1471bd830c49c2b5ff8b833e3057bd",
              'user_id': '殷烨嵘',
-             'user_response': {'user_id': [], 'item_id': [], 'answer': [], 'b': []},
-             'candidate_items': {'item_id': [], 'b': []},
+             'user_response': {'user_id': [], 'item_id': [], 'answer': [], 'difficulty': []},
+             'candidate_items': {'item_id': [], 'difficulty': []},
              }
 
     # pd.DataFrame.from_records([(3,'a'),(4,'h')])
@@ -61,7 +61,7 @@ def main(options):
 
     train_data = level_response.loc[level_response['c_sortorder'] <= 6, :]
     test_data = level_response.loc[level_response['c_sortorder'] >= 5, :]
-    candidate_items = test_data.loc[:, ['item_id', 'b']].drop_duplicates('item_id')
+    candidate_items = test_data.loc[:, ['item_id', 'difficulty']].drop_duplicates('item_id')
     param['candidate_items'] = json.loads(candidate_items.reset_index().to_json(orient='records'))
 
     for user_id in list(train_data.loc[:, 'user_id'].unique()):

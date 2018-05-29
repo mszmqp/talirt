@@ -682,7 +682,7 @@ def load_candidate_items(**kwargs):
     _sql = """
                 select
                     que_id as item_id,
-                    difficulty as b,
+                    difficulty as difficulty,
                     1 as a
                 from dmdb.dm_qstportrait_qst
                 where
@@ -728,7 +728,7 @@ def load_level_response(**kwargs):
                     fk_student as stu_id,
                     stu_name as user_id,
                     fk_question as item_id,
-                    difficulty_id as b,
+                    difficulty_id as difficulty,
                     1 as a,
                     case when asw_first_status_id =1 then 1 else 0  end   answer
                 from dwdb.dwd_stdy_ips_level_answ sa
@@ -772,7 +772,7 @@ def load_user_response(user_id, level_response=None):
     # user_id = kwargs['user_id']
     if level_response is None:
         level_response = _level_response
-    _user_response_items = level_response.loc[level_response['user_id'] == user_id, ['item_id', 'b', 'answer']]
+    _user_response_items = level_response.loc[level_response['user_id'] == user_id, ['item_id', 'difficulty', 'answer']]
     return _user_response_items.drop_duplicates(subset=['item_id']).set_index('item_id')
 
 
