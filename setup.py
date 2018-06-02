@@ -6,10 +6,15 @@
 # setup.py
 from distutils.core import setup
 from Cython.Build import cythonize
+import numpy.distutils.misc_util
 
+include_dirs = numpy.distutils.misc_util.get_numpy_include_dirs()
 setup(
     name='talirt',
-    ext_modules=cythonize('talirt/model/cirt.pyx'),
-    include_dirs=['/usr/local/python3/lib/python3.6/site-packages/numpy/core/include/',
-                  '~/anaconda3/lib/python3.6/site-packages/numpy/core/include/']
+    ext_modules=
+        # cythonize('talirt/model/cirt.pyx', annotate=True),
+        cythonize('talirt/model/bktc.pyx', annotate=True),
+
+
+    include_dirs=include_dirs,
 )

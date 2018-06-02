@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 #
 # Copyright (c) 2014 Hal.com, Inc. All Rights Reserved
@@ -26,7 +26,7 @@ import redis
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Search
 import traceback
-
+from talirt.model import irt as irt
 
 class Storage:
 
@@ -393,24 +393,24 @@ def dump_reponse():
 
 def main(options):
     # dump_reponse()
-    response = pd.read_pickle("response.pk")
+    # response = pd.read_pickle("response.pk")
     # import pyximport
     # pyximport.install(setup_args={'include_dirs': np.get_include()})
-    from talirt.model import cirt
-    model = cirt.UIrt2PL()
-    start = time.time()
-    ret = model.fit(response=response, orient='records', estimate='user', progressbar=False)
-    end = time.time()
-    print(ret, end - start)
-    return
 
-    # for x in [test_1(),
-    # test_2(),
-    # test_3(),
-    # test_4(),
-    # test_5(),
-    # test_6(),]:
-    #     print(x)
+    # model = irt.UIrt2PL()
+    # start = time.time()
+    # ret = model.fit(response=response, orient='records', estimate='user', progressbar=False)
+    # end = time.time()
+    # print(ret, end - start,file=sys.stderr)
+    # return
+
+    for x in [test_1(),
+    test_2(),
+    test_3(),
+    test_4(),
+    test_5(),
+    test_6(),]:
+        print(x)
 
 
 def test_1():
@@ -421,9 +421,10 @@ def test_1():
                              'item_id': items.index,
                              'answer': [1]})
 
-    model = irt.UIrt2PL(response=response)
+    model = irt.UIrt2PL()
+    model.set_response(response=response,orient="records")
     model.set_abc(items, columns=['a', 'b'])
-    res = model.estimate_theta(method='CG', options={'maxiter': 20, 'disp': False})
+    ret, res = model.estimate_theta(method='CG', options={'maxiter': 20, 'disp': False})
     # ok = all(res.x < 20) and all(res.x > -20)
     # print('test:%s' % ok, 'result:%s' % res.x, 'iter:%d' % res.nit, 'estimate:%s' % res.success, "msg:%s" % msg)
     return res
@@ -439,13 +440,14 @@ def test_2():
                              'item_id': items.index,
                              'answer': [0]})
 
-    model = irt.UIrt2PL(response=response)
+    model = irt.UIrt2PL()
+    model.set_response(response=response,orient="records")
     # print(items)
     model.set_abc(items, columns=['a', 'b'])
 
-    res = model.estimate_theta(method='CG', options={'maxiter': 20, 'disp': False})
-    # ok = all(res.x < 20) and all(res.x > -20)
-    # print('test:%s' % ok, 'result:%s' % res.x, 'iter:%d' % res.nit, 'estimate:%s' % res.success, "msg:%s" % msg)
+    ret, res = model.estimate_theta(method='CG', options={'maxiter': 20, 'disp': False})
+    ok = all(res[0].x < 20) and all(res[0].x > -20)
+    print('test:%s' % ok, 'result:%s' % res[0].x, 'iter:%d' % res[0].nit, 'estimate:%s' % res[0].success, "msg:%s" % msg)
     return res
 
 
@@ -462,11 +464,12 @@ def test_3():
                              'item_id': items.index,
                              'answer': [1] * 5})
 
-    model = irt.UIrt2PL(response=response)
+    model = irt.UIrt2PL()
+    model.set_response(response=response,orient="records")
     # print(items)
     model.set_abc(items, columns=['a', 'b'])
 
-    res = model.estimate_theta(method='CG', options={'maxiter': 20, 'disp': False})
+    ret, res = model.estimate_theta(method='CG', options={'maxiter': 20, 'disp': False})
     # ok = all(res.x < 20) and all(res.x > -20)
     # print('test:%s' % ok, 'result:%s' % res.x, 'iter:%d' % res.nit, 'estimate:%s' % res.success, "msg:%s" % msg)
     return res
@@ -485,10 +488,11 @@ def test_4():
                              'item_id': items.index,
                              'answer': [0] * 5})
 
-    model = irt.UIrt2PL(response=response)
+    model = irt.UIrt2PL()
+    model.set_response(response=response,orient="records")
     # print(items)
     model.set_abc(items, columns=['a', 'b'])
-    res = model.estimate_theta(method='CG', options={'maxiter': 20, 'disp': False})
+    ret, res = model.estimate_theta(method='CG', options={'maxiter': 20, 'disp': False})
     # ok = all(res.x < 20) and all(res.x > -20)
     # print('test:%s' % ok, 'result:%s' % res.x, 'iter:%d' % res.nit, 'estimate:%s' % res.success, "msg:%s" % msg)
     return res
@@ -508,11 +512,12 @@ def test_5():
     response = pd.DataFrame(np.ones((3, 5)), index=students.index,
                             columns=items.index)
 
-    model2 = irt.UIrt2PL(response, D=1.702, sequential=False)
+    model = irt.UIrt2PL()
+    model.set_response(response=response,orient="matrix")
 
-    model2.set_abc(items)
+    model.set_abc(items)
 
-    res = model2.estimate_theta(method='CG', options={'maxiter': 20, 'disp': False})
+    ret,res = model.estimate_theta(method='CG', options={'maxiter': 20, 'disp': False})
     # ok = all(res.x < 20) and all(res.x > -20)
     # print('test:%s' % ok, 'result:%s' % res.x, 'iter:%d' % res.nit, 'estimate:%s' % res.success, "msg:%s" % msg)
     return res
@@ -533,11 +538,12 @@ def test_6():
                             columns=items.index)
     response.iloc[0, 1] = np.NAN
     response.iloc[1, 2] = np.NAN
-    model2 = irt.UIrt2PL(response, D=1.702, sequential=False)
+    model = irt.UIrt2PL()
+    model.set_response(response=response,orient="matrix")
 
-    model2.set_abc(items)
+    model.set_abc(items)
 
-    res = model2.estimate_theta(method='CG', options={'maxiter': 20, 'disp': False})
+    res,_ = model.estimate_theta(method='CG', options={'maxiter': 20, 'disp': False})
     # ok = all(res.x < 20) and all(res.x > -20)
     # print('test:%s' % ok, 'result:%s' % res.x, 'iter:%d' % res.nit, 'estimate:%s' % res.success, "msg:%s" % msg)
     return res

@@ -4,6 +4,7 @@ from __future__ import print_function
 # from itertools import combinations
 import numpy as np
 cimport numpy as np
+from numpy.math cimport expl, logl
 import pymc3 as pm
 import pandas as pd
 # import theano.tensor as tt
@@ -40,7 +41,7 @@ vals = pm.MvNormal('vals', mu=mu, cov=cov, shape=(5, 2))
 """
 
 
-class BaseIrt(object):
+cdef class BaseIrt(object):
 
     def __init__(self, k=1, D=1):
         """
@@ -294,7 +295,7 @@ class BaseIrt(object):
             shutil.rmtree(trace_name)
         return MultiTrace([trace_class(chain=i, name=trace_name, model=model) for i in range(chains)])
 
-    @abc.abstractmethod
+
     def estimate_both_mcmc(self, **kwargs):
         """Draw samples from the posterior using the given step methods.
 
@@ -415,8 +416,8 @@ class BaseIrt(object):
 
         """
         raise NotImplemented
-
-    def _prob(self, theta: np.ndarray, a: np.ndarray, b: np.ndarray, c: np.ndarray):
+    @staticmethod
+    cdef _prob(double d, np.ndarray theta, np.ndarray a, np.ndarray b, np.ndarray c):
         """
 
         Parameters
@@ -431,14 +432,18 @@ class BaseIrt(object):
 
         """
 
-        z = self.D * a * (theta.reshape(len(theta), 1) - b)
-        # print(type(z))
-        if c is None:
-            return sigmod(z)
-        return c + (1 - c) * sigmod(z)
 
-    def _object_func(self, theta: np.ndarray, y: np.ndarray, a: np.ndarray = None, b: np.ndarray = None,
-                     c: np.ndarray = None):
+
+        z = d * a * (theta.reshape(len(theta), 1) - b)
+        # print(type(z))
+
+        return c + (1 - c) * (1/(1+expl(-z)))
+
+    cpdef _object_func(self, np.ndarray[double, ndim=1] theta,
+            np.ndarray[double, ndim=2] a,
+            np.ndarray[double, ndim=2] b,
+            np.ndarray[double, ndim=2] c,
+            np.ndarray[double, ndim = 1] y):
         """
         .. math::
             Object function  = - \ln L(x;\theta)=-(\sum_{i=0}^n ({y^{(i)}} \ln P + (1-y^{(i)}) \ln (1-P)))
@@ -460,7 +465,8 @@ class BaseIrt(object):
         """
 
         # 预测值
-        y_hat = self._prob(theta=theta, a=a, b=b, c=c)
+
+        y_hat = self._prob(d=self.D,theta=theta, a=a, b=b, c=c)
         # 答题记录通常不是满记录的，里面有空值，对于空值设置为0，然后再求sum，这样不影响结果
         obj = y * np.log(y_hat) + (1 - y) * np.log(1 - y_hat)
         # 用where处理不了空值，如果是空值，where认为是真
@@ -469,10 +475,15 @@ class BaseIrt(object):
         # 目标函数没有求平均
         return - np.sum(np.nan_to_num(obj, copy=False))
 
-    def _jac_theta(self, theta: np.ndarray, y: np.ndarray, a: np.ndarray = None, b: np.ndarray = None,
-                   c: np.ndarray = None):
+    cpdef _jac_theta(self,
+                     np.ndarray[double, ndim=1] theta,
+            np.ndarray[double, ndim=2] a,
+            np.ndarray[double, ndim=2] b,
+            np.ndarray[double, ndim=2] c,
+            np.ndarray[double, ndim = 1] y):
+
         # 预测值
-        y_hat = self._prob(theta=theta, a=a, b=b, c=c)
+        y_hat = self._prob(d=self.D,theta=theta, a=a, b=b, c=c)
         # 一阶导数
         # 每一列是一个样本，求所有样本的平均值
         all = self.D * a * (y_hat - y)
@@ -487,7 +498,7 @@ class BaseIrt(object):
                        c: np.ndarray = None):
         theta = theta.reshape(len(theta), 1)
         # 预测值
-        y_hat = self._prob(theta=theta, a=a, b=b, c=c)
+        y_hat = self._prob(d=self.D,theta=theta, a=a, b=b, c=c)
 
         # return np.sum(y_hat * (1 - y_hat) * self.D ** 2 * a * a, axis=1)
         # 答题记录通常不是满记录的，里面有空值，对于空值设置为0，然后再求sum，这样不影响结果
@@ -520,6 +531,7 @@ class BaseIrt(object):
         if self.model == "U1PL":
             a = np.ones(shape=(1, item_count))
             b = self.item_vector.loc[:, 'b'].values.reshape(1, item_count)
+            c = np.zeros(shape=(1, self.item_count))
         elif self.model == "U2PL":
             a = self.item_vector.loc[:, 'a'].values.reshape(1, item_count)
             b = self.item_vector.loc[:, 'b'].values.reshape(1, item_count)
@@ -565,8 +577,12 @@ class BaseIrt(object):
             # 注意y可能有缺失值
             y = row.values.reshape(1, len(row))
             theta = self.user_vector.loc[index, 'theta']
-
-            res = minimize(self._object_func, x0=np.array([theta]), args=(y, a, b, c), method=method,
+            # with open('nimei.err','w') as  fh:
+            #     fh.write(str(np.array([theta]).ndim)+'\n')
+            #     fh.write(str(a.ndim)+'\n')
+            #     fh.write(str(b.ndim)+'\n')
+            #     fh.write(str(c.ndim)+'\n')
+            res = minimize(self._object_func, x0=np.array([theta]), args=(a, b, c,y), method=method,
                            jac=self._jac_theta,
                            bounds=bounds, hess=hessian, options=options, tol=tol)
             self.user_vector.loc[index, 'theta'] = res.x[0]
