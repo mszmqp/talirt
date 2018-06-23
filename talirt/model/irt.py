@@ -59,7 +59,7 @@ class BaseIrt(object):
         self.logger = logging.getLogger()
         self.model = "U2PL"
 
-    def fit(self, response: pd.DataFrame = None, orient="records", estimate="user", **kwargs):
+    def fit(self, response: pd.DataFrame = None, orient="records", **kwargs):
         """
 
         Parameters
@@ -74,27 +74,11 @@ class BaseIrt(object):
 
         """
 
-        if response is not None:
-            self.set_response(response, orient)
-        if estimate == 'user':
-            ret, _ = self.estimate_theta(**kwargs)
-
-        elif estimate == 'item':
-            pass
-        elif estimate == 'both':
-            ret, trace = self.estimate_both_mcmc(**kwargs)
-        else:
-            raise ValueError('unknown estimate ' + estimate)
-
-        return ret
-
-    def set_response(self, response, orient="records"):
         assert response is not None
         if orient == 'records':
             assert len({'user_id', 'item_id', 'answer'}.intersection(set(response.columns))) == 3
             if 'difficulty' in response.columns and 'b' not in response.columns:
                 response.rename(columns={'difficulty': 'b'}, inplace=True)
-
             if 'a' not in response.columns:
                 response.loc[:, 'a'] = 1
             _columns = list(
@@ -168,8 +152,6 @@ class BaseIrt(object):
         # y.loc[:, 'count_all'] = y.filter(regex='^count_', axis=1).sum(axis=1)
         # y.loc[:, 'right_all'] = y.filter(regex='^right_', axis=1).sum(axis=1)
         # y.loc[:, 'accuracy_all'] = y['right_all'] / y['count_all']
-
-
         self.user_vector = self.user_vector.join(user_stat, how='left')
         self.user_vector.fillna({'count': 0, 'right': 0}, inplace=True)
         self.user_vector['accuracy'] = self.user_vector['right'] / self.user_vector['count']
