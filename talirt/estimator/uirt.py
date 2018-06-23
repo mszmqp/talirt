@@ -248,7 +248,7 @@ class BockAitkinEM(EM):
         # 每个学生独立的log似然值
         independent_user_lld = uirt_lib.log_likelihood_user(theta, self.a, self.b, self.c, self.response)
         # 乘上当theta值的先验概率,这是后验概率分布的分子
-        return (k, independent_user_lld + np.log(theta_prob))
+        return k, independent_user_lld + np.log(theta_prob)
 
     def _update_posterior_distribution(self):
 
@@ -606,8 +606,8 @@ if __name__ == "__main__":
     print(em.theta)
     quit()
     # model = MCEM(model="1PL")
-    model = MHRM(model="1PL")
-    model.fit(response=response, max_iter=100)
+    model = MHRM(model="2PL")
+    model.fit(response=slf.response, max_iter=100)
 
     model.a[0, :] = 0.75
     model.estimate()
