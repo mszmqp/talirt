@@ -22,6 +22,9 @@ from talirt.estimator.uirt import MLE, BockAitkinEM
 from talirt.utils import uirt_lib
 
 """
+关于常数项D
+D的取值会影响，a,b的取值范围，如果D>1,那么就必须限制a,b在一个更小范围，irt prob 会出现概率1(或者0)，导致出错
+
 多维IRT模型中，能力值theta的先验分布是
 （参考论文http://www.pacificmetrics.com/wp-content/uploads/2015/07/AERA2008_Duong_Subedi_Lee.pdf）
 
@@ -43,12 +46,12 @@ vals = pm.MvNormal('vals', mu=mu, cov=cov, shape=(5, 2))
 
 class UIRT(object):
 
-    def __init__(self, model="2PL", D=1.702):
+    def __init__(self, model="2PL"):
         """
         :param response_df: 作答数据，必须包含三列 user_id item_id answer
         D=1.702
         """
-        self.D = D
+        
         self.user_vector = None
         self.item_vector = None
         self.item_count = 0
@@ -371,14 +374,14 @@ class UIRT(object):
             a = self.item_vector.loc[items, 'a'].values
             b = self.item_vector.loc[items, 'b'].values
             c = self.item_vector.loc[items, 'c'].values
-            return uirt_lib.u3irt_sequence(theta=theta, a=a, b=b, c=c, contant=self.D)
+            return uirt_lib.u3irt_sequence(theta=theta, a=a, b=b, c=c)
         elif self.model == "2PL":
             a = self.item_vector.loc[items, 'a'].values
             b = self.item_vector.loc[items, 'b'].values
-            return uirt_lib.u2irt_sequence(theta=theta, a=a, b=b, contant=self.D)
+            return uirt_lib.u2irt_sequence(theta=theta, a=a, b=b)
         else:
             b = self.item_vector.loc[items, 'b'].values
-            return uirt_lib.u1irt_sequence(theta=theta, b=b, contant=self.D)
+            return uirt_lib.u1irt_sequence(theta=theta, b=b)
 
     def predict_matrix(self, users=None, items=None):
 
@@ -387,11 +390,11 @@ class UIRT(object):
             a = self.item_vector.loc[items, 'a'].values
             b = self.item_vector.loc[items, 'b'].values
             c = self.item_vector.loc[items, 'c'].values
-            return uirt_lib.u3irt_matrix(theta=theta, a=a, b=b, c=c, contant=self.D)
+            return uirt_lib.u3irt_matrix(theta=theta, a=a, b=b, c=c)
         elif self.model == "2PL":
             a = self.item_vector.loc[items, 'a'].values
             b = self.item_vector.loc[items, 'b'].values
-            return uirt_lib.u2irt_matrix(theta=theta, a=a, b=b, contant=self.D)
+            return uirt_lib.u2irt_matrix(theta=theta, a=a, b=b)
         else:
             b = self.item_vector.loc[items, 'b'].values
-            return uirt_lib.u1irt_matrix(theta=theta, b=b, contant=self.D)
+            return uirt_lib.u1irt_matrix(theta=theta, b=b)

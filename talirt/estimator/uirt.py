@@ -1,12 +1,10 @@
 # from cython cimport view
 import numpy as np
 from scipy.optimize import minimize
-from scipy.stats import norm, uniform
-import random
+from scipy.stats import norm
 from joblib import Parallel, delayed
 import os
 import time
-# from talirt.utils.uirt_lib import sample_theta, uirt_item_jac_and_hessian, log_likelihood, uirt_item_jac
 from talirt.utils import uirt_lib
 from talirt.utils import trunk_split
 
@@ -16,7 +14,6 @@ _parallel = Parallel(n_jobs=os.cpu_count())
 class Estimator:
     def __init__(self, model="2PL", max_iter=500):
         assert model in ["1PL", "2PL", "3PL"]
-        self.D = 1
         self.model = model
         self.response = None
         self.a = None
@@ -28,7 +25,6 @@ class Estimator:
         self._bound_a = (0.25, 5)
         self._bound_b = (-6, 6)
         self._bound_c = (0, 0.5)
-
         self._bound_theta = [(-6, 6)]
         self.max_iter = max_iter
 
@@ -80,6 +76,22 @@ class Estimator:
         self.iter = 0
         self._pre_init(**kwargs)
 
+    def _get_abc_from_x(self, x):
+        if self.model == '1PL':
+            a = np.array([1.0])
+            b = x
+            c = np.array([0.0])
+
+        elif self.model == '2PL':
+            a = x[0:1]
+            b = x[1:2]
+            c = np.array([0.0])
+        else:
+            a = x[0:1]
+            b = x[1:2]
+            c = x[2:3]
+        return a, b, c
+
 
 class MLE(Estimator):
 
@@ -105,36 +117,14 @@ class MLE(Estimator):
 
     def estimate_item(self, **kwargs):
         def object_fun(x, theta, response):
-            if self.model == '1PL':
-                a = np.array([1.0])
-                b = x
-                c = np.array([0.0])
-            elif self.model == '2PL':
-                a = x[0:1]
-                b = x[1:2]
-                c = np.array([0.0])
-            else:
-                a = x[0:1]
-                b = x[1:2]
-                c = x[2:3]
+            a, b, c = self._get_abc_from_x(x)
             ret = -uirt_lib.log_likelihood(theta=theta, slope=a, intercept=b, guess=c, response=response)
             # print('item llh=%f' % ret, " a=%f" % x[0], "b=%f" % x[1], end="\n")
             return ret
 
         def gradient(x, theta, response):
-            if self.model == '1PL':
-                a = np.array([1.0])
-                b = x
-                c = np.array([0.0])
-            elif self.model == '2PL':
-                a = x[0:1]
-                b = x[1:2]
-                c = np.array([0.0])
-            else:
-                a = x[0:1]
-                b = x[1:2]
-                c = x[2:3]
-            ret = uirt_lib.uirt_item_jac(theta=theta, slope=a, intercept=b, guess=c, response=response)[0, :]
+            a, b, c = self._get_abc_from_x(x)
+            ret = uirt_lib.u2irt_item_jac(theta=theta, slope=a, intercept=b, guess=c, response=response)[0, :]
             if self.model == '1PL':
                 return -ret[1:2]
             elif self.model == '2PL':
@@ -175,8 +165,10 @@ class MLE(Estimator):
 class EM(Estimator):
 
     def estimate_join(self, **kwargs):
+
+        self._start_time = time.time()
+        # s = time.time()
         for self.iter in range(self.max_iter):
-            # s = time.time()
             self._exp_step()
             # e = time.time()
             # print('e-step cost', e - s)
@@ -187,11 +179,14 @@ class EM(Estimator):
 
             if self._check_stop():
                 break
+        # e = time.time()
         self.iter += 1
+        self._end_time = time.time()
         return True
 
     def _check_stop(self):
-        cur_llh = uirt_lib.log_likelihood(theta=self.theta, slope=self.a, intercept=self.b, guess=self.c, response=self.response)
+        cur_llh = uirt_lib.log_likelihood(theta=self.theta, slope=self.a, intercept=self.b, guess=self.c,
+                                          response=self.response)
         # print("-" * 20)
         # print('total lld', self.iter, cur_llh)
         # print(self.a)
@@ -264,12 +259,6 @@ class BockAitkinEM(EM):
             logSump = w + np.log(np.sum(np.exp(logp - w), axis=1)).reshape(shape)
             return logSump
 
-        # todo 搞成并行,我擦，并行反而变慢
-        # global _parallel
-        # result = _parallel(delayed(self._process_posterior)(k) for k in range(self.Q))
-        # for k,data in result:
-        #     self.theta_posterior_distribution[:, k] = data
-
         for k in range(self.Q):
             theta_k = np.asarray([self.theta_prior_value[k]] * self.user_count).flatten()
             theta_k_prior_prob = self.theta_prior_distribution[k]
@@ -329,56 +318,32 @@ class BockAitkinEM(EM):
 
             """
             theta = self.theta_prior_value.flatten()
-            if self.model == '1PL':
-                a = np.array([1.0])
-                b = x
-                c = np.array([0.0])
-
-            elif self.model == '2PL':
-                a = x[0:1]
-                b = x[1:2]
-                c = np.array([0.0])
-            else:
-                a = x[0:1]
-                b = x[1:2]
-                c = x[2:3]
+            a, b, c = self._get_abc_from_x(x)
 
             # 预测值
-            # y_hat = self._prob(theta=theta, a=a, b=b, c=c)
             y_hat = uirt_lib.u3irt_matrix(theta=theta, slope=a, intercept=b, guess=c)
-
-            # 答题记录通常不是满记录的，里面有空值，对于空值设置为0，然后再求sum，这样不影响结果
+            # todo 空值处理
             obj = rjk.reshape(self.Q, 1) * np.log(y_hat) + wjk.reshape(self.Q, 1) * np.log(1 - y_hat)
+            # 答题记录通常不是满记录的，里面有空值，对于空值设置为0，然后再求sum，这样不影响结果
             res = - np.sum(np.nan_to_num(obj, copy=False))
             # print('item llh=%f' % res, " a=%f" % x[0], "b=%f" % x[1], end="")
             return res
 
         def jac_func(x, rjk, wjk):
 
-            if self.model == '1PL':
-                a = np.array([1.0])
-                b = x
-                c = np.array([0.0])
-
-            elif self.model == '2PL':
-                a = x[0:1]
-                b = x[1:2]
-                c = np.array([0.0])
-            else:
-                a = x[0:1]
-                b = x[1:2]
-                c = x[2:3]
-
+            a, b, c = self._get_abc_from_x(x)
             grade_a = 0
             grade_b = 0
+            grade_c = 0
             for k in range(self.Q):
                 theta = np.array([self.theta_prior_value[k]])
                 # 预测值
-                # y_hat = self._prob(theta=theta, a=a, b=b, c=c)
+
                 y_hat = uirt_lib.u3irt_matrix(theta=theta, slope=a, intercept=b, guess=c)
                 m = rjk[k] - (rjk[k] + wjk[k]) * y_hat[0][0]
-                grade_a += m * self.D * theta[0]
-                grade_b += m * self.D
+                grade_a += (1 - c[0]) * m * (theta[0] - b[0])
+                grade_b -= (1 - c[0]) * m * a[0]
+                # todo c的偏导数 c的偏导有点复杂啊！！！！！
 
             # print(" a=%f" % x[0], "b=%f" % x[1], 'g_a=%f' % -grade_a, 'g_b=%f' % -grade_b)
 
@@ -387,8 +352,7 @@ class BockAitkinEM(EM):
             elif self.model == '2PL':
                 return -np.array([grade_a, grade_b])
             else:
-                # todo c的偏导数
-                return -np.array([grade_a, grade_b, 0])
+                return -np.array([grade_a, grade_b, grade_c])
 
         for j in range(self.item_count):
             a = self.a[j]
@@ -404,6 +368,7 @@ class BockAitkinEM(EM):
                 x0 = np.array([a, b])
             else:
                 x0 = np.array([a, b, c])
+            # print("item", j)
             # res1 = minimize(negative_ln_liklihood, x0=x0, args=(rjk, wjk), method='BFGS',
             #                jac=gradient)
             # res = minimize(negative_ln_liklihood, x0=x0, args=(rjk, wjk), method='nelder-mead',
@@ -413,9 +378,6 @@ class BockAitkinEM(EM):
             # print("L-BFGS-B")
             res = minimize(object_func, x0=x0, args=(rjk, wjk), method='L-BFGS-B', bounds=self._bounds, jac=jac_func)
 
-            # res3 = minimize(negative_ln_liklihood, x0=x0, args=(rjk, wjk), method='Newton-CG',jac=gradient)
-            # print("CG")
-            # res = minimize(negative_ln_liklihood, x0=x0, args=(rjk, wjk), method='CG', jac=gradient)
             if self.model == '1PL':
                 self.b[j] = res.x[0]
             elif self.model == '2PL':
@@ -492,7 +454,8 @@ class MHRM(EM):
             c = self.c[j:j + 1]
             for i in range(self.sample_count):
                 theta = self._theta_sample[:, i]
-                _s, _h = uirt_lib.uirt_item_jac_and_hessian(theta=theta, slope=a, intercept=b, guess=c, response=response)
+                _s, _h = uirt_lib.u2irt_item_jac_and_hessian(theta=theta, slope=a, intercept=b, guess=c,
+                                                             response=response)
                 s += _s[0, :].reshape((2, 1))
                 h += _h[0, :, :]
             s = s / self.sample_count
@@ -511,36 +474,14 @@ class MHMLE(MHRM):
     def _max_step(self):
 
         def object_fun(x, theta, response):
-            if self.model == '1PL':
-                a = np.array([1.0])
-                b = x
-                c = np.array([0.0])
-            elif self.model == '2PL':
-                a = x[0:1]
-                b = x[1:2]
-                c = np.array([0.0])
-            else:
-                a = x[0:1]
-                b = x[1:2]
-                c = x[2:3]
+            a, b, c = self._get_abc_from_x(x)
             ret = -uirt_lib.log_likelihood(theta=theta, slope=a, intercept=b, guess=c, response=response)
             print('item llh=%f' % ret, " a=%f" % x[0], "b=%f" % x[1], end="\n")
             return ret
 
         def gradient(x, theta, response):
-            if self.model == '1PL':
-                a = np.array([1.0])
-                b = x
-                c = np.array([0.0])
-            elif self.model == '2PL':
-                a = x[0:1]
-                b = x[1:2]
-                c = np.array([0.0])
-            else:
-                a = x[0:1]
-                b = x[1:2]
-                c = x[2:3]
-            ret = uirt_lib.uirt_item_jac(theta=theta, slope=a, intercept=b, guess=c, response=response)[0, :]
+            a, b, c = self._get_abc_from_x(x)
+            ret = uirt_lib.u2irt_item_jac(theta=theta, slope=a, intercept=b, guess=c, response=response)[0, :]
             # print(" a=%f" % x[0], "b=%f" % x[1], 'g_a=%f' % -ret[0], 'g_b=%f' % -ret[1])
             if self.model == '1PL':
                 return -ret[1:2]
@@ -612,8 +553,25 @@ if __name__ == "__main__":
     model = BockAitkinEM()
     model.fit(response=slf.response)
     model.estimate_join()
-    print("a-mse", mean_squared_error(model.a, slf.a), 'a-mae', mean_absolute_error(model.a, slf.a))
-    print("b-mse", mean_squared_error(model.b, slf.b), 'b-mae', mean_absolute_error(model.b, slf.b))
+    print('cost', model._end_time - model._start_time)
+    """
+    论文的 z=a*theta+b
+    我们的实现 z=a*(theta-b)
+    二者的b值不一样，但是可以转换
+    """
+
+    print("a-mse", mean_squared_error(model.a, slf.a),
+          'a-mae', mean_absolute_error(model.a, slf.a))
+
+    print("b-mse", mean_squared_error(-model.b * model.a, slf.b),
+          'b-mae', mean_absolute_error(-model.b * model.a, slf.b))
+
+    print("theta-mse", mean_squared_error(model.theta, slf.theta),
+          'theta-mae', mean_absolute_error(model.theta, slf.theta))
+
+    print(model.theta.tolist())
+    print(model.a.tolist())
+    print(model.b.tolist())
 
     print('-----MLE theta------')
     model = MLE()
