@@ -15,9 +15,6 @@ _parallel = Parallel(n_jobs=os.cpu_count())
 
 class Estimator:
     def __init__(self, model="2PL", max_iter=500):
-        # self.theta_prior_distribution = theta_prior_distribution
-        # self.Q = len(theta_prior_value.flatten())
-        # self.theta_prior_value = theta_prior_value
         assert model in ["1PL", "2PL", "3PL"]
         self.D = 1
         self.model = model
