@@ -52,9 +52,9 @@ cdef np.ndarray[np.float_t,ndim=2] _u1irt(
 
     for i in range(n):
         for j in range(m):
-            z = theta[i] - intercept[j]
+            # z = theta[i] - intercept[j]
             # 论文的版本
-            # z = slope[j] * theta[i] + intercept[j]
+            z = theta[i] + intercept[j]
             data_ptr[i,j] = 1.0 / (1.0 + exp(-z))
     return data
 
@@ -77,9 +77,9 @@ cdef np.ndarray[np.float_t,ndim=2] _u2irt(
 
     for i in range(n):
         for j in range(m):
-            z = slope[j] * (theta[i] - intercept[j])
+            # z = slope[j] * (theta[i] - intercept[j])
             # 论文的版本
-            # z = slope[j] * theta[i] + intercept[j]
+            z = slope[j] * theta[i] + intercept[j]
             data_ptr[i,j] =  1.0 / (1.0 + exp(-z))
     return data
 
@@ -102,9 +102,9 @@ cdef np.ndarray[np.float_t,ndim=2] _u3irt(
 
     for i in range(n):
         for j in range(m):
-            z = slope[j] * (theta[i] - intercept[j])
+            # z = slope[j] * (theta[i] - intercept[j])
             # 论文的版本
-            # z = slope[j] * theta[i] + intercept[j]
+            z = slope[j] * theta[i] + intercept[j]
             data_ptr[i,j] = guess[j] + (1 - guess[j]) * (1.0 / (1.0 + exp(-z)))
     return data
 
@@ -133,9 +133,9 @@ cdef double _log_likelihood(np.float_t[:] theta,
             # 作答记录里存在空值
             if np_isnan(response[i][j]):
                 continue
-            z = slope[j] * (theta[i] - intercept[j])
+            # z = slope[j] * (theta[i] - intercept[j])
             # 论文的版本
-            # z = slope[j] * theta[i] + intercept[j]
+            z = slope[j] * theta[i] + intercept[j]
             irt = guess[j] + (1 - guess[j]) * (1 / (1 + exp(-z)))
             tmp = response[i][j]*log(irt) + (1-response[i][j])*log(1-irt)
             result +=tmp
@@ -144,11 +144,12 @@ cdef double _log_likelihood(np.float_t[:] theta,
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef np.ndarray[np.float_t,ndim=1] _log_likelihood_user(np.float_t[:] theta,
+cdef np.ndarray[np.float_t,ndim=1] _log_likelihood_user(
+        np.int16_t[:,:] response,
+        np.float_t[:] theta,
                        np.float_t[:] slope,
                        np.float_t[:] intercept,
-                       np.float_t[:] guess,
-                       np.int16_t[:,:] response
+                       np.float_t[:] guess
                     ):
 
     cdef int i=0
@@ -167,10 +168,9 @@ cdef np.ndarray[np.float_t,ndim=1] _log_likelihood_user(np.float_t[:] theta,
             # 作答记录里存在空值
             if np_isnan(response[i][j]):
                 continue
-            z = slope[j] * (theta[i] - intercept[j])
+            # z = slope[j] * (theta[i] - intercept[j])
             # 论文的版本
-            # z = slope[j] * theta[i] + intercept[j]
-
+            z = slope[j] * theta[i] + intercept[j]
             irt = guess[j] + (1 - guess[j]) * (1 / (1 + exp(-z)))
             tmp = response[i][j]*log(irt) + (1-response[i][j])*log(1-irt)
             # result +=tmp
@@ -251,9 +251,7 @@ def uniform_rvs():
 def gaussian_pdf(x,sd=1):
     return _gaussian_pdf(x,sd)
 
-def sample_theta(
-                theta,
-                  slope,intercept,guess,response,burn_in=10,n=60):
+def sample_theta(theta,slope,intercept,guess,response,burn_in=10,n=60):
 
     cdef np.ndarray data = _sample_theta(theta,slope.flatten(),intercept.flatten(),guess.flatten(),response,burn_in,n)
     return data
@@ -267,11 +265,11 @@ def uirt_prob(
     return _u3irt(theta,slope,intercept,guess)
 
 
-def log_likelihood(np.float_t[:] theta,
+def log_likelihood(np.int16_t[:,:] response,np.float_t[:] theta,
                        np.float_t[:] slope,
                        np.float_t[:] intercept,
                        np.float_t[:] guess,
-                       np.int16_t[:,:] response):
+                    ):
     """
     .. math::
             Object function  = - \ln L(x;\theta)=-(\sum_{i=0}^n ({y^{(i)}} \ln P + (1-y^{(i)}) \ln (1-P)))
@@ -293,13 +291,12 @@ def log_likelihood(np.float_t[:] theta,
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def  log_likelihood_user(np.float_t[:] theta,
+def  log_likelihood_user(np.int16_t[:,:] response,np.float_t[:] theta,
                        np.float_t[:] slope,
                        np.float_t[:] intercept,
-                       np.float_t[:] guess,
-                       np.int16_t[:,:] response
+                       np.float_t[:] guess
                              ):
-    return _log_likelihood_user(theta=theta,slope=slope,intercept=intercept,guess=guess,response=response)
+    return _log_likelihood_user(response=response,theta=theta,slope=slope,intercept=intercept,guess=guess)
 
 
 
@@ -328,7 +325,7 @@ def u2irt_item_jac_and_hessian(np.float_t[:] theta,
     cdef np.float_t error = 0
     cdef np.float_t[:,:] y_hat = _u3irt(theta,slope,intercept,guess)
 
-    cdef np.ndarray grad_1 = np.zeros((m,3))
+    cdef np.ndarray grad_1 = np.zeros((m,2))
     cdef np.float_t[:,:] grad_1_ptr = grad_1
 
     cdef np.ndarray grad_2 = np.zeros((m,2,2))
@@ -340,15 +337,15 @@ def u2irt_item_jac_and_hessian(np.float_t[:] theta,
             if np_isnan(response[i][j]):
                 continue
             error = response[i][j] - y_hat[i][j]
-            grad_1_ptr[j,0] +=  error*(theta[i]-intercept[j])  # 题目j的参数a 区分度的一阶导数
-            grad_1_ptr[j,1] -=  error*slope[j]  # 题目j的参数b 难度的一阶导数
+            grad_1_ptr[j,0] +=  error*theta[i]  # 题目j的参数a 区分度的一阶导数
+            grad_1_ptr[j,1] +=  error  # 题目j的参数b 难度的一阶导数
             # grad_1_ptr[j,2] +=  error*slope[j]  # 题目j的参数guess的一阶导数，c的导数很复杂，需要二参数irt的预测值
 
             # 二阶导数有个负号
-            grad_2_ptr[j,0,0] += y_hat[i][j]*error*theta[i]*theta[i]
-            grad_2_ptr[j,1,1] += y_hat[i][j]*error
+            grad_2_ptr[j,0,0] += y_hat[i][j]*(1-y_hat[i][j])*theta[i]*theta[i]
+            grad_2_ptr[j,1,1] += y_hat[i][j]*(1-y_hat[i][j])
 
-            grad_2_ptr[j,0,1] += y_hat[i][j]*error*theta[i]
+            grad_2_ptr[j,0,1] += y_hat[i][j]*(1-y_hat[i][j])*theta[i]
             grad_2_ptr[j,1,0] = grad_2_ptr[j,0,1]
 
     return grad_1, -grad_2
@@ -388,8 +385,8 @@ def u2irt_item_jac(np.float_t[:] theta,
             if np_isnan(response[i][j]):
                 continue
             error = response[i][j] - y_hat[i][j]
-            grad_1_ptr[j,0] += error*(theta[i]-intercept[j])  # 题目j的参数a 区分度的一阶导数
-            grad_1_ptr[j,1] -= error*slope[j]  # 题目j的参数b 难度的一阶导数
+            grad_1_ptr[j,0] += error*theta[i]  # 题目j的参数a 区分度的一阶导数
+            grad_1_ptr[j,1] += error  # 题目j的参数b 难度的一阶导数
 
 
     return grad_1
@@ -481,7 +478,7 @@ def u3irt_sequence(
     cdef np.float_t[:] data_ptr = data
 
     for i in range(n):
-            z = slope[i] * (theta[i] - intercept[i])
+            z = slope[i] * theta[i] + intercept[i]
             # z = a[i] * (theta[i] + b[i])
             data_ptr[i] = guess[i] + (1 - guess[i]) * (1 / (1 + exp(-z)))
     return data
@@ -503,7 +500,7 @@ def u2irt_sequence(
 
     for i in range(n):
             # z = D * slope[j] * (theta[i] - intercept[j])
-            z = slope[i] *( theta[i] - intercept[i])
+            z = slope[i] *theta[i] + intercept[i]
             data_ptr[i] =   1.0 / (1.0 + exp(-z))
     return data
 
@@ -521,6 +518,6 @@ def u1irt_sequence(
 
     for i in range(n):
             # z = D * slope[j] * (theta[i] - intercept[j])
-            z =  theta[i] - intercept[i]
+            z =  theta[i] + intercept[i]
             data_ptr[i] =   1.0 / (1.0 + exp(-z))
     return data

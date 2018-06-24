@@ -1,22 +1,9 @@
 # coding=utf-8
 from __future__ import print_function
-import warnings
 from itertools import combinations
 import numpy as np
-import pymc3 as pm
 import pandas as pd
-# import theano.tensor as tt
-from theano.tensor.basic import as_tensor_variable
 import os
-import sys
-import abc
-import shutil
-from pymc3.backends.base import MultiTrace
-from scipy.special import expit as sigmod
-from talirt.utils.pymc import TextTrace, SQLiteTrace
-from pymc3.sampling import _cpu_count
-from scipy.optimize import minimize
-from tqdm import tqdm
 import logging
 from talirt.estimator.uirt import MLE, BockAitkinEM
 from talirt.utils import uirt_lib
@@ -311,15 +298,9 @@ class UIRT(object):
     def estimate_theta(self, **kwargs):
         """
         已知题目参数的情况下，估计学生的能力值。
-        优化算法说明参考 https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html#scipy.optimize.minimize
-
         Parameters
         ----------
-        method 优化算法，可选 CG、Newton-CG、L-BFGS-B
-        tol
         options
-        bounds
-        join join=True，所有学生一起估计；反之，每个学生独立估计
 
         Returns
         -------
@@ -334,6 +315,7 @@ class UIRT(object):
     def estimate_item(self, **kwargs):
         a, b, c = self._get_abc()
         theta = self.user_vector[:, 'theta'].values
+
         self.estimator = MLE(model=self.model)
         self.estimator.fit(response=self.response_matrix.values, a=a, b=b, c=c, theta=theta)
         self.estimator.estimate_item(**kwargs)
@@ -351,13 +333,11 @@ class UIRT(object):
 
     def estimate_join(self, **kwargs):
         """
-        参数说明参考 http://docs.pymc.io/api/inference.html#module-pymc3.sampling
         :param kwargs:
         :return:
         """
         a, b, c = self._get_abc()
         self.estimator = BockAitkinEM(model=self.model)
-
         self.estimator.fit(response=self.response_matrix.values, a=a, b=b, c=c)
         self.estimator.estimate_join(**kwargs)
 
