@@ -118,7 +118,7 @@ cdef double _log_likelihood(np.float_t[:] theta,
                        np.float_t[:] slope,
                        np.float_t[:] intercept,
                        np.float_t[:] guess,
-                       np.int16_t[:,:] response
+                       np.float_t[:,:] response
                              ):
 
     cdef int i=0
@@ -145,7 +145,7 @@ cdef double _log_likelihood(np.float_t[:] theta,
 @cython.boundscheck(False)
 @cython.wraparound(False)
 cdef np.ndarray[np.float_t,ndim=1] _log_likelihood_user(
-        np.int16_t[:,:] response,
+        np.float_t[:,:] response,
         np.float_t[:] theta,
                        np.float_t[:] slope,
                        np.float_t[:] intercept,
@@ -187,7 +187,7 @@ cdef np.ndarray[np.float_t, ndim=1] _sample_theta(
                        np.float_t[:] slope,
                        np.float_t[:] intercept,
                        np.float_t[:] guess,
-                       np.int16_t[:,:] response,
+                       np.float_t[:,:] response,
                  unsigned int burn_in=10,unsigned int n=60,
         double mean=0,double sigma=2
                 ):
@@ -265,7 +265,7 @@ def uirt_prob(
     return _u3irt(theta,slope,intercept,guess)
 
 
-def log_likelihood(np.int16_t[:,:] response,np.float_t[:] theta,
+def log_likelihood(np.float_t[:,:] response,np.float_t[:] theta,
                        np.float_t[:] slope,
                        np.float_t[:] intercept,
                        np.float_t[:] guess,
@@ -291,7 +291,7 @@ def log_likelihood(np.int16_t[:,:] response,np.float_t[:] theta,
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def  log_likelihood_user(np.int16_t[:,:] response,np.float_t[:] theta,
+def  log_likelihood_user(np.float_t[:,:] response,np.float_t[:] theta,
                        np.float_t[:] slope,
                        np.float_t[:] intercept,
                        np.float_t[:] guess
@@ -304,7 +304,7 @@ def u2irt_item_jac_and_hessian(np.float_t[:] theta,
                        np.float_t[:] slope,
                        np.float_t[:] intercept,
                        np.float_t[:] guess,
-                     np.int16_t[:,:] response):
+                     np.float_t[:,:] response):
     """
     三参数模型的一阶导数和二阶导数。z=slope*(theta-intercept)
     Parameters
@@ -355,7 +355,7 @@ def u2irt_item_jac(np.float_t[:] theta,
                        np.float_t[:] slope,
                        np.float_t[:] intercept,
                        np.float_t[:] guess,
-                     np.int16_t[:,:] response):
+                     np.float_t[:,:] response):
     """
 
     Parameters
@@ -395,7 +395,7 @@ def uirt_theta_jac(np.float_t[:] theta,
                        np.float_t[:] slope,
                        np.float_t[:] intercept,
                        np.float_t[:] guess,
-                     np.int16_t[:,:] response):
+                     np.float_t[:,:] response):
     """
 
     Parameters

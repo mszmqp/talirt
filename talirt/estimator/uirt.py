@@ -40,10 +40,6 @@ class Estimator:
         self.iter = 0
         self.cost_time = None
 
-    def _pre_init(self, **kwargs):
-
-        return True
-
     def fit(self, response: np.ndarray,
             a: np.ndarray = None, b: np.ndarray = None, c: np.ndarray = None,
             theta: np.ndarray = None, **kwargs):
@@ -76,7 +72,6 @@ class Estimator:
             self.b = b.flatten()
         self._llh = None
         self.iter = 0
-        self._pre_init(**kwargs)
 
     def _get_abc_from_x(self, x):
         if self.model == '1PL':
@@ -225,7 +220,10 @@ class EM(Estimator):
 
 
 class BockAitkinEM(EM):
-    def _pre_init(self, **kwargs):
+    def fit(self, response: np.ndarray,
+            a: np.ndarray = None, b: np.ndarray = None, c: np.ndarray = None,
+            theta: np.ndarray = None, **kwargs):
+        super(BockAitkinEM, self).fit(response=response, a=a, b=b, c=c, theta=theta, **kwargs)
         """
         Bock-Aitkin EM 算法的初始化
         :param theta_min:
@@ -281,7 +279,10 @@ class BockAitkinEM(EM):
             theta_k = np.asarray([self.theta_prior_value[k]] * self.user_count).flatten()
             theta_k_prior_prob = self.theta_prior_distribution[k]
             #     每个学生独立的log似然值
-            independent_user_lld = uirt_clib.log_likelihood_user(self.response, theta_k, self.a, self.b, self.c)
+            independent_user_lld = uirt_clib.log_likelihood_user(response=self.response,
+                                                                 theta=theta_k,
+                                                                 slope=self.a,
+                                                                 intercept=self.b, guess=self.c)
             # 乘上当theta值的先验概率,这是后验概率分布的分子
             self.theta_posterior_distribution[:, k] = independent_user_lld + np.log(theta_k_prior_prob)
 
@@ -307,9 +308,9 @@ class BockAitkinEM(EM):
         # 一次性计算所有题目的
         for k in range(self.Q):
             theta_k = self.theta_posterior_distribution[:, k].reshape((self.user_count, 1))
-            # todo 空值的处理
-            self.r[k, :] = (theta_k * self.response).sum(axis=0).reshape(1, self.item_count)
-            self.w[k, :] = (theta_k * (1 - self.response)).sum(axis=0).reshape(1, self.item_count)
+            #  空值的处理
+            self.r[k, :] = np.nan_to_num(theta_k * self.response, copy=False).sum(axis=0).reshape(1, self.item_count)
+            self.w[k, :] = np.nan_to_num(theta_k * (1 - self.response)).sum(axis=0).reshape(1, self.item_count)
 
         return 1
 
@@ -322,7 +323,7 @@ class BockAitkinEM(EM):
 
     def _max_step(self):
 
-        def object_func(x, rjk, wjk):
+        def object_func(x, rjk, wjk, response):
             """
             本函数一次计算一道题目的负的似然值
             Parameters
@@ -340,23 +341,22 @@ class BockAitkinEM(EM):
 
             # 预测值
             y_hat = uirt_clib.u3irt_matrix(theta=theta, slope=a, intercept=b, guess=c)
-            # todo 空值处理
             obj = rjk.reshape(self.Q, 1) * np.log(y_hat) + wjk.reshape(self.Q, 1) * np.log(1 - y_hat)
-            # 答题记录通常不是满记录的，里面有空值，对于空值设置为0，然后再求sum，这样不影响结果
-            res = - np.sum(np.nan_to_num(obj, copy=False))
+
+            res = - np.sum(obj)
             # print('item llh=%f' % res, " a=%f" % x[0], "b=%f" % x[1], end="")
             return res
 
-        def jac_func(x, rjk, wjk):
-
+        def jac_func(x, rjk, wjk, response):
+            """一道题目的导数"""
             a, b, c = self._get_abc_from_x(x)
             grade_a = 0
             grade_b = 0
             grade_c = 0
+            # 在EM算法中，这里貌似不用处理空值？？
             for k in range(self.Q):
                 theta = np.array([self.theta_prior_value[k]])
                 # 预测值
-
                 y_hat = uirt_clib.u3irt_matrix(theta=theta, slope=a, intercept=b, guess=c)
                 m = rjk[k] - (rjk[k] + wjk[k]) * y_hat[0][0]
                 grade_a += (1 - c[0]) * m * theta[0]
@@ -376,7 +376,7 @@ class BockAitkinEM(EM):
             a = self.a[j]
             b = self.b[j]
             c = self.c[j]
-            # y = self.response[:, j]
+            response = self.response[:, j]
             rjk = self.r[:, j]
             wjk = self.w[:, j]
 
@@ -394,7 +394,8 @@ class BockAitkinEM(EM):
             # res1 = minimize(negative_ln_liklihood, x0=x0, args=(rjk, wjk), method='SLSQP', bounds=bounds,
             #                options={'disp': False})
             # print("L-BFGS-B")
-            res = minimize(object_func, x0=x0, args=(rjk, wjk), method='L-BFGS-B', bounds=self._bounds, jac=jac_func)
+            res = minimize(object_func, x0=x0, args=(rjk, wjk, response), method='L-BFGS-B', bounds=self._bounds,
+                           jac=jac_func)
 
             if self.model == '1PL':
                 self.b[j] = res.x[0]
@@ -420,7 +421,7 @@ class BockAitkinEM(EM):
 class MHRM(EM):
 
     def _pre_init(self):
-        self.sample_count = 100
+        self.sample_count = 60
         self.burn_in = 10
         if self.model == "2PL":
             self._t = np.zeros((self.item_count, 2, 2))
@@ -595,13 +596,15 @@ if __name__ == "__main__":
     # print(sim.user)
     # sim.user
     # response = lsat6
-    from talirt.data import social_life_feelings as  slf
+    from talirt.data import social_life_feelings as slf
     from sklearn.metrics import mean_squared_error, mean_absolute_error
 
 
     def test_baem():
         print('-----BockAitkinEM------')
-        model = BockAitkinEM()
+        model = BockAitkinEM(model="3PL")
+
+        # slf.response[0,0] = np.nan
         model.fit(response=slf.response)
         model.estimate_join()
         print('cost', model.cost_time, model.e_cost, model.m_cost)
@@ -619,9 +622,15 @@ if __name__ == "__main__":
         print("theta-mse", mean_squared_error(model.theta, slf.theta) < tol,
               'theta-mae', mean_absolute_error(model.theta, slf.theta) < tol)
         print('mse', model.mse(), 'acc', model.accuracy())
-        print(model.theta.tolist())
-        print(model.a.tolist())
-        print(model.b.tolist())
+        print('-----theta-----')
+        print('estimate', model.theta.tolist())
+        print('real', slf.theta.tolist())
+        print('-----a-----')
+        print('estimate', model.a.tolist())
+        print('real', slf.a.tolist())
+        print('-----b-----')
+        print('estimate', model.b.tolist())
+        print('real', slf.b.tolist())
 
 
     def test_MLE():
@@ -644,7 +653,6 @@ if __name__ == "__main__":
         print("mae", mean_absolute_error(model.a, slf.a))
 
 
-
     def test_mhrm():
         print('-----MHRM------')
         em = MHRM(model="2PL", max_iter=80)
@@ -654,30 +662,13 @@ if __name__ == "__main__":
         # em.b[:] = np.array([-1.5, -1, 0, 1, 1.5])
         s = time.time()
         em.estimate_join()
+        print(em.theta.tolist())
         print(em.a)
         print(em.b)
-        print(em.theta)
         print('cost', em.cost_time, em.e_cost, em.m_cost)
         print('mse', em.mse(), 'acc', em.accuracy())
 
 
     test_baem()
-    test_mhrm()
+    # test_mhrm()
     quit()
-    # model = MCEM(model="1PL")
-    model = MHRM(model="2PL")
-    model.fit(response=slf.response, max_iter=100)
-
-    model.a[0, :] = 0.75
-    model.estimate()
-    print(model.a)
-    print(model.b)
-    print(model.c)
-    from talirt.model.metrics import Metric
-
-    # print('theta mse')
-    # print(Metric.metric_mean_error(model.theta.flatten(), sim.user.values.flatten()))
-    # print('a mse')
-    # print(Metric.metric_mean_error(model.a.flatten(), sim.item['a'].values.flatten()))
-    # print('b mse')
-    # print(Metric.metric_mean_error(model.b.flatten(), sim.item['b'].values.flatten()))
