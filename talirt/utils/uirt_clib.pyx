@@ -222,10 +222,9 @@ cdef int _sample_theta(
     cache1[0] = theta
     v1 = _log_likelihood(theta=cache1,
                          slope=slope, intercept=intercept, guess=guess,
-                         response=response,user_count=1,item_count=item_count)
-    v1 +=  log(_gaussian_pdf(cache1[0],1))
-    # with nogil:
-        # next_theta_pool = norm.rvs(size=n * 10).tolist()
+                         response=response,user_count=1,item_count=item_count) + log(_gaussian_pdf(cache1[0],1))
+
+
     while iter < n:
         cache2[0] = _gaussian(_gsl_r,sigma)+cache1[0]
         # next_ptr[0] = next_theta
@@ -241,10 +240,7 @@ cdef int _sample_theta(
                 index += 1
             cache1[0] = cache2[0]
             # pre_ptr[0]=pre_theta
-            # pre_theta 有变化时再更新v1，提升效率
-            v1 = _log_likelihood(theta=cache1,
-                                 slope=slope, intercept=intercept, guess=guess,
-                                 response=response,user_count=1,item_count=item_count) + log(_gaussian_pdf(cache1[0],1))
+            v1 = v2
 
     # return data
     return 0
