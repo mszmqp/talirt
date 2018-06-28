@@ -9,9 +9,9 @@ ctypedef np.float_t FLOAT_T
 # import random
 ctypedef np.int64_t INT_T
 from libc.math cimport exp, sqrt, log,pi
-from libc.stdlib cimport rand, RAND_MAX
-from cpython cimport array
-import array
+# from libc.stdlib cimport rand, RAND_MAX
+# from cpython cimport array
+# import array
 #from cython_gsl cimport *
 # from talirt.model.crandom cimport uniform_rv,normal_rv
 # DEF CONSTANT_D=1.0
@@ -27,10 +27,10 @@ cdef extern from "gsl/gsl_rng.h":
     gsl_rng *gsl_rng_alloc(gsl_rng_type * T)
 
 cdef extern from "gsl/gsl_randist.h":
-    double _gamma "gsl_ran_gamma"(gsl_rng * r,double,double)
-    double _gaussian "gsl_ran_gaussian"(gsl_rng * r,double)
-    double _gaussian_pdf "gsl_ran_gaussian_pdf"(double,double)
-    double _uniform "gsl_rng_uniform"(gsl_rng * r)
+    double _gamma "gsl_ran_gamma"(gsl_rng * r,double,double) nogil
+    double _gaussian "gsl_ran_gaussian"(gsl_rng * r,double) nogil
+    double _gaussian_pdf "gsl_ran_gaussian_pdf"(double,double) nogil
+    double _uniform "gsl_rng_uniform"(gsl_rng * r) nogil
 
 cdef gsl_rng *_gsl_r = gsl_rng_alloc(gsl_rng_mt19937)
 
@@ -38,76 +38,81 @@ cdef gsl_rng *_gsl_r = gsl_rng_alloc(gsl_rng_mt19937)
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef np.ndarray[np.float_t,ndim=2] _u1irt(
-        np.float_t[:] theta,
-        np.float_t[:] intercept
-           ) :
-
-    cdef int i=0
-    cdef int j = 0
-    cdef int n = theta.size
-    cdef int m = intercept.size
-
-    cdef np.ndarray data=np.zeros(shape=(n,m),dtype=np.float)
-    cdef np.float_t[:,:] data_ptr = data
-
-    for i in range(n):
-        for j in range(m):
-            # z = theta[i] - intercept[j]
-            # 论文的版本
-            z = theta[i] + intercept[j]
-            data_ptr[i,j] = 1.0 / (1.0 + exp(-z))
-    return data
-
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
-cdef np.ndarray[np.float_t,ndim=2] _u2irt(
-        np.float_t[:] theta,
-        np.float_t[:] slope,
-        np.float_t[:] intercept
-           ) :
-
-    cdef int i=0
-    cdef int j = 0
-    cdef int n = theta.size
-    cdef int m = intercept.size
-
-    cdef np.ndarray data=np.zeros(shape=(n,m),dtype=np.float)
-    cdef np.float_t[:,:] data_ptr = data
-
-    for i in range(n):
-        for j in range(m):
-            # z = slope[j] * (theta[i] - intercept[j])
-            # 论文的版本
-            z = slope[j] * theta[i] + intercept[j]
-            data_ptr[i,j] =  1.0 / (1.0 + exp(-z))
-    return data
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
-cdef np.ndarray[np.float_t,ndim=2] _u3irt(
+@cython.cdivision(True)
+cdef inline int _u1irt(
+        np.float_t[:,:] ret,
         np.float_t[:] theta,
         np.float_t[:] slope,
         np.float_t[:] intercept,
-        np.float_t[:] guess
-           ) :
+        np.float_t[:] guess,
+        int user_count,
+        int item_count
+           ) nogil :
+    cdef int i=0
+    cdef int j = 0
+    cdef double z = 0
+
+    for i in range(user_count):
+        for j in range(item_count):
+            # z = theta[i] - intercept[j]
+            # 论文的版本
+            z = theta[i] + intercept[j]
+            ret[i,j] = 1.0 / (1.0 + exp(-z))
+    return 0
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+cdef inline int _u2irt(
+        np.float_t[:,:] ret,
+        np.float_t[:] theta,
+        np.float_t[:] slope,
+        np.float_t[:] intercept,
+        np.float_t[:] guess,
+        int user_count,
+        int item_count
+           ) nogil :
 
     cdef int i=0
     cdef int j = 0
-    cdef int n = theta.size
-    cdef int m = slope.size
-
-    cdef np.ndarray data=np.zeros(shape=(n,m),dtype=np.float)
-    cdef np.float_t[:,:] data_ptr = data
-
-    for i in range(n):
-        for j in range(m):
+    cdef double z=0
+    for i in range(user_count):
+        for j in range(item_count):
             # z = slope[j] * (theta[i] - intercept[j])
             # 论文的版本
             z = slope[j] * theta[i] + intercept[j]
-            data_ptr[i,j] = guess[j] + (1 - guess[j]) * (1.0 / (1.0 + exp(-z)))
-    return data
+            ret[i,j] =  1.0 / (1.0 + exp(-z))
+    return 0
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+cdef inline int _u3irt(
+        np.float_t[:,:] ret,
+        np.float_t[:] theta,
+        np.float_t[:] slope,
+        np.float_t[:] intercept,
+        np.float_t[:] guess,
+        int user_count,
+        int item_count
+           ) nogil :
+
+    cdef int i=0
+    cdef int j = 0
+    # cdef int n = theta.size
+    # cdef int m = slope.size
+    cdef double z
+    # cdef np.ndarray data=np.zeros(shape=(n,m))
+    # cdef np.float_t[:,:] data_ptr = data
+
+    for i in range(user_count):
+        for j in range(item_count):
+            # z = slope[j] * (theta[i] - intercept[j])
+            # 论文的版本
+            z = slope[j] * theta[i] + intercept[j]
+            ret[i,j] = guess[j] + (1 - guess[j]) * (1.0 / (1.0 + exp(-z)))
+    return 0
 
 
 
@@ -115,29 +120,33 @@ cdef np.ndarray[np.float_t,ndim=2] _u3irt(
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef double _log_likelihood(np.float_t[:] theta,
+@cython.cdivision(True)
+@cython.nonecheck(False)
+cdef inline double _log_likelihood(np.float_t[:] theta,
                        np.float_t[:] slope,
                        np.float_t[:] intercept,
                        np.float_t[:] guess,
-                       np.float_t[:,:] response
-                             ):
+                       np.float_t[:,:] response,
+                            int user_count,
+                            int item_count
+                             ) nogil:
 
     cdef int i=0
     cdef int j = 0
-    cdef np.float_t irt=0
-    cdef np.float_t result=0,tmp=0
-    cdef int n = theta.size
-    cdef int m = intercept.size
+    cdef double irt=0,z=0
+    cdef double result=0,tmp=0
+    # cdef int n = theta.size
+    # cdef int m = intercept.size
 
-    for i in range(n):
-        for j in range(m):
+    for i in range(user_count):
+        for j in range(item_count):
             # 作答记录里存在空值
             if np_isnan(response[i][j]):
                 continue
             # z = slope[j] * (theta[i] - intercept[j])
             # 论文的版本
             z = slope[j] * theta[i] + intercept[j]
-            irt = guess[j] + (1 - guess[j]) * (1 / (1 + exp(-z)))
+            irt = guess[j] + (1.0 - guess[j]) * (1.0 / (1 + exp(-z)))
             tmp = response[i][j]*log(irt) + (1-response[i][j])*log(1-irt)
             result +=tmp
     return result
@@ -145,27 +154,26 @@ cdef double _log_likelihood(np.float_t[:] theta,
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef np.ndarray[np.float_t,ndim=1] _log_likelihood_user(
+@cython.cdivision(True)
+cdef inline int _log_likelihood_user(
+        np.float_t[:] ret,
         np.float_t[:,:] response,
         np.float_t[:] theta,
-                       np.float_t[:] slope,
-                       np.float_t[:] intercept,
-                       np.float_t[:] guess
-                    ):
+        np.float_t[:] slope,
+        np.float_t[:] intercept,
+        np.float_t[:] guess,
+        int user_count,
+        int item_count
+                    ) nogil:
 
     cdef int i=0
     cdef int j = 0
-    cdef np.float_t irt=0
-    cdef np.float_t result=0,tmp=0
-    cdef int n = theta.size
-    cdef int m = intercept.size
-
-    cdef np.ndarray data=np.zeros(n,dtype=np.float)
-    cdef np.float_t[:] data_ptr = data
+    cdef double irt=0,z=0
+    cdef double result=0,tmp=0
     # 按照人循环
-    for i in range(n):
+    for i in range(user_count):
         # 按照题目循环
-        for j in range(m):
+        for j in range(item_count):
             # 作答记录里存在空值
             if np_isnan(response[i][j]):
                 continue
@@ -175,70 +183,71 @@ cdef np.ndarray[np.float_t,ndim=1] _log_likelihood_user(
             irt = guess[j] + (1 - guess[j]) * (1 / (1 + exp(-z)))
             tmp = response[i][j]*log(irt) + (1-response[i][j])*log(1-irt)
             # result +=tmp
-            data_ptr[i] += tmp
-    return data
+            ret[i] += tmp
+    return 0
 
 
 
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef np.ndarray[np.float_t, ndim=1] _sample_theta(
-                 double theta,
-                       np.float_t[:] slope,
-                       np.float_t[:] intercept,
-                       np.float_t[:] guess,
-                       np.float_t[:,:] response,
-                 unsigned int burn_in=10,unsigned int n=60,
-        double mean=0,double sigma=2
-                ):
+@cython.cdivision(True)
+@cython.nonecheck(False)
+cdef int _sample_theta(
+                np.float_t[:] ret,
+                double theta,
+                np.float_t[:] slope,
+                np.float_t[:] intercept,
+                np.float_t[:] guess,
+                np.float_t[:,:] response,
+                int item_count,
+                np.float_t[:] cache1,
+                np.float_t[:] cache2,
+                unsigned int burn_in=10,
+                unsigned int n=60,
+                np.float_t mean=0,
+                np.float_t sigma=2,
+                ) nogil:
 
 
-    # data[0] = theta
-    cdef np.ndarray data = np.zeros(n - burn_in,dtype=np.float)
-    cdef np.ndarray pre_array=np.zeros(shape=(1,),dtype=np.float)
-    cdef np.ndarray next_array=np.zeros(shape=(1,),dtype=np.float)
-    cdef np.float_t[:]  data_ptr=data
-    cdef np.float_t[:]  pre_ptr=pre_array
-    cdef np.float_t[:]  next_ptr=next_array
 
     cdef unsigned int iter = 0  # 总的抽样次数
     cdef unsigned int index = 0
-    cdef double pre_theta
-    cdef double pre
 
-    cdef double next_theta
-    cdef double nex
-    cdef double r
-    pre_theta = theta
-    pre_ptr[0] = pre_theta
-    v1 = _log_likelihood(theta=pre_ptr,
+    cdef double r=0
+    cdef double v1=0
+    cdef double v2=0
+
+    # pre_theta[0] = theta
+    cache1[0] = theta
+    v1 = _log_likelihood(theta=cache1,
                          slope=slope, intercept=intercept, guess=guess,
-                         response=response) + log(_gaussian_pdf(pre_theta,1))
+                         response=response,user_count=1,item_count=item_count)
+    v1 +=  log(_gaussian_pdf(cache1[0],1))
     # with nogil:
         # next_theta_pool = norm.rvs(size=n * 10).tolist()
     while iter < n:
-        next_theta = _gaussian(_gsl_r,sigma)+pre_theta
-        next_ptr[0] = next_theta
-        v2 = _log_likelihood(theta=next_ptr,
+        cache2[0] = _gaussian(_gsl_r,sigma)+cache1[0]
+        # next_ptr[0] = next_theta
+        v2 = _log_likelihood(theta=cache2,
                              slope=slope, intercept=intercept, guess=guess,
-                             response=response) + log(_gaussian_pdf(next_theta,1))
+                             response=response,user_count=1,item_count=item_count) + log(_gaussian_pdf(cache2[0],1))
         r=exp(v2 - v1)
         # print(iter,pre_theta,next_theta,r)
         if r >= 1 or (r>0.1 and  _uniform(_gsl_r) <= r):
             iter += 1
             if iter > burn_in:
-                data_ptr[index] = next_theta
+                ret[index] = cache2[0]
                 index += 1
-            pre_theta = next_theta
-            pre_ptr[0]=pre_theta
+            cache1[0] = cache2[0]
+            # pre_ptr[0]=pre_theta
             # pre_theta 有变化时再更新v1，提升效率
-            v1 = _log_likelihood(theta=pre_ptr,
+            v1 = _log_likelihood(theta=cache1,
                                  slope=slope, intercept=intercept, guess=guess,
-                                 response=response) + log(_gaussian_pdf(pre_theta,1))
+                                 response=response,user_count=1,item_count=item_count) + log(_gaussian_pdf(cache1[0],1))
 
-    return data
-
+    # return data
+    return 0
 
 ############################
 # 导出到python层的函数
@@ -254,17 +263,21 @@ def gaussian_pdf(x,sd=1):
 
 def sample_theta(theta,slope,intercept,guess,response,burn_in=10,n=60):
 
-    cdef np.ndarray data = _sample_theta(theta,slope.flatten(),intercept.flatten(),guess.flatten(),response,burn_in,n)
+
+    cdef np.ndarray data =np.zeros(n - burn_in)
+    cdef item_count= intercept.size
+    cdef cache1 = np.zeros(1)
+    cdef cache2 = np.zeros(1)
+    _sample_theta(data,theta,
+                    slope.flatten(),
+                    intercept.flatten(),
+                    guess.flatten(),
+                    response,
+                    item_count,
+                  cache1,
+                  cache2,
+                    burn_in,n)
     return data
-
-def uirt_prob(
-        np.float_t[:] theta,
-        np.float_t[:] slope,
-        np.float_t[:] intercept,
-        np.float_t[:] guess):
-
-    return _u3irt(theta,slope,intercept,guess)
-
 
 def log_likelihood(np.float_t[:,:] response,np.float_t[:] theta,
                        np.float_t[:] slope,
@@ -286,7 +299,16 @@ def log_likelihood(np.float_t[:,:] response,np.float_t[:] theta,
         res : float
 
     """
-    cdef np.float_t result = _log_likelihood(theta=theta,slope=slope,intercept=intercept,guess=guess,response=response)
+    cdef int user_count=theta.size
+    cdef int item_count =intercept.size
+    cdef np.float_t result = _log_likelihood(
+        theta=theta,
+        slope=slope,
+        intercept=intercept,
+        guess=guess,
+        response=response,
+        user_count=user_count,
+        item_count=item_count)
     # print(result)
     return result
 
@@ -297,8 +319,18 @@ def  log_likelihood_user(np.float_t[:,:] response,np.float_t[:] theta,
                        np.float_t[:] intercept,
                        np.float_t[:] guess
                              ):
-    return _log_likelihood_user(response=response,theta=theta,slope=slope,intercept=intercept,guess=guess)
+    cdef int user_count=theta.size
+    cdef int item_count = intercept.size
+    ret = np.zeros(user_count)
+    _log_likelihood_user(ret=ret,
+                         response=response,
+                         theta=theta,
+                         slope=slope,intercept=intercept,guess=guess,
+                         user_count=user_count,
+                         item_count=item_count
+                         )
 
+    return ret
 
 
 def u2irt_item_jac_and_hessian(np.float_t[:] theta,
@@ -324,13 +356,15 @@ def u2irt_item_jac_and_hessian(np.float_t[:] theta,
     cdef n = theta.size
     cdef m = intercept.size
     cdef np.float_t error = 0
-    cdef np.float_t[:,:] y_hat = _u3irt(theta,slope,intercept,guess)
+    cdef y_hat = np.zeros((n,m))
+    _u3irt(ret=y_hat,theta=theta,slope=slope,intercept=intercept,guess=guess,user_count=n,item_count=m)
 
     cdef np.ndarray grad_1 = np.zeros((m,2))
-    cdef np.float_t[:,:] grad_1_ptr = grad_1
+    cdef float[:,:] grad_1_ptr = grad_1
+
 
     cdef np.ndarray grad_2 = np.zeros((m,2,2))
-    cdef np.float_t[:,:,:] grad_2_ptr = grad_2
+    cdef float[:,:,:] grad_2_ptr = grad_2
 
     for i in range(n):
         for j in range(m):
@@ -375,10 +409,11 @@ def u2irt_item_jac(np.float_t[:] theta,
     cdef n = theta.size
     cdef m = intercept.size
     cdef np.float_t error = 0
-    cdef np.float_t[:,:] y_hat = _u3irt(theta,slope,intercept,guess)
+    cdef y_hat = np.zeros((n,m))
+    _u3irt(ret=y_hat,theta=theta,slope=slope,intercept=intercept,guess=guess,user_count=n,item_count=m)
 
     cdef np.ndarray grad_1 = np.zeros((m,2))
-    cdef np.float_t[:,:] grad_1_ptr = grad_1
+    cdef float[:,:] grad_1_ptr = grad_1
 
     for i in range(n):
         for j in range(m):
@@ -415,11 +450,12 @@ def uirt_theta_jac(np.float_t[:] theta,
     cdef int j = 0
     cdef n = theta.shape[0]
     cdef m = slope.shape[0]
-    cdef np.float_t error = 0
-    cdef np.float_t[:,:] y_hat = _u3irt(theta,slope,intercept,guess)
+    cdef double error = 0
+    cdef y_hat = np.zeros((n,m))
+    _u3irt(ret=y_hat,theta=theta,slope=slope,intercept=intercept,guess=guess,user_count=n,item_count=m)
     cdef np.ndarray grad = np.zeros(n)
-    cdef np.float_t[:] grad_ptr = grad
-    # cdef double grade=0
+    cdef double [:] grad_ptr = grad
+    # cdef np.float_t grade=0
     for i in range(n):
         for j in range(m):
             # 作答记录里存在空值
@@ -430,37 +466,27 @@ def uirt_theta_jac(np.float_t[:] theta,
     return grad
 
 
-
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def  u1irt_matrix(
-        np.float_t[:] theta,
-        np.float_t[:] intercept
-           ) :
-
-    return _u1irt(theta=theta,intercept=intercept)
-
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
-def  u2irt_matrix(
-        np.float_t[:] theta,
-        np.float_t[:] slope,
-        np.float_t[:] intercept
-           ) :
-
-    return _u2irt(theta=theta,slope=slope,intercept=intercept)
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
-def  u3irt_matrix(
-        np.float_t[:] theta,
-        np.float_t[:] slope,
-        np.float_t[:] intercept,
-        np.float_t[:] guess
+def  uirt_matrix(
+        theta,
+        slope,
+        intercept,
+        guess=None
            ):
 
-    return _u3irt(theta=theta,slope=slope,intercept=intercept,guess=guess)
+    cdef int user_count=theta.size
+    cdef int item_count = intercept.size
+    ret = np.zeros(user_count,item_count)
+    if slope is None:
+        _u1irt(ret=ret,theta=theta,slope=slope,intercept=intercept,guess=guess,user_count=user_count,item_count=item_count)
+    elif guess is None:
+
+        _u2irt(ret=ret,theta=theta,slope=slope,intercept=intercept,guess=guess,user_count=user_count,item_count=item_count)
+    else:
+        _u3irt(ret=ret,theta=theta,slope=slope,intercept=intercept,guess=guess,user_count=user_count,item_count=item_count)
+
+    return ret
 
 
 @cython.boundscheck(False)
@@ -475,7 +501,7 @@ def u3irt_sequence(
     cdef int i=0
     cdef int n = theta.size
 
-    cdef np.ndarray data=np.zeros(shape=(n,),dtype=np.float)
+    cdef np.ndarray data=np.zeros(shape=(n,))
     cdef np.float_t[:] data_ptr = data
 
     for i in range(n):
@@ -496,7 +522,7 @@ def u2irt_sequence(
     cdef int i=0
     cdef int n = theta.size
 
-    cdef np.ndarray data=np.zeros(shape=(n,),dtype=np.float)
+    cdef np.ndarray data=np.zeros(shape=(n,))
     cdef np.float_t[:] data_ptr = data
 
     for i in range(n):
@@ -514,7 +540,7 @@ def u1irt_sequence(
 
     cdef int i=0
     cdef int n = theta.size
-    cdef np.ndarray data=np.zeros(shape=(n,),dtype=np.float)
+    cdef np.ndarray data=np.zeros(shape=(n,))
     cdef np.float_t[:] data_ptr = data
 
     for i in range(n):

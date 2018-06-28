@@ -9,7 +9,7 @@ from talirt.utils import uirt_clib, uirt_lib
 from talirt.utils import trunk_split
 import numexpr
 
-_parallel = Parallel(n_jobs=os.cpu_count())
+_parallel = Parallel(n_jobs=os.cpu_count(),backend='threading')
 
 
 class Estimator:
@@ -185,6 +185,7 @@ class EM(Estimator):
             self.e_cost += s2 - s1
             # print('e-step cost', e - s)
             # s = time.time()
+            # self._max_step_1()
             self._max_step()
             s3 = time.time()
             # print('m-step cost', e - s)
@@ -417,13 +418,20 @@ class BockAitkinEM(EM):
 
 
 class MHRM(EM):
+    def __init__(self, sample_count=60, burn_in=10, model="2PL", max_iter=500):
+        super(MHRM, self).__init__(model=model, max_iter=max_iter)
+        self.e_cost = 0
+        self.m_cost = 0
+        self.sample_count = sample_count
+        self.burn_in = burn_in
+        self._t = None
+        self._theta_sample = None
 
     def fit(self, response: np.ndarray,
             a: np.ndarray = None, b: np.ndarray = None, c: np.ndarray = None,
             theta: np.ndarray = None, **kwargs):
         super(MHRM, self).fit(response=response, a=a, b=b, c=c, theta=theta, **kwargs)
-        self.sample_count = 100
-        self.burn_in = 50
+
         if self.model == "2PL":
             self._t = np.zeros((self.item_count, 2, 2))
         elif self.model == '3PL':
@@ -437,6 +445,7 @@ class MHRM(EM):
 
     def _sample_theta(self, start, end):
         ret = {}
+        # np.array().astype(np.double)
         for i in range(start, end):
             data = uirt_clib.sample_theta(
                 theta=self.theta[i], slope=self.a, intercept=self.b, guess=self.c,
@@ -473,11 +482,11 @@ class MHRM(EM):
 
     def _exp_step(self):
 
-        theta_sample = [self.theta]
-        for _ in range(self.sample_count + self.burn_in):
-            theta_sample.append(self._mh(theta_sample[-1]))
+        # theta_sample = [self.theta]
+        # for _ in range(self.sample_count + self.burn_in):
+        #     theta_sample.append(self._mh(theta_sample[-1]))
         #
-        self._theta_sample = np.column_stack(theta_sample[self.burn_in + 1:])
+        # self._theta_sample = np.column_stack(theta_sample[self.burn_in + 1:])
 
         # for i in range(self.user_count):
         #     response = self.response[i:i + 1, :]
@@ -487,15 +496,15 @@ class MHRM(EM):
         #                                burn_in=self.burn_in, n=self.sample_count + self.burn_in)
         #     self._theta_sample[i, :] = x[1]
         #
-        # global _parallel
-        # result = _parallel(delayed(self._sample_theta)(s, e) for s, e in trunk_split(self.user_count, _parallel.n_jobs))
-        # for job_dict in result:
-        #     for index, data in job_dict.items():
-        #         self._theta_sample[index, :] = data
+        global _parallel
+        result = _parallel(delayed(self._sample_theta)(s, e) for s, e in trunk_split(self.user_count, _parallel.n_jobs))
+        for job_dict in result:
+            for index, data in job_dict.items():
+                self._theta_sample[index, :] = data
 
         self.theta = self._theta_sample.mean(axis=1)
 
-    def _max_step(self):
+    def _max_step_1(self):
 
         for j in range(self.item_count):
             response = self.response[:, j:j + 1]
@@ -510,23 +519,25 @@ class MHRM(EM):
                                                               response=response)
                 s += _s[0, :].reshape((2, 1))
                 h += _h[0, :, :]
+            print('item',j)
             s = s / self.sample_count
             h = -h / self.sample_count
+            print('s',s)
+            print('h',h)
             gamma = 1.0 / (self.iter + 1.0)
             t = self._t[j, :, :] + gamma * (h - self._t[j, :, :])
             self._t[j, :, :] = t
+            print(t)
             _next = np.array([a, b]) + gamma * np.dot(np.linalg.inv(t), s)
+            print(_next)
             # print(gamma * np.dot(np.linalg.inv(t), s))
-            self.a[j] = max(min(_next[0, 0], self._bound_a[1]), self._bound_a[0])
-            self.b[j] = max(min(_next[1, 0], self._bound_b[1]), self._bound_b[0])
+            # self.a[j] = max(min(_next[0, 0], self._bound_a[1]), self._bound_a[0])
+            # self.b[j] = max(min(_next[1, 0], self._bound_b[1]), self._bound_b[0])
             # print('-----%d-----' % self._cur_iter)
             # print(next)
 
-    def _max_step_2(self):
+    def _max_step(self):
 
-        # ll = np.mean([loglikelihood(Th, X, self.data).sum() for X in self._theta_sample])
-        # print('Error before', -ll)
-        # STEP 2a: Approximation of score
         jac = np.zeros((self.item_count, 2))
         hession = np.zeros((self.item_count, 2, 2))
         for i in range(self.sample_count):
@@ -542,15 +553,16 @@ class MHRM(EM):
 
         jac /= self.sample_count
         hession /= self.sample_count
-        gamma = 1 / (self.iter + 1.0)
+
+        gamma = 1.0 / (self.iter + 1.0)
 
         self._t += gamma * (hession - self._t)
         Ginv = np.stack(np.linalg.inv(self._t[i, :, :]) for i in range(self.item_count))
         _next = gamma * np.einsum('ijk,ik->ij', Ginv, jac)  # s.shape =(n,p+1)
         # self.a[j] = max(min(_next[0, 0], self._bound_a[1]), self._bound_a[0])
         # self.b[j] = max(min(_next[1, 0], self._bound_b[1]), self._bound_b[0])
-        self.a = _next[:, 0]
-        self.b = _next[:, 1]
+        self.a += _next[:, 0]
+        self.b += _next[:, 1]
 
 
 class MHMLE(MHRM):

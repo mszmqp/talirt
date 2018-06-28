@@ -10,7 +10,7 @@ Authors: zhangzhenhu(zhangzhenhu1@100tal.com)
 Date:    2018/6/24 16:46
 """
 import numpy as np
-
+import numexpr
 
 def add_bias(X: np.ndarray):
     """
@@ -57,12 +57,14 @@ def uirt(theta: np.ndarray, slope: np.ndarray = None, intercept: np.ndarray = No
         theta = theta.reshape(theta.size, 1)
         slope = slope.reshape(1, slope.size)
         intercept = intercept.reshape(1, intercept.size)
+        # z = numexpr.evaluate("theta * slope + intercept")
         z = theta * slope + intercept
 
     if guess is None:
         return 1.0 / (1.0 + np.exp(-z))
     else:
         guess = guess.reshape(1, guess.size)
+        # return numexpr.evaluate("guess + (1.0 - guess) / (1.0 + exp(-z))")
         return guess + (1.0 - guess) / (1.0 + np.exp(-z))
 
 
@@ -114,5 +116,5 @@ def u2irt_item_jac_and_hessian(response: np.ndarray, theta: np.ndarray,
     # todo ????
     XiXiT = np.einsum('ij,ki->ijk', theta, theta.T)  # Shape N 2 2
     Lambda = -predict * (1 - predict)  # Shape=(n,m)
-    Lambda = np.where(np.isnan(response), 0, Lambda)
+    # Lambda = np.where(np.isnan(response), 0, Lambda)
     return jac, np.tensordot(Lambda.T, XiXiT, axes=1)  # Shape n p+1 p+1
