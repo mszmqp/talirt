@@ -323,7 +323,7 @@ class BockAitkinEM(EM):
 
     def _max_step(self):
 
-        def object_func(x, rjk, wjk, response):
+        def object_func(x, rjk, wjk):
             """
             本函数一次计算一道题目的负的似然值
             Parameters
@@ -347,7 +347,7 @@ class BockAitkinEM(EM):
             # print('item llh=%f' % res, " a=%f" % x[0], "b=%f" % x[1], end="")
             return res
 
-        def jac_func(x, rjk, wjk, response):
+        def jac_func(x, rjk, wjk):
             """一道题目的导数"""
             a, b, c = self._get_abc_from_x(x)
             grade_a = 0
@@ -376,7 +376,7 @@ class BockAitkinEM(EM):
             a = self.a[j]
             b = self.b[j]
             c = self.c[j]
-            response = self.response[:, j]
+            # response = self.response[:, j]
             rjk = self.r[:, j]
             wjk = self.w[:, j]
 
@@ -386,15 +386,13 @@ class BockAitkinEM(EM):
                 x0 = np.array([a, b])
             else:
                 x0 = np.array([a, b, c])
-            # print("item", j)
             # res1 = minimize(negative_ln_liklihood, x0=x0, args=(rjk, wjk), method='BFGS',
             #                jac=gradient)
             # res = minimize(negative_ln_liklihood, x0=x0, args=(rjk, wjk), method='nelder-mead',
             #                options={'disp': False})
             # res1 = minimize(negative_ln_liklihood, x0=x0, args=(rjk, wjk), method='SLSQP', bounds=bounds,
             #                options={'disp': False})
-            # print("L-BFGS-B")
-            res = minimize(object_func, x0=x0, args=(rjk, wjk, response), method='L-BFGS-B', bounds=self._bounds,
+            res = minimize(object_func, x0=x0, args=(rjk, wjk), method='L-BFGS-B', bounds=self._bounds,
                            jac=jac_func)
 
             if self.model == '1PL':
@@ -420,9 +418,12 @@ class BockAitkinEM(EM):
 
 class MHRM(EM):
 
-    def _pre_init(self):
-        self.sample_count = 60
-        self.burn_in = 10
+    def fit(self, response: np.ndarray,
+            a: np.ndarray = None, b: np.ndarray = None, c: np.ndarray = None,
+            theta: np.ndarray = None, **kwargs):
+        super(MHRM, self).fit(response=response, a=a, b=b, c=c, theta=theta, **kwargs)
+        self.sample_count = 100
+        self.burn_in = 50
         if self.model == "2PL":
             self._t = np.zeros((self.item_count, 2, 2))
         elif self.model == '3PL':
@@ -454,27 +455,29 @@ class MHRM(EM):
 
     def _mh(self, theta):
 
-        deta = np.random.normal(loc=0, scale=1, size=self.user_count)
+        delta = np.random.normal(loc=0, scale=1, size=self.user_count)
         v1 = self._acceptance(theta)
-        v2 = self._acceptance(theta + deta)
+        v2 = self._acceptance(theta + delta)
 
         # 均匀分布的抽样
         sample = np.random.random(self.user_count)
         # print(iter,pre_theta,next_theta,r)
         # 这里的dot最慢了
-        x = np.diag(np.log(sample) < v2 - v1)
+        # x = np.diag(np.log(sample) < v2 - v1)
+        x = np.log(sample) < v2 - v1
         # theta += x.dot(deta)
-        theta += np.einsum('ij,j->i', x, deta)
-        # theta += numexpr.evaluate("dot(x,deta)")
+        # theta += np.einsum('ij,j->i', x, delta)
+        theta += np.where(x, delta, 0)
+        # theta += numexpr.evaluate("where(x,delta,0)")
         return theta
 
     def _exp_step(self):
 
-        # theta_sample = [self.theta]
-        # for _ in range(self.sample_count + self.burn_in):
-        #     theta_sample.append(self._mh(theta_sample[-1]))
+        theta_sample = [self.theta]
+        for _ in range(self.sample_count + self.burn_in):
+            theta_sample.append(self._mh(theta_sample[-1]))
         #
-        # self._theta_sample = np.column_stack(theta_sample[self.burn_in + 1:])
+        self._theta_sample = np.column_stack(theta_sample[self.burn_in + 1:])
 
         # for i in range(self.user_count):
         #     response = self.response[i:i + 1, :]
@@ -483,12 +486,12 @@ class MHRM(EM):
         #                                slope=self.a, intercept=self.b, guess=self.c, response=response,
         #                                burn_in=self.burn_in, n=self.sample_count + self.burn_in)
         #     self._theta_sample[i, :] = x[1]
-
-        global _parallel
-        result = _parallel(delayed(self._sample_theta)(s, e) for s, e in trunk_split(self.user_count, _parallel.n_jobs))
-        for job_dict in result:
-            for index, data in job_dict.items():
-                self._theta_sample[index, :] = data
+        #
+        # global _parallel
+        # result = _parallel(delayed(self._sample_theta)(s, e) for s, e in trunk_split(self.user_count, _parallel.n_jobs))
+        # for job_dict in result:
+        #     for index, data in job_dict.items():
+        #         self._theta_sample[index, :] = data
 
         self.theta = self._theta_sample.mean(axis=1)
 
@@ -518,6 +521,36 @@ class MHRM(EM):
             self.b[j] = max(min(_next[1, 0], self._bound_b[1]), self._bound_b[0])
             # print('-----%d-----' % self._cur_iter)
             # print(next)
+
+    def _max_step_2(self):
+
+        # ll = np.mean([loglikelihood(Th, X, self.data).sum() for X in self._theta_sample])
+        # print('Error before', -ll)
+        # STEP 2a: Approximation of score
+        jac = np.zeros((self.item_count, 2))
+        hession = np.zeros((self.item_count, 2, 2))
+        for i in range(self.sample_count):
+            _jac, _hession = uirt_lib.u2irt_item_jac_and_hessian(
+                response=self.response,
+                theta=self._theta_sample[:, i],
+                slope=self.a,
+                intercept=self.b,
+                guess=self.c
+            )
+            jac += _jac
+            hession -= _hession
+
+        jac /= self.sample_count
+        hession /= self.sample_count
+        gamma = 1 / (self.iter + 1.0)
+
+        self._t += gamma * (hession - self._t)
+        Ginv = np.stack(np.linalg.inv(self._t[i, :, :]) for i in range(self.item_count))
+        _next = gamma * np.einsum('ijk,ik->ij', Ginv, jac)  # s.shape =(n,p+1)
+        # self.a[j] = max(min(_next[0, 0], self._bound_a[1]), self._bound_a[0])
+        # self.b[j] = max(min(_next[1, 0], self._bound_b[1]), self._bound_b[0])
+        self.a = _next[:, 0]
+        self.b = _next[:, 1]
 
 
 class MHMLE(MHRM):
@@ -669,6 +702,6 @@ if __name__ == "__main__":
         print('mse', em.mse(), 'acc', em.accuracy())
 
 
-    test_baem()
-    # test_mhrm()
+    # test_baem()
+    test_mhrm()
     quit()

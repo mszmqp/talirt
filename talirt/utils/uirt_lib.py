@@ -108,11 +108,11 @@ def u2irt_item_jac_and_hessian(response: np.ndarray, theta: np.ndarray,
     # 处理作答记录里存在空值的问题，空值进行运算得到的结果也是空值。
     # np.nan_to_num 会把空值填充为0，
     np.nan_to_num(error, copy=False)
-    jac = error.T.dot(theta)  # Shape m 2
+    jac = error.T.dot(theta)  # Shape=(m,2)
 
     # theta.shape=(n,2)
     # todo ????
     XiXiT = np.einsum('ij,ki->ijk', theta, theta.T)  # Shape N 2 2
     Lambda = -predict * (1 - predict)  # Shape=(n,m)
     Lambda = np.where(np.isnan(response), 0, Lambda)
-    return np.tensordot(Lambda.T, XiXiT, axes=1)  # Shape n p+1 p+1
+    return jac, np.tensordot(Lambda.T, XiXiT, axes=1)  # Shape n p+1 p+1

@@ -10,7 +10,8 @@ ctypedef np.float_t FLOAT_T
 ctypedef np.int64_t INT_T
 from libc.math cimport exp, sqrt, log,pi
 from libc.stdlib cimport rand, RAND_MAX
-
+from cpython cimport array
+import array
 #from cython_gsl cimport *
 # from talirt.model.crandom cimport uniform_rv,normal_rv
 # DEF CONSTANT_D=1.0
