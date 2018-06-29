@@ -341,7 +341,7 @@ class BockAitkinEM(EM):
             a, b, c = self._get_abc_from_x(x)
 
             # 预测值
-            y_hat = uirt_clib.u3irt_matrix(theta=theta, slope=a, intercept=b, guess=c)
+            y_hat = uirt_clib.uirt_matrix(theta=theta, slope=a, intercept=b, guess=c)
             obj = rjk.reshape(self.Q, 1) * np.log(y_hat) + wjk.reshape(self.Q, 1) * np.log(1 - y_hat)
 
             res = - np.sum(obj)
@@ -358,7 +358,7 @@ class BockAitkinEM(EM):
             for k in range(self.Q):
                 theta = np.array([self.theta_prior_value[k]])
                 # 预测值
-                y_hat = uirt_clib.u3irt_matrix(theta=theta, slope=a, intercept=b, guess=c)
+                y_hat = uirt_clib.uirt_matrix(theta=theta, slope=a, intercept=b, guess=c)
                 m = rjk[k] - (rjk[k] + wjk[k]) * y_hat[0][0]
                 grade_a += (1 - c[0]) * m * theta[0]
                 grade_b += (1 - c[0]) * m
@@ -418,7 +418,7 @@ class BockAitkinEM(EM):
 
 
 class MHRM(EM):
-    def __init__(self, sample_count=60, burn_in=10, model="2PL", max_iter=500):
+    def __init__(self, sample_count=1000, burn_in=10, model="2PL", max_iter=500):
         super(MHRM, self).__init__(model=model, max_iter=max_iter)
         self.e_cost = 0
         self.m_cost = 0
@@ -446,12 +446,13 @@ class MHRM(EM):
     def _sample_theta(self, start, end):
         ret = {}
         # np.array().astype(np.double)
+        burn = self.burn_in+self.iter*2
         for i in range(start, end):
             data = uirt_clib.sample_theta(
                 theta=self.theta[i], slope=self.a, intercept=self.b, guess=self.c,
                 response=self.response[i:i + 1, :],
-                burn_in=self.burn_in,
-                n=self.sample_count + self.burn_in)
+                burn_in=burn,
+                n=self.sample_count + burn)
             # self._theta_sample[i, :] = data
             ret[i] = data
         return ret
@@ -676,7 +677,8 @@ if __name__ == "__main__":
         print('-----b-----')
         print('estimate', model.b.tolist())
         print('real', slf.b.tolist())
-
+        print('mse', model.mse(), 'acc', model.accuracy())
+        print('llh', model._llh)
 
     def test_MLE():
         print('-----MLE theta------')
@@ -712,8 +714,8 @@ if __name__ == "__main__":
         print(em.b)
         print('cost', em.cost_time, em.e_cost, em.m_cost)
         print('mse', em.mse(), 'acc', em.accuracy())
+        print('llh',em._llh)
 
-
-    # test_baem()
+    test_baem()
     test_mhrm()
     quit()

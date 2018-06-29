@@ -206,7 +206,7 @@ cdef int _sample_theta(
                 unsigned int burn_in=10,
                 unsigned int n=60,
                 np.float_t mean=0,
-                np.float_t sigma=2,
+                np.float_t sigma=1,
                 ) nogil:
 
 
@@ -473,7 +473,7 @@ def  uirt_matrix(
 
     cdef int user_count=theta.size
     cdef int item_count = intercept.size
-    ret = np.zeros(user_count,item_count)
+    ret = np.zeros((user_count,item_count))
     if slope is None:
         _u1irt(ret=ret,theta=theta,slope=slope,intercept=intercept,guess=guess,user_count=user_count,item_count=item_count)
     elif guess is None:
