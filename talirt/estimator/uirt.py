@@ -9,7 +9,7 @@ from talirt.utils import uirt_clib, uirt_lib
 from talirt.utils import trunk_split
 import numexpr
 
-_parallel = Parallel(n_jobs=os.cpu_count(),backend='threading')
+_parallel = Parallel(n_jobs=os.cpu_count(), backend='threading')
 
 
 class Estimator:
@@ -97,6 +97,12 @@ class Estimator:
         predict = uirt_lib.uirt(theta=self.theta, slope=self.a, intercept=self.b, guess=self.c)
         return (np.round(predict) == self.response).mean()
 
+    def predict(self):
+        return uirt_clib.uirt_matrix(theta=self.theta,
+                                     slope=self.a,
+                                     intercept=self.b,
+                                     guess=self.c)
+
 
 class MLE(Estimator):
 
@@ -165,6 +171,40 @@ class MLE(Estimator):
                 self.a[j] = res.x[0]
                 self.b[j] = res.x[1]
                 self.c[j] = res.x[2]
+
+
+class MAP(MLE):
+
+    def __init__(self, mu=0.0, sigma=1.0, model="2PL", max_iter=500):
+        super(MAP, self).__init__(model=model, max_iter=max_iter)
+        self.e_cost = 0
+        self.m_cost = 0
+        self.mu = mu
+        self.sigma = sigma
+
+    def estimate_theta(self, **kwargs):
+        def object_fun(x, response):
+            ret = -uirt_clib.log_likelihood(response=response, theta=x, slope=self.a, intercept=self.b, guess=self.c)
+            # print('theta llh=%f' % ret, " theta=%f" % x[0], end="\n")
+            ret -= np.log(norm.pdf(x,loc=self.mu, scale=self.sigma)).sum()
+            return ret
+
+        def gradient(x, response):
+            ret = uirt_clib.uirt_theta_jac(response=response, theta=x, slope=self.a, intercept=self.b, guess=self.c)
+            # scipy.stats.norm.pdf(x, mu, sigma)*(mu - x)/sigma**2
+            # norm.pdf(x)*(-x)
+            ret += (self.mu - x)/self.sigma**2
+            # print(" a=%f" % x[0], "theta=%f" % x[0], 'grade=%f' % -ret[0])
+            return -ret
+
+        for j in range(self.user_count):
+            theta = self.theta[j]
+            y = self.response[j:j + 1, :]
+            x0 = np.array([theta])
+            # res = minimize(object_fun, x0=x0, args=(self.theta, y), method='SLSQP', bounds=self._bounds)
+            res = minimize(object_fun, x0=x0, args=(y,), method='L-BFGS-B', bounds=self._bound_theta,
+                           jac=gradient)
+            self.theta[j] = res.x[0]
 
 
 class EM(Estimator):
@@ -446,7 +486,7 @@ class MHRM(EM):
     def _sample_theta(self, start, end):
         ret = {}
         # np.array().astype(np.double)
-        burn = self.burn_in+self.iter*2
+        burn = self.burn_in + self.iter * 2
         for i in range(start, end):
             data = uirt_clib.sample_theta(
                 theta=self.theta[i], slope=self.a, intercept=self.b, guess=self.c,
@@ -520,11 +560,11 @@ class MHRM(EM):
                                                               response=response)
                 s += _s[0, :].reshape((2, 1))
                 h += _h[0, :, :]
-            print('item',j)
+            print('item', j)
             s = s / self.sample_count
             h = -h / self.sample_count
-            print('s',s)
-            print('h',h)
+            print('s', s)
+            print('h', h)
             gamma = 1.0 / (self.iter + 1.0)
             t = self._t[j, :, :] + gamma * (h - self._t[j, :, :])
             self._t[j, :, :] = t
@@ -680,6 +720,7 @@ if __name__ == "__main__":
         print('mse', model.mse(), 'acc', model.accuracy())
         print('llh', model._llh)
 
+
     def test_MLE():
         print('-----MLE theta------')
         model = MLE()
@@ -714,8 +755,35 @@ if __name__ == "__main__":
         print(em.b)
         print('cost', em.cost_time, em.e_cost, em.m_cost)
         print('mse', em.mse(), 'acc', em.accuracy())
-        print('llh',em._llh)
+        print('llh', em._llh)
 
-    test_baem()
-    test_mhrm()
+
+    def test_map(size=5):
+        print('-----MAP theta------')
+        model = MAP(mu=2.4,sigma=1)
+
+        a = np.ones(size, dtype=np.float)
+        b = np.array([1.0] * size, dtype=np.float)
+        response = np.ones((1, size), dtype=np.float)
+        # model.fit(response=slf.response, a=slf.a, b=slf.b)
+        model.fit(response=response, a=a, b=-b)
+        model.estimate_theta()
+        print('size', size,'theta:%.5f'%model.theta[0],'acc', model.accuracy())
+
+        # print(model.predict())
+
+        # print(np.unique(model.theta))
+        # print("mse", mean_squared_error(model.theta, slf.theta))
+        # print("mae", mean_absolute_error(model.theta, slf.theta))
+
+
+    test_map(1)
+    test_map(2)
+    test_map(3)
+    test_map(4)
+    test_map(5)
+    test_map(6)
+    test_map(8)
+    # test_baem()
+    # test_mhrm()
     quit()
