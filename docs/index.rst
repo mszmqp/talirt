@@ -8,7 +8,7 @@ Welcome to talirt's documentation!
 
 .. toctree::
    :maxdepth: 3
-   :caption: Contents:
+   :caption: 目录:
 
    source/ctt/index.rst
    source/irt/index.rst

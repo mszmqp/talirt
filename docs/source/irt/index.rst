@@ -10,5 +10,6 @@
 
     irt.rst
     estimation/index.rst
+    评估.rst
 
 
