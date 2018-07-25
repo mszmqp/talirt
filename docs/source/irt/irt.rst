@@ -7,23 +7,23 @@
 三参数logistic模型：
 
 .. math::
-        P(\theta) = c + \frac{(1-c)}{1+e^{-Da(\theta-b)}}
+    P(\theta) = c + \frac{(1-c)}{1+e^{-Da(\theta-b)}}
 
 
 若c=0，简化为双参数logistic模型
 
 .. math::
-        P(\theta) = \frac{1}{1+e^{-Da(\theta-b)}}
+    P(\theta) = \frac{1}{1+e^{-Da(\theta-b)}}
 
 若c=0其a=1，简化为单参数logistic模型
 
 .. math::
-        P(\theta) = \frac{1}{1+e^{-D(\theta-b)}}
+    P(\theta) = \frac{1}{1+e^{-D(\theta-b)}}
 
 Rasch模型
 
 .. math::
-        P(\theta) = \frac{e^{\theta-b}}{1+e^{\theta-b}}
+    P(\theta) = \frac{e^{\theta-b}}{1+e^{\theta-b}}
 
 
 
@@ -32,4 +32,7 @@ Rasch模型
 项目反应理论保证了被试特质水平值独立于测验项目样本，只要原题库所有项目的难度等参数都标刻在统一的共同量尺上。
 那么，使用题库的项目所得实测资料估计出的特质水平值，不论是在多么不同的项目样本上估计出的，就都会在这统一的共同量尺上取值，
 因而是可以相互比较的。所以，"因人施测"只会提高测验的信度与效度，不会影响测验结果的可比性，甚至更加便于解释和使用。
+
+
+
 
