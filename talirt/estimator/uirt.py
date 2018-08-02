@@ -284,17 +284,19 @@ class BockAitkinEM(EM):
 
         if self.Q != len(self.theta_prior_value):
             raise Exception('wrong number of inintial theta values')
-        # use a normal approximation
+        # 先验分布是均匀分布
         if theta_distribution == 'uniform':
             self.theta_prior_distribution = np.ones(self.Q) / self.Q
+        # 先验分布是标准正态分布
         elif theta_distribution == 'normal':
             norm_pdf = [norm.pdf(x) for x in self.theta_prior_value]
             normalizer = sum(norm_pdf)
             self.theta_prior_distribution = np.array([x / normalizer for x in norm_pdf])
         else:
             raise Exception('invalid theta prior distribution %s' % theta_distribution)
-        #
+        # theta后验分布初始值
         self.theta_posterior_distribution = np.zeros((self.user_count, self.Q))
+
         self.r = np.zeros((self.Q, self.item_count))
         self.w = np.zeros((self.Q, self.item_count))
 
@@ -308,30 +310,47 @@ class BockAitkinEM(EM):
         return k, independent_user_lld + np.log(theta_prob)
 
     def _update_posterior_distribution(self):
+        """
+        计算每个学生的后验概率分布
+        self.theta_prior_distribution 是 theta的先验概率分布
+        self.theta_posterior_distribution theta的后验概率分布
+        Returns
+        -------
 
+        """
         def logsum(logp: np.ndarray):
+            """
+            后验概率的分母部分的计算。
+            注意是加了对数的。
+            """
             w = logp.max(axis=1)
             shape = (w.size, 1)
             w = w.reshape(shape)
             logSump = w + np.log(np.sum(np.exp(logp - w), axis=1)).reshape(shape)
             return logSump
 
+        # self.Q 是能力值theta离散化的取值数量
         for k in range(self.Q):
+            # 对于theta的每一个可能取值都进行
+
+            # 假设每个学生的能力值都是theta_k
             theta_k = np.asarray([self.theta_prior_value[k]] * self.user_count).flatten()
+            # theta取值为theta_k的先验概率
             theta_k_prior_prob = self.theta_prior_distribution[k]
-            #     每个学生独立的log似然值
+            # 每个学生独立计算，各自作答数据的的log似然值。
+            # 注意实际公式中是连乘符号，乘法会造成小数溢出，所以我们计算其对数值，把乘法转换成加法，注意最后还得换回去
             independent_user_lld = uirt_clib.log_likelihood_user(response=self.response,
                                                                  theta=theta_k,
                                                                  slope=self.a,
                                                                  intercept=self.b, guess=self.c)
-            # 乘上当theta值的先验概率,这是后验概率分布的分子
+            # 乘上当theta值的先验概率,这是后验概率分布公式中的分子
             self.theta_posterior_distribution[:, k] = independent_user_lld + np.log(theta_k_prior_prob)
-
+        # 上述循环，计算出了theta每个取值theta_k的分子部分
         # 后验概率的分母不是很好求
-        # 后验概率分布更新
+        # 后验概率分布更新，分子减分母，差值再求自然指数
         self.theta_posterior_distribution = np.exp(
             self.theta_posterior_distribution - logsum(self.theta_posterior_distribution))
-
+        # 检查后验概率分布的概率和是否为1
         self.__check_theta_posterior()
         return 1
 
