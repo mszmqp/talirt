@@ -1,0 +1,29 @@
+
+
+AFM(Additive Factors Model)
+-------------------------------
+
+
+附加认知模型，
+
+
+
+
+
+The heuristic guiding the search is one of the two scoring functions for regression
+models – AIC (Akaike Information Criterion) and BIC (Bayesian Information
+Criterion) Each search is run twice, guided by a different heuristic each time. A good
+model captures sufficient variation in the data but is not overly complicated by
+balancing between model fit and complexity minimizing prediction risk [17]. AIC and
+BIC are two estimators for prediction risk, and hence used as heuristics in the search.
+AIC = -2*log-likelihood + 2*number of parameters. (3)
+BIC = -2*log-likelihood + number of parameters * number of observations. (4)
+where log-likelihood measures the fit, and the number of parameters, which is the
+number of covariates in equation 2, measures the complexity. Based on these two
+formulas, the lower the AIC or BIC, the better the balance between model fit and
+complexity. BIC puts a more severe penalty for complexity, leading to a smaller
+model than other methods.
+A more interpretable metric for fit is Mean Absolute Deviance (MAD) -- the
+average of the absolute values of the differences between observed values and
+predicted values. We do not use it as a heuristic because it leads to over fitting. We
+include it as a measure of the improvement in the model fit.

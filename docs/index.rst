@@ -14,7 +14,7 @@ Welcome to talirt's documentation!
    source/irt/index.rst
    source/cdm/index.rst
    source/bkt/index.rst
-
+   source/articles/index.rst
 
 Indices and tables
 ==================
