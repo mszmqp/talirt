@@ -1,0 +1,113 @@
+==================================================================================
+图书馆
+==================================================================================
+
+
+
+行业综述
+==================================================================================
+
+《报告》 通过对教育数据挖掘领域专家进行访谈，列出了教育数据挖 掘的四个研究目标[7]:
+(1) 通过整合学习者知识、动机、元认知 和态度等详细信息进行学习者模型的构建，预测学习者未来 学习发展趋势。
+(2) 探索和改进包含最佳教学内容和教学顺 序的领域模型。
+(3) 研究各种学习软件所提供的教学支持的 有效性。
+(4) 通过构建包含学习者模型、领域模型和教育软件 教学策略的数据计算模型，促进学习者有效学习的发生。
+
+
+《报告》指出，为了达到以上四个研究目标，研究者主要 采用以下五类技术方法:
+(1) 预测。 建立一个能够从整合多个 预测变量推断单一被预测变量的模式，
+例如，研究者通过在 线学习环境中学习者参与在线讨论的情况、 测试情况等，预测学习者在该门课程的学习中是否有失败的风险。
+(2) 聚类。 根据数据特性，将一个完整的数据集分成不同的子集，
+例如， 研究者根据学习者在在线学习环境中学习困难、交互模式等将学习者分成不同的群组，进而为不同的群组提供合适的学 习资源和组织合适的学习活动。
+(3) 关系挖掘。 探索数据集中 各变量之间的相关关系，并将相关关系作为一条规则进行编码，
+例如，研究者利用关系挖掘，探索在线学习环境中学习者 学习活动和学习成绩的相关关系，进而用于改进学习内容呈现方式和序列，以及在线教学方法。
+(4) 人类判断过程简化。 用一种便于人类理解的方式描述数据，以便人们能够快速地 判断和区分数据特征，该方法主要以可视化数据分析技术为主，
+用以改善机器学习模型。
+(5) 模型构建。 通过对数据集的 聚类、相关关系挖掘等过程，构建供未来分析的有效现象解 释模型。
+
+学生模型
+==================================================================================
+
+
+A Knowledge Component (KC) is: “a generalization of everyday terms like concept, principle, fact, or skill,
+and cognitive science terms like schema, production rule, misconception, or facet” [VanLehn et al. 2007].
+They are the atomic units of knowledge.
+Generally speaking, students’ modeling on conjunctive-KC steps are more difficult than that on steps that require a single KC.
+
+
+知识组件（KC）是：“概念，原则，事实或技能等日常术语的概括，以及模式，生产规则，误解或方面等认知科学术语”[VanLehn et al。 2007年]。
+它们是知识的原子单位。一般来说，学生对联合KC步骤的建模比需要单个KC的步骤更难。
+
+
+The three most common student modeling methods are: **Knowledge Tracing (KT)** [Corbett and Ander- son 1995],
+**Additive Factor Models (AFM)** [Cen et al. 2006; 2008], and **Performance Factor Models (PFM)** [Pavlik et al. 2009].
+When performing student modeling we seek to construct a cognitive model based upon these observed behaviors and to apply
+the model to make predictions. Generally speaking, we are interested in three types of predictions:
+type 1 is about how unseen students will perform on the observed steps same as those in the observed dataset;
+type 2 is about how the same students seen in the observed data will perform on unseen steps;
+and type 3 is about how unseen students will perform on unseen steps, that is, both.
+For the present purposes we classifie students or steps that appear in the observed training data
+as seen and those that appear only in the unobserved test data as unseen.
+
+基于认知模型
+^^^^^^^^^^^^^^^^^^^^^^
+
+Learning Factors Analysis
+----------------------------------------------------------------------------------------
+
+
+AFM(Additive Factors Model)
+-------------------------------------------------------------------------------------
+
+PFA(Performance Factors Analysis) PFM(Performance Factor Models)
+-------------------------------------------------------------------------------------
+
+
+Instructional Factors Analysis Model (IFM)
+-------------------------------------------------------------------------------------
+
+
+CFM(Conjunctive Factor Model)
+-------------------------------------------------------------------------------------
+
+IFM
+-------------------------------------------------------------------------------------
+
+
+基于贝叶斯网络
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Bayesian Networks in Educational Assessment
+
+Evaluating the Feasibility of Learning Student Models from Data
+
+Bayesian Networks in Educational Testing
+
+
+
+题目关联关系
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+User-expertise modeling with empirically derived probabilistic implication networks
+----------------------------------------------------------------------------------------
+
+挖掘题目之间的偏序关系，来预测学生作答结果 Partial order knowledge structures,POKS
+
+在考察内容上，题目A是题目B的超集，题目A难于题目B。 如果A做对，B也能做对，条件概率P(B|A)；如果B做错，A也会错,条件概率P(~A|~B)
+
+
+A Bayesian Student Model without Hidden Nodes and Its Comparison with Item Response Theory
+----------------------------------------------------------------------------------------
+POKS 和IRT的效果对比，以及在CAT中的应用。
+
+
+
+
+推荐系统
+==================================================================================
+
+
+
+知识模型
+==================================================================================
+
+

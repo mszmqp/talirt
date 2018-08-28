@@ -1,0 +1,303 @@
+==============================================================================
+美国《通过教育数据挖掘和学习分析促进教与学》报告
+==============================================================================
+
+Data Mining and Analytics: The Research Base
+============================================================================
+
+Educational Data Mining
+-------------------------------
+教育数据挖掘正在成为一个研究领域，其中包含一套计算和心理学方法以及用于理解学生学习方式的研究方法。新的计算机支持的交互式学习方法和工具 - 智能辅导系统，模拟，游戏 - 为收集和分析学生数据，发现这些数据的模式和趋势，以及发现新发现和测试关于学生如何学习的假设提供了机会。从在线学习系统收集的数据可以汇总到大量学生身上，并且可以包含许多变量，数据挖掘算法可以为模型构建进行探索。
+
+就像早期了解在线行为一样，
+教育数据挖掘的早期努力涉及采矿
+网站日志数据（Baker和Yacef 2009），但现在更集成，仪表化和复杂的在线学习系统提供更多种类的数据。教育数据挖掘通常强调将学习减少为可以分析然后受适应学生的软件影响的小组件（Siemens和Baker 2012）。正在探索通过在线学习系统收集的学生学习数据，以通过应用对数据进行分类或找到关系的教育数据挖掘方法来开发预测模型。这些模型在构建自适应学习系统中起着关键作用，其中基于模型预测的调整或干预可用于改变学生接下来的经历，甚至推荐外部学术服务来支持他们的学习。
+
+教育数据的一个重要而独特的特征是它们是等级的。数据在
+击键水平，答案水平，会话水平，学生水平，课堂水平，
+教师级别和学校水平相互嵌套（Baker 2011; Romero and
+Ventura 2010）。其他重要功能包括时间，顺序和上下文。时间很重要
+捕获数据，例如练习时间长度或学习时间。序列代表如何
+概念建立在彼此之上，以及如何订购实践和辅导。背景是
+对于解释结果和了解模型可能或不可行的重要性。方法
+分层数据挖掘和纵向数据建模一直是重要的发展
+挖掘教育数据。
+
+教育数据挖掘研究人员（例如，Baker 2011; Baker
+和Yacef 2009）将以下内容视为他们的目标
+研究：
+
+1. 通过创建包含学生知识，动机，元认知和态度等详细信息的学生模型，预测学生未来的学习行为;
+2. 发现或改进表征要学习的内容和最佳教学序列的领域模型;
+3. 研究学习软件可以提供的各种教学支持的效果; 和
+4. 通过构建包含学生，领域和学习模型的计算模型，推进关于学习和学习者的科学知识软件的教学法。
+
+
+.. note::
+    教育数据挖掘与教育数据
+
+    “教育数据挖掘......利用统计，机器学习和数据挖掘......算法......不同类型的教育数据。 ... EDM致力于开发探索教育环境中独特数据类型的方法，并使用这些方法更好地了解学生及其学习环境。 ...... EDM寻求......开发将数据和理论结合起来改变实践的计算方法......“
+
+    Romero和Ventura 2010，p.601
+
+    “无论教育数据来自学生使用交互式学习环境，计算机支持的协作学习，还是来自学校和大学的管理数据，它通常都有多层次的有意义的层次结构，通常需要由数据本身的属性来确定时间，顺序和背景问题在教育数据研究中也发挥着重要作用。
+
+    http://www.educationaldatamining.org
+
+为了实现这四个目标，教育数据挖掘研究使用下面描述的五类技术方法（Baker 2011）。
+
+
+1. **预测**
+    需要开发一个模型，该模型可以从数据的其他方面（预测变量）的某些组合推断出数据的单个方面（预测变量）。
+    使用预测的示例包括检测这样的学生行为，如他们正在游戏系统，参与非任务行为，或者尽管具有技能但未能正确回答问题。
+    预测模型已用于了解在线学习环境中的哪些行为 - 参与讨论论坛，参加练习测试等 - 将预测哪些学生可能在课堂上失败。
+    预测显示了开发领域模型的前景，例如将程序或事实与特定顺序和最佳教学实践项目的数量联系起来，以及预测和理解学生的教育成果，
+    例如课外辅导后的成功（Baker，Gowda和Corbett）2011）。
+
+2. **聚类**
+    是指找到自然组合在一起的数据点，可用于将完整数据集拆分为类别。 集群应用程序的示例是根据学生的学习困难和交互模式对学生进行分组，
+    例如他们在学习管理系统中使用工具的方式和程度（Amershi和Conati 2009），并将用户分组以便向类似用户推荐操作和资源。
+    可以使用处理非结构化数据的技术来分析在线学习资源，学生认知访谈和在论坛中发布的各种数据，以提取数据的特征，然后对结果进行聚类。
+    群集可以在涉及分类的任何域中使用，甚至可以根据论坛中的帖子确定用户展示的协作量（Anaya和Boticario 2009）。
+
+3. **关联关系挖掘**
+    涉及发现数据集中变量之间的关系，并将其编码为规则供以后使用。 例如，关系挖掘可以识别在线购物中购买的产品之间的关系（Romero和Ventura 2010）。
+
+    - 关联规则挖掘可用于查找共同出现的学生错误，将内容与用户类型相关联以构建对可能有趣的内容的推荐，或者用于对教学方法进行更改（例如，Merceron和Yacef 2010）。这些技术可用于将学生活动，学习管理系统或讨论论坛中的学生活动与学生成绩相关联，或调查诸如学生在一学期学习期间使用练习测试的原因之类的问题。
+    - 顺序模式挖掘构建规则，捕获顺序事件发生之间的联系，例如，查找时间序列，例如学生错误，然后寻求帮助。 这可以用于检测事件，例如学生在使用更复杂和批判性的思维技术编写时回归到制作机制错误，以及分析在线讨论论坛中的交互。
+
+    关系挖掘的关键教育应用包括发现学生表现和课程序列之间的关联，以及发现哪些教学策略可以带来更有效或更强大的学习。
+    后一个领域 - 称为教学分析 - 具有越来越重要的意义，旨在帮助研究人员建立自动化系统，通过挖掘教育系统的使用来模拟教师的工作效率。
+4. **Distillation for human judgment 人类判断过程简化**
+    用于人类判断过程简化是一种涉及以使人能够快速识别或分类数据特征的方式描绘数据的技术。
+    这一教育数据挖掘领域改进了机器学习模型，因为人类可以识别学生学习行为，学生行为或涉及学生之间合作的数据的模式或特征。
+    这种方法与可视化数据分析重叠（在本节的第三部分中描述）。
+5. **Discovery with models 模型构建**
+    模型构建，通过对数据集的聚类、相关关系挖掘等过程，构建供未来分析的有效现象解释模型。
+    用一种便于人类理解的方式描述数据，以便人们能够快速地判断和区分数据特征，该方法主要以可视化数据分析技术为主，用以改善机器学习模型。
+    使用模型进行发现是一种技术，涉及使用经验证的现象模型（通过预测，聚类或手动知识工程开发）作为进一步分析的组成部分。
+    例如，Jeong和Biswas（2008）建立了将学生活动与基本行为数据分类的模型：学生与通过教学学习的游戏式学习环境的互动。
+    从数据中辨别的样本学生活动是“地图探测”。然后在第二个学习策略模型中使用地图探测模型，并帮助研究人员研究策略在不同实验状态下的变化。
+    使用模型进行发现可以发现学生行为与学生特征或上下文变量之间的关系，在各种环境中分析研究问题，以及将心理测量建模框架集成到机器学习模型中。
+
+使用这些技术，教育数据挖掘研究人员可以构建模型来回答以下问题：
+    - 哪个主题序列对特定学生最有效？
+    - 学生的行为与更多学习相关（例如，更高的课程成绩）？
+    - 学生的行为表明满意度，参与度，学习进度等？
+    - 在线学习环境的哪些功能可以带来更好的学习？
+    - 什么能预测学生的成功？
+
+
+
+学习分析
+--------------------------
+
+学习分析正在被定义为研究和应用领域，并与学术分析，行动分析和预测分析相关。
+
+学习分析强调测量和数据收集是机构需要开展和理解的活动，并侧重于数据的分析和报告。
+与教育数据挖掘不同，学习分析通常不涉及用于数据分析的新计算方法的开发，而是解决已知方法和模型的应用，以回答影响学生学习和组织学习系统的重要问题。
+“地平线报告：2011年版”描述了学习分析的目标，使教师和学校能够根据每个学生的需求和能力来定制教育机会（Johnson et al.2011）。
+
+与教育数据挖掘不同，教育数据挖掘强调对学生的系统生成和自动化响应，学习分析使人们能够定制响应，例如通过调整教学内容，干预atrisk学生和提供反馈。
+除了计算机科学，统计学，心理学和学习科学之外，学习分析还利用了比教育数据挖掘更广泛的学科，包括信息科学和社会学的概念和技术。
+与教育数据挖掘不同，学习分析通常不强调减少学习成分，而是寻求理解整个系统并支持人类决策。
+
+学习分析中使用的技术方法是多种多样的，并从教育数据挖掘中使用的技术方法中提取
+
+此外，学习分析可以采用：
+
+    - 社交网络分析（例如，分析学生 - 学生和学生与教师的关系以及识别不连贯的学生，影响者等的互动）和
+    - 社交或“关注”元数据，用于确定用户参与的内容。
+
+
+Data Use in Adaptive Learning Systems
+======================================================================================
+
+
+
+
+
+Educational Data Mining and Learning Analytics Applications
+======================================================================================
+
+These application areas are (1) modeling of user knowledge, user behavior, and user experience; (2) user profiling;
+(3) modeling of key concepts in a domain and modeling a domain’s knowledge components,
+(4) and trend analysis.
+Another application area concerns how analytics are used to adapt to or personalize the user’s experience.
+Each of these application areas uses different sources of data, and Exhibit 5 briefly describes questions that these categories answer and lists data sources that have been used thus far in these applications.
+In the remainder of this section, each area is explored in more detail along with examples from both industry practice and academic research.
+
+这些应用领域是（1）用户知识，用户行为和用户体验的建模; （2）用户剖析; （3）对领域中的关键概念进行建模，并对领域的知识组件进行建模，（4）和趋势分析。
+另一个应用领域涉及如何使用分析来适应或个性化用户的体验。这些应用领域中的每一个都使用不同的数据来源，图表5简要描述了这些类别回答的问题，并列出了迄今为止在这些应用中使用的数据源。
+在本节的其余部分，将更详细地探讨每个领域以及行业实践和学术研究的实例。
+
+
+
++------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Application Area                                                 | Questions                                                                                                                                                                     | Type of Data Needed for Analysis                                                                                                                                                      |
++------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| User knowledge modeling                                          | What content does a student know (e.g., specific skills and concepts or procedural knowledge and higher order thinking skills)                                                | 1. Student’s responses (correct, incorrect, partially correct), time spent before responding to a prompt or question, hints requested, repetitions of wrong answers, and errors made. |
+|                                                                  |                                                                                                                                                                               | 2. The skills that a student practiced and total opportunities for practice                                                                                                           |
+|                                                                  |                                                                                                                                                                               | 3. Student’s performance level inferred from system work or collected from other sources, such as standardized tests                                                                  |
+| 用户知识模型                                                     | 学生掌握了哪些知识内容（例如，特殊的技能、概念、 过程性知识、高等思维技能等）                                                                                                 |                                                                                                                                                                                       |
+|                                                                  |                                                                                                                                                                               |                                                                                                                                                                                       |
+|                                                                  |                                                                                                                                                                               | 1. 学生作答结果（全对、全错、部分正确），作答时间，是否查看提示，错误次数，是否犯错等。                                                                                               |
+|                                                                  |                                                                                                                                                                               | 2. 学生练习的技能以及练习次数。                                                                                                                                                       |
+|                                                                  |                                                                                                                                                                               | 3. 学生的成绩水平。                                                                                                                                                                   |
++------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| User behavior modeling                                           | What do patterns of student  behavior mean for their learning? Are students motivated?                                                                                        | 1. Student’s responses (correct, incorrect, partially correct), time spent before responding to a prompt or question, hints requested, repetitions of wrong answers, and errors made. |
+|                                                                  |                                                                                                                                                                               | 2. Any changes in the classroom/school context during the investigation period of time.                                                                                               |
+|                                                                  |                                                                                                                                                                               |                                                                                                                                                                                       |
+| 用户行为模型                                                     |                                                                                                                                                                               |                                                                                                                                                                                       |
+|                                                                  | 学生行为对他们的学习意味着什么？学生有动力吗？                                                                                                                                | 1. 学生作答结果（全对、全错、部分正确），作答时间，是否查看提示，错误次数，是否犯错等。                                                                                               |
++------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| User experience modeling                                         | Are users satisfied with their  experience?                                                                                                                                   | 1.  Response to surveys or questionnaires.                                                                                                                                            |
+|                                                                  |                                                                                                                                                                               | 2. Choices, behaviors, or performance in subsequent learning units or courses                                                                                                         |
+|                                                                  | 用户对于他们的体验是否满意？                                                                                                                                                  |                                                                                                                                                                                       |
+| 用户体验模型                                                     |                                                                                                                                                                               |                                                                                                                                                                                       |
++------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| User profiling                                                   | What groups do users cluster  into?                                                                                                                                           | 1. Student’s responses (correct, incorrect, partially correct), time spent before responding to a prompt or question, hints requested, repetitions of wrong answers, and errors made. |
+|                                                                  |                                                                                                                                                                               |                                                                                                                                                                                       |
+|                                                                  | 用户如何分层？                                                                                                                                                                |                                                                                                                                                                                       |
+| 用户画像                                                         |                                                                                                                                                                               |                                                                                                                                                                                       |
++------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Domain modeling                                                  | What is the correct level at  which to divide topics into modules and how should these modules be sequenced?                                                                  | 1. Student’s responses (correct, incorrect, partially correct) and performance on modules at different grain sizes compared to an external measure.                                   |
+|                                                                  |                                                                                                                                                                               | 2. A domain model taxonomy.                                                                                                                                                           |
+|                                                                  | 如何将主题划分为模块，以及如何正确的排列它们？                                                                                                                                | 3. Associations among problems and between skills and problems.                                                                                                                       |
+| 领域模型                                                         |                                                                                                                                                                               |                                                                                                                                                                                       |
++------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Learning component analysis and instructional principle analysis | Which components are effective at promoting learning? What learning principles work well? How effective are whole curricula?                                                  | 1. Student’s responses (correct, incorrect, partially correct) and performance on modules at different grain sizes compared to an external measure.                                   |
+|                                                                  |                                                                                                                                                                               | 2. A domain model taxonomy.                                                                                                                                                           |
+|                                                                  |                                                                                                                                                                               | 3. Associations among problems and between skills and problems.                                                                                                                       |
+| 学习成分分析和教学原理分析                                       |                                                                                                                                                                               |                                                                                                                                                                                       |
++------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Trend analysis                                                   | What changes over time and  how?                                                                                                                                              | 1. Varies depending on what information is of interest; typically would need at least three data points longitudinally to be able to discern a trend.                                 |
+|                                                                  |                                                                                                                                                                               | 2. Data collected include enrollment records, degrees, completion, student source, and high school data in consecutive years.                                                         |
+|                                                                  |                                                                                                                                                                               |                                                                                                                                                                                       |
+| 趋势分析                                                         | 随着时间的推移会有什么变化？                                                                                                                                                  |                                                                                                                                                                                       |
++------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Adaptation and Personalization                                   | What next actions can be  suggested for the user?How should the user experience be changed for the next user?How can the user experience be altered, most often in real time? | 1. Varies depending on the actual recommendation given.                                                                                                                               |
+|                                                                  |                                                                                                                                                                               | 2. May need to collect historical data about the user and also related information on the product or service to be recommended.                                                       |
+|                                                                  |                                                                                                                                                                               | 3. Student’s academic performance record.                                                                                                                                             |
+| 自适应和个性化                                                   |                                                                                                                                                                               |                                                                                                                                                                                       |
++------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+
+
+User Knowledge Modeling
+------------------------------------
+
+Researchers and developers build and tune user models that represent a collection of user-specific data, especially skills and knowledge.
+User models are used to customize and adapt the system’s behaviors to users’ specific needs so that the systems “say” the “right” thing at the “right” time in the “right” way (Gerhard 2001).
+
+研究人员和开发人员构建和调整用户模型，这些模型代表用户特定数据的集合，尤其是技能和知识。
+用户模型用于根据用户的特定需求定制和调整系统的行为，以便系统在“正确”的时间以“正确”的方式“说出”“正确”的事物（Gerhard，2001）。
+
+Inferring what a user knows, i.e., user knowledge modeling, requires looking at accumulated data that represent the interactions between students and the learning system.
+Knowledge can be inferred from such interactions as correctness of student responses alone or in a series,
+time spent on practice before attempting to answer a question, number and nature of hints requested,
+repetitions of wrong answers, and errors made.
+Such “inferences” can be made by a predictive computer model or by a teacher looking at student data on a dashboard.
+
+推断用户知道的内容，即用户知识建模，需要查看代表学生与学习系统之间交互的累积数据.
+知识可以从这种交互中推断出来，例如学生单独或串联的正确性，花在在尝试回答问题，请求提示的数量和性质，错误答案的重复以及错误之前进行练习。
+这种“推论”可以通过预测计算机模型或由教师在仪表板上查看学生数据来进行。
+
+
+User knowledge modeling has been adopted to build adaptive hypermedia,
+recommender systems, expert systems, and intelligent tutoring systems.
+In intelligent tutoring systems, user knowledge models direct key operations, such as deciding which problems to give students.
+
+**A popular method for estimating students’ knowledge is Corbett and Anderson’s knowledge tracing model (Corbett and Anderson 1994),**
+*an approach that uses a Bayesian-network-based model for estimating the probability that a student knows a skill based on observations of him or her attempting to perform the skill.*
+
+More recently, Baker and colleagues proposed a new method for knowledge tracing using a machine learning approach to make contextual estimations of the probability that a student has guessed or slipped.
+Incorporating models of guessing and slipping into predictions of student future performance was shown to increase the accuracy of the predictions by up to 48 percent (Baker, Corbett, and Aleven 2008).
+
+
+已经采用用户知识建模来构建自适应超媒体，推荐系统，专家系统和智能辅导系统。在智能辅导系统中，用户知识模型指导关键操作，例如决定给学生哪些问题。
+**估计学生知识的常用方法是科贝特和安德森的知识追踪模型（科贝特和1994年安德森）** ， *一种方法是使用基于贝叶斯网络模型来估计，一个学生知道根据他或她的观察技能的概率试图执行这项技能* 。
+
+**最近，Baker及其同事提出了一种新的知识追踪方法，使用机器学习方法对学生猜测或滑落的概率进行上下文估计。**
+**将猜测和滑动模型结合到学生未来表现的预测中，可以将预测的准确性提高多达48％（Baker，Corbett和Aleven，2008）。**
+
+
+Student knowledge modeling is a common component of commercial learning software.
+How these models are used to adapt instruction varies.
+For example, one company builds dynamic student models for determining a student’s readiness to move to new learning content and then advances the student automatically.
+Other companies resist automatic advancement, and instead their systems offer suggestions to teachers after detecting a student’s placement.
+Other companies are trying a middle approach: If students are performing above average, they receive suggestions to move on to new content;
+otherwise, they are encouraged to consolidate current skills and work on prerequisites.
+
+学生知识建模是商业学习软件的常见组成部分。这些模型如何用于调整指令各不相同。
+例如，一家公司构建动态学生模型，以确定学生是否准备好转移到新的学习内容，然后自动推进学生。
+其他公司拒绝自动推进，而是他们的系统在检测到学生的位置后向教师提供建议。
+其他公司正在尝试一种中间方法：如果学生的表现高于平均水平，他们会收到建议，转而采用新内容;否则，鼓励他们巩固现有技能并开展先决条件。
+
+
+As an example of using student modeling, learning software can collect such data as how many minutes are spent on a unit,
+how many hints were used, and common errors.
+The data for an individual student can then be compared against a model built from a large number of students.
+The industry expert we interviewed from Agile Mind, a learning software company,
+explained that these data enable teachers to distinguish between students who are not trying and those who are trying but still struggling.
+This information then helps teachers use different instructional strategies for these two groups of students.
+
+
+作为使用学生建模的一个例子，学习软件可以收集诸如在一个单元上花费了多少分钟，使用了多少提示以及常见错误等数据。
+然后可以将个别学生的数据与从大量学生建立的模型进行比较。我们从学习软件公司Agile Mind采访的行业专家解释说，
+这些数据使教师能够区分不尝试的学生和正在努力但仍在努力的学生。这些信息可以帮助教师为这两组学生使用不同的教学策略。
+
+.. warning::
+    Agile Mind, however, cautions against allowing the data to drive what a student sees next
+    or allowing the data to prevent a student from advancing because,
+    according to the data, he or she has not achieved “mastery.”
+    Not enough is known about the dependencies among topics to make these decisions in a completely automated manner.
+
+    然而，Agile Mind警告不要让数据驱动学生接下来看到的东西或允许数据阻止学生前进，
+    因为根据数据，他或她没有达到“掌握”。对于主题之间的依赖关系，以完全自动化的方式做出这些决定
+
+
+In contrast, the Onsophic Inc. online learning platform collects data at a very granular level (per topic) for each student
+and detects student mastery at this topic level (e.g., quadratic equation) rather than at the course level.
+Plans are to provide students with detailed feedback,
+such as, “A week ago, you were ‘yellow’ on a prerequisite but now you are struggling on this topic.
+We suggest that you make sure you have a solid foundation on this topic through practicing on the prerequisite.”
+
+相比之下，Onsophic Inc.在线学习平台为每个学生在非常精细的级别（每个主题）收集数据，并在该主题级别（例如，二次方程式）而不是在课程级别检测学生掌握情况。
+计划是为学生提供详细的反馈，例如，“一周前，你在某个先决条件上是'黄色'，但现在你正在努力解决这个问题。
+我们建议你通过练习前提条件，确保你在这个主题上有坚实的基础。“
+
+
+User Behavior Modeling
+------------------------------------
+
+User behavior modeling in education often characterizes student actions as on- or off-task and can be used as a proxy for student engagement.
+It relies on the same kinds of learning data used in predicting user knowledge plus other measures,
+such as how much time a student has spent online (or on the system), whether a student has completed a course,
+documented changes in the classroom or school context, attendance, tardiness,
+and sometimes a student’s level of knowledge as inferred from his or her work with the learning system or from other such data sources as standardized test scores.
+Baker and colleagues have conducted a series of studies on detecting and adapting to students’ off-task behaviors (called gaming the system) in adaptive learning systems that teach algebra (Baker et al. 2004, 2006).
+They found that gaming behaviors (such as clicking until the system provides a correct answer and advancing within the curriculum by systematically taking advantage of regularities in the software’s feedback and help)
+were strongly associated with less learning for students with below-average academic achievement levels.
+In response, they modified the system to detect and respond to these students and provide them with supplementary exercises,
+which led to considerably better learning. Similar research has been done in unscripted environments that are more open-ended than the well-defined domain of mathematics.
+For instance, Blikstein (2011) has presented an automated technique and a case study to assess,
+analyze, and visualize behaviors of students learning computer programming.
+
+教育中的用户行为建模通常将学生的行为描述为在任务中或在任务之外，并且可以用作学生参与的代理。它依赖于用于预测用户知识的相同类型的学习数据以及其他度量，例如学生在线（或在系统上）花费了多少时间，学生是否完成了课程，课堂或学校的记录变化背景，出勤，迟到，有时是学生的知识水平，从他或她与学习系统的工作或其他此类数据来源作为标准化考试成绩推断。 Baker及其同事在教授代数的自适应学习系统中进行了一系列关于检测和适应学生的非任务行为（称为游戏系统）的研究（Baker等，2004,2006）。他们发现游戏行为（例如点击系统提供正确答案并通过系统地利用软件反馈和帮助中的规律来推进课程内容）与学习成绩水平低于平均水平的学生的学习成果密切相关。作为回应，他们修改了系统，以检测并回应这些学生，并为他们提供补充练习，从而大大提高了学习效果。类似的研究已经在非脚本环境中进行，这些环境比明确定义的数学领域更开放。例如，Blikstein（2011）提出了一种自动化技术和案例研究，用于评估，分析和可视化学生学习计算机编程的行为。
+
+
+Learning component analysis and instructional principle analysis(学习成分分析和教学原理分析)
+--------------------------------------------------------------------------------------------------------
+
+
+
+
+Implementation Challenges and Considerations(实施挑战和考虑因素)
+======================================================================================
+
+
+
+
+Recommendations(建议)
+======================================================================================
