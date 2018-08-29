@@ -39,11 +39,18 @@ http://www.upenn.edu/learninganalytics/ryanbaker/publications.html
 1. INTRODUCTION
 =================================
 
-The year 2009 finds the nascent research community of Educational Data Mining (EDM) growing and continuing to develop. This summer, the second annual international conference on Educational Data Mining, EDM2009, was held in Cordoba, Spain, and plans are already underway for the third international conference to occur in June 2010 in Pittsburgh, USA. With the publication of this issue, the Educational Data Mining community now has its own journal, the Journal of Educational Data Mining. In addition, it is anticipated that in the next year, Chapman & Hall/CRC Press, Taylor and Francis Group will publish the first Handbook of Educational Data Mining.
+The year 2009 finds the nascent research community of Educational Data Mining (EDM) growing and continuing to develop.
+This summer, the second annual international conference on Educational Data Mining, EDM2009, was held in Cordoba, Spain, and plans are already underway for the third international conference to occur in June 2010 in Pittsburgh, USA. With the publication of this issue, the Educational Data Mining community now has its own journal, the Journal of Educational Data Mining. In addition, it is anticipated that in the next year, Chapman & Hall/CRC Press, Taylor and Francis Group will publish the first Handbook of Educational Data Mining.
+
+2009年，教育数据挖掘（EDM）的新兴研究领域不断发展并不断发展。今年夏天，第二届年度教育数据挖掘国际会议EDM2009在西班牙科尔多瓦举行，计划已经在2010年6月在美国匹兹堡举行的第三次国际会议上进行。随着该问题的发布，教育数据挖掘社区现在拥有自己的期刊“教育数据挖掘期刊”。此外，预计明年，Chapman＆Hall / CRC Press，Taylor和Francis Group将出版第一本教育数据挖掘手册。
+
 This moment in the educational data mining community’s history provides a unique opportunity to consider where we come from and where we are headed.
+
+教育数据挖掘社区历史上的这一时刻提供了一个独特的机会来考虑我们来自哪里以及我们前进的方向。
+
 In this article, we will review some of the major areas and trends in EDM, some of the most prominent articles in the field (both those published in specific EDM venues, and in other venues where top-quality EDM research can be found), and consider what the future may hold for our community.
 
-
+在本文中，我们将回顾EDM的一些主要领域和趋势，该领域的一些最着名的文章（包括在特定EDM场所发布的文章，以及可以找到高质量EDM研究的其他场所），并考虑未来可能为我们的社区带来什么。
 
 2. WHAT IS EDM?
 =================================
@@ -56,37 +63,55 @@ Data mining, also called Knowledge Discovery in Databases (KDD), is the field of
 3. EDM METHODS
 =================================
 Educational data mining methods are drawn from a variety of literatures, including data mining and machine learning, psychometrics and other areas of statistics, information visualization, and computational modeling. Romero and Ventura [2007] categorize work in educational data mining into the following categories:
- Statistics and visualization
- Web mining
-o Clustering, classification, and outlier detection
-o Association rule mining and sequential pattern mining o Text mining
+
+教育数据挖掘方法来自各种文献，包括数据挖掘和机器学习，心理测量学和其他统计领域，信息可视化和计算建模。 Romero和Ventura [2007]将教育数据挖掘工作分为以下几类：
+
+* Statistics and visualization
+* Web mining
+    * Clustering, classification, and outlier detection(异常值检测)
+    * Association rule mining and sequential pattern mining
+    * Text mining
 
 This viewpoint is focused on applications of educational data mining to web data, a perspective that accords with the history of the research area. To a large degree, educational data mining emerged from the analysis of logs of student-computer interaction. This is perhaps most clearly shown by the name of an early EDM workshop (according to the EDM community website, the third workshop in the history of the community – the workshop at AIED2005 on Usage Analysis in Learning Systems [Choquet et al. 2005]) .
+
+这一观点主要关注教育数据挖掘在网络数据中的应用，这一观点符合研究领域的历史。 教育数据挖掘在很大程度上源于对学生 - 计算机交互日志的分析。 早期EDM研讨会的名称可能最清楚地表明了这一点（根据EDM社区网站，社区历史上的第三次研讨会 - AIED2005关于学习系统中使用分析的研讨会[Choquet et al.2005]）。
+
 The methods listed by Romero and Ventura as web mining methods are quite prominent in EDM today, both in mining of web data and in mining other forms of educational data.
 
+Romero和Ventura列为Web挖掘方法的方法在当今的EDM中非常突出，无论是在Web数据挖掘中还是在挖掘其他形式的教育数据方面。
 
 A second viewpoint on educational data mining is given by Baker [in press], which classifies work in educational data mining as follows:
- Prediction
-o Classification
-o Regression
-o Density estimation
- Clustering
- Relationship mining
-o Association rule mining
-o Correlation mining
-o Sequential pattern mining o Causal data mining
- Distillation of data for human judgment
- Discovery with models
+
+关于教育数据挖掘的第二种观点由Baker [印刷中]给出，它将教育数据挖掘中的工作分类如下：
+
+* Prediction
+    * Classification
+    * Regression
+    * Density estimation
+* Clustering
+* Relationship mining
+    * Association rule mining
+    * Correlation mining
+    * Sequential pattern mining o Causal data mining
+* Distillation of data for human judgment
+* Discovery with models
 
 
 
 The first three categories of Baker’s taxonomy of educational data mining methods would look familiar to most researchers in data mining (the first set of sub-categories are directly drawn from Moore’s categorization of data mining methods [Moore 2006]). The fourth category, though not necessarily universally seen as data mining, accords with Romero and Ventura’s category of statistics and visualization, and has had a prominent place both in published EDM research [Kay et al. 2006], and in theoretical discussions of educational data mining [Tanimoto 2007].
 
+
+
+Baker的教育数据挖掘方法分类的前三类对于大多数数据挖掘研究人员来说都很熟悉（第一组子类别直接来自摩尔的数据挖掘方法分类[Moore 2006]）。第四类虽然不一定被普遍视为数据挖掘，但符合Romero和Ventura的统计和可视化类别，并且在已发表的EDM研究中占有突出地位[Kay et al。 2006]，以及教育数据挖掘的理论讨论[Tanimoto 2007]。
+
 The fifth category of Baker’s EDM taxonomy is perhaps the most unusual category, from a classical data mining perspective. In discovery with models, a model of a phenomenon is developed through any process that can be validated in some fashion (most commonly, prediction or knowledge engineering), and this model is then used as a component in another analysis, such as prediction or relationship mining. Discovery with models has become an increasingly popular method in EDM research, supporting sophisticated analyses such as which learning material sub-categories of students will most benefit from [Beck and Mostow 2008], how different types of student behavior impact students’ learning in different ways [Cocea et al. 2009], and how variations in intelligent tutor design impact students’ behavior over time [Jeong and Biswas 2008].
+
+从经典的数据挖掘角度来看，Baker的第五类EDM分类法可能是最不寻常的类别。在使用模型进行发现时，通过可以某种方式验证的任何过程（最常见的是预测或知识工程）开发现象模型，然后将该模型用作另一分析中的组件，例如预测或关系矿业。模型发现已经成为EDM研究中越来越受欢迎的方法，支持复杂的分析，例如学生的学习材料子类别将最有益于[Beck and Mostow 2008]，不同类型的学生行为如何以不同的方式影响学生的学习[Cocea等人。智能导师设计的变化如何影响学生的行为[Jeong和Biswas 2008]。
 
 
 Historically, relationship mining methods of various types have been the most prominent category in EDM research. In Romero & Ventura’s survey of EDM research from 1995 to 2005, 60 papers were reported that utilized EDM methods to answer research questions of applied interest (according to a post-hoc analysis conducted for the current article). 26 of those papers (43%) involved relationship mining methods. 17 more papers (28%) involved prediction methods of various types. Other methods were less common. The full distribution of methods across papers is shown in Figure 1.
 
+历史上，各种类型的关系挖掘方法一直是EDM研究中最突出的类别。在Romero＆Ventura对1995年至2005年EDM研究的调查中，有60篇论文报道了利用EDM方法回答应用兴趣的研究问题（根据对当前文章进行的事后分析）。其中26篇论文（43％）涉及关系挖掘方法。另有17篇论文（28％）涉及各种类型的预测方法。其他方法不太常见。论文中方法的完整分布如图1所示。
 
 
 
@@ -237,7 +262,7 @@ download          Article                                                       
 .. _pdf8 link: http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.521.6440&rep=rep1&type=pdf
 
 
-5.2 Shift In Paper Topics Over The Years
+5.2 Shift In Paper Topics Over The Years 近年来论文方向的转变
 -------------------------------------------------------------
 
 As discussed earlier in this paper (see Figure 1), relationship mining methods of various types were the most prominent type of EDM research between 1995 and 2005. 43% of papers in those years involved relationship mining methods. Prediction was the second most prominent research area, with 28% of papers in those years involving prediction methods of various types. Human judgment/exploratory data analysis and clustering followed with (respectively) 17% and 15% of papers.
@@ -273,8 +298,8 @@ It is worth noting that educational data mining publications in 2008 and 2009 ar
 
 
 
-5.3 Emergence of public data and public data collection tools
----------------------------------------------------------------------
+5.3 Emergence of public data and public data collection tools 公共数据和公共数据收集工具的出现
+-----------------------------------------------------------------------------------------------------------
 
 
 One interesting difference between the work in EDM2008 and EDM2009, and earlier educational data mining work, is where the educational data comes from. Between 1995 and 2005, data almost universally came from the research group conducting the analysis – that is to say, in order to do educational data mining research, a researcher first needed to collect their own educational data.

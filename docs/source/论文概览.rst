@@ -1,5 +1,5 @@
 ==================================================================================
-图书馆
+论文分类
 ==================================================================================
 
 
@@ -49,6 +49,21 @@ and type 3 is about how unseen students will perform on unseen steps, that is, b
 For the present purposes we classifie students or steps that appear in the observed training data
 as seen and those that appear only in the unobserved test data as unseen.
 
+
+对比、综述、其它
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Bayesian Knowledge Tracing, Logistic Models, and Beyond: An Overview of Learner Modeling Techniques
+BKT LFM 总结
+
+https://www.fi.muni.cz/~xpelanek/publications/umuai-overview.pdf
+
+
+High-level student modeling with machine learning. Beck, J., & Woolf, B. (2000).
+
+展示了教育数据挖掘预测方法如何用于开发学生模型。 他们使用各种变量来预测学生是否会做出正确答案。
+
+
+
 基于认知模型
 ^^^^^^^^^^^^^^^^^^^^^^
 
@@ -74,6 +89,8 @@ IFM
 -------------------------------------------------------------------------------------
 
 
+
+
 基于贝叶斯网络
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Bayesian Networks in Educational Assessment
@@ -81,6 +98,8 @@ Bayesian Networks in Educational Assessment
 Evaluating the Feasibility of Learning Student Models from Data
 
 Bayesian Networks in Educational Testing
+
+
 
 
 

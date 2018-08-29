@@ -1,5 +1,5 @@
 ==============================================================================
-美国《通过教育数据挖掘和学习分析促进教与学》报告
+2012年 美国《通过教育数据挖掘和学习分析促进教与学》报告
 ==============================================================================
 
 Data Mining and Analytics: The Research Base
@@ -218,9 +218,14 @@ Incorporating models of guessing and slipping into predictions of student future
 已经采用用户知识建模来构建自适应超媒体，推荐系统，专家系统和智能辅导系统。在智能辅导系统中，用户知识模型指导关键操作，例如决定给学生哪些问题。
 **估计学生知识的常用方法是科贝特和安德森的知识追踪模型（科贝特和1994年安德森）** ， *一种方法是使用基于贝叶斯网络模型来估计，一个学生知道根据他或她的观察技能的概率试图执行这项技能* 。
 
+.. note::
+    这个应该是指 Bayesian knowledge tracing (BKT)  https://link.springer.com/article/10.1007/BF01099821
+
 **最近，Baker及其同事提出了一种新的知识追踪方法，使用机器学习方法对学生猜测或滑落的概率进行上下文估计。**
 **将猜测和滑动模型结合到学生未来表现的预测中，可以将预测的准确性提高多达48％（Baker，Corbett和Aleven，2008）。**
 
+.. note::
+    Baker, R. S. J. d., A.T. Corbett, and V. Aleven. 2008. “More Accurate Student Modeling Through Contextual Estimation of Slip and Guess Probabilities in Bayesian Knowledge Tracing.” In Proceedings of the 9th International Conference on Intelligent Tutoring Systems. Berlin, Heidelberg: Springer-Verlag, 406–415.
 
 Student knowledge modeling is a common component of commercial learning software.
 How these models are used to adapt instruction varies.
