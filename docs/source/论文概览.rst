@@ -100,6 +100,8 @@ Evaluating the Feasibility of Learning Student Models from Data
 Bayesian Networks in Educational Testing
 
 
+WCRP is a Weighted Chinese Restaurant Process model for inferring skill labels in Bayesian Knowledge Tracing.
+https://github.com/robert-lindsey/WCRP
 
 
 

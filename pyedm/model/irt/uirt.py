@@ -5,8 +5,8 @@ import numpy as np
 import pandas as pd
 import os
 import logging
-from talirt.estimator.uirt import MLE, BockAitkinEM
-from talirt.utils import uirt_lib
+from ._uirt_estimator import MLE, BockAitkinEM
+from . import _uirt_lib as uirt_lib
 
 """
 关于常数项D
@@ -38,7 +38,7 @@ class UIRT(object):
         :param response_df: 作答数据，必须包含三列 user_id item_id answer
         D=1.702
         """
-        
+
         self.user_vector = None
         self.item_vector = None
         self.item_count = 0

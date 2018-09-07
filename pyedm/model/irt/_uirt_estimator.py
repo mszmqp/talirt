@@ -5,9 +5,9 @@ from scipy.stats import norm
 from joblib import Parallel, delayed
 import os
 import time
-from talirt.utils import uirt_clib, uirt_lib
-from talirt.utils import trunk_split
-import numexpr
+from . import _uirt_clib, _uirt_lib
+from pyedm.utils import trunk_split
+# import numexpr
 
 _parallel = Parallel(n_jobs=os.cpu_count(), backend='threading')
 
@@ -90,15 +90,15 @@ class Estimator:
         return a, b, c
 
     def mse(self):
-        predict = uirt_lib.uirt(theta=self.theta, slope=self.a, intercept=self.b, guess=self.c)
+        predict = _uirt_lib.uirt(theta=self.theta, slope=self.a, intercept=self.b, guess=self.c)
         return np.sqrt(((self.response - predict) ** 2).mean())
 
     def accuracy(self):
-        predict = uirt_lib.uirt(theta=self.theta, slope=self.a, intercept=self.b, guess=self.c)
+        predict = _uirt_lib.uirt(theta=self.theta, slope=self.a, intercept=self.b, guess=self.c)
         return (np.round(predict) == self.response).mean()
 
     def predict(self):
-        return uirt_clib.uirt_matrix(theta=self.theta,
+        return _uirt_clib.uirt_matrix(theta=self.theta,
                                      slope=self.a,
                                      intercept=self.b,
                                      guess=self.c)
@@ -108,12 +108,12 @@ class MLE(Estimator):
 
     def estimate_theta(self, **kwargs):
         def object_fun(x, response):
-            ret = -uirt_clib.log_likelihood(response=response, theta=x, slope=self.a, intercept=self.b, guess=self.c)
+            ret = -_uirt_clib.log_likelihood(response=response, theta=x, slope=self.a, intercept=self.b, guess=self.c)
             # print('theta llh=%f' % ret, " theta=%f" % x[0], end="\n")
             return ret
 
         def gradient(x, response):
-            ret = uirt_clib.uirt_theta_jac(response=response, theta=x, slope=self.a, intercept=self.b, guess=self.c)
+            ret = _uirt_clib.uirt_theta_jac(response=response, theta=x, slope=self.a, intercept=self.b, guess=self.c)
             # print(" a=%f" % x[0], "theta=%f" % x[0], 'grade=%f' % -ret[0])
             return -ret
 
@@ -129,13 +129,13 @@ class MLE(Estimator):
     def estimate_item(self, **kwargs):
         def object_fun(x, theta, response):
             a, b, c = self._get_abc_from_x(x)
-            ret = -uirt_clib.log_likelihood(response=response, theta=theta, slope=a, intercept=b, guess=c)
+            ret = -_uirt_clib.log_likelihood(response=response, theta=theta, slope=a, intercept=b, guess=c)
             # print('item llh=%f' % ret, " a=%f" % x[0], "b=%f" % x[1], end="\n")
             return ret
 
         def gradient(x, theta, response):
             a, b, c = self._get_abc_from_x(x)
-            ret = uirt_clib.u2irt_item_jac(response=response, theta=theta, slope=a, intercept=b, guess=c)[0, :]
+            ret = _uirt_clib.u2irt_item_jac(response=response, theta=theta, slope=a, intercept=b, guess=c)[0, :]
             if self.model == '1PL':
                 return -ret[1:2]
             elif self.model == '2PL':
@@ -184,13 +184,13 @@ class MAP(MLE):
 
     def estimate_theta(self, **kwargs):
         def object_fun(x, response):
-            ret = -uirt_clib.log_likelihood(response=response, theta=x, slope=self.a, intercept=self.b, guess=self.c)
+            ret = -_uirt_clib.log_likelihood(response=response, theta=x, slope=self.a, intercept=self.b, guess=self.c)
             # print('theta llh=%f' % ret, " theta=%f" % x[0], end="\n")
             ret -= np.log(norm.pdf(x,loc=self.mu, scale=self.sigma)).sum()
             return ret
 
         def gradient(x, response):
-            ret = uirt_clib.uirt_theta_jac(response=response, theta=x, slope=self.a, intercept=self.b, guess=self.c)
+            ret = _uirt_clib.uirt_theta_jac(response=response, theta=x, slope=self.a, intercept=self.b, guess=self.c)
             # scipy.stats.norm.pdf(x, mu, sigma)*(mu - x)/sigma**2
             # norm.pdf(x)*(-x)
             ret += (self.mu - x)/self.sigma**2
@@ -238,7 +238,7 @@ class EM(Estimator):
         return True
 
     def _check_stop(self):
-        cur_llh = uirt_clib.log_likelihood(response=self.response, theta=self.theta,
+        cur_llh = _uirt_clib.log_likelihood(response=self.response, theta=self.theta,
                                            slope=self.a, intercept=self.b, guess=self.c)
         # print("-" * 20)
         # print('total ll', self.iter, cur_llh)
@@ -304,7 +304,7 @@ class BockAitkinEM(EM):
         theta = np.asarray([self.theta_prior_value[k]] * self.user_count).flatten()
         theta_prob = self.theta_prior_distribution[k]
         # 每个学生独立的log似然值
-        independent_user_lld = uirt_clib.log_likelihood_user(response=self.response, theta=theta, slope=self.a,
+        independent_user_lld = _uirt_clib.log_likelihood_user(response=self.response, theta=theta, slope=self.a,
                                                              intecept=self.b, guess=self.c)
         # 乘上当theta值的先验概率,这是后验概率分布的分子
         return k, independent_user_lld + np.log(theta_prob)
@@ -339,7 +339,7 @@ class BockAitkinEM(EM):
             theta_k_prior_prob = self.theta_prior_distribution[k]
             # 每个学生独立计算，各自作答数据的的log似然值。
             # 注意实际公式中是连乘符号，乘法会造成小数溢出，所以我们计算其对数值，把乘法转换成加法，注意最后还得换回去
-            independent_user_lld = uirt_clib.log_likelihood_user(response=self.response,
+            independent_user_lld = _uirt_clib.log_likelihood_user(response=self.response,
                                                                  theta=theta_k,
                                                                  slope=self.a,
                                                                  intercept=self.b, guess=self.c)
@@ -400,7 +400,7 @@ class BockAitkinEM(EM):
             a, b, c = self._get_abc_from_x(x)
 
             # 预测值
-            y_hat = uirt_clib.uirt_matrix(theta=theta, slope=a, intercept=b, guess=c)
+            y_hat = _uirt_clib.uirt_matrix(theta=theta, slope=a, intercept=b, guess=c)
             obj = rjk.reshape(self.Q, 1) * np.log(y_hat) + wjk.reshape(self.Q, 1) * np.log(1 - y_hat)
 
             res = - np.sum(obj)
@@ -417,7 +417,7 @@ class BockAitkinEM(EM):
             for k in range(self.Q):
                 theta = np.array([self.theta_prior_value[k]])
                 # 预测值
-                y_hat = uirt_clib.uirt_matrix(theta=theta, slope=a, intercept=b, guess=c)
+                y_hat = _uirt_clib.uirt_matrix(theta=theta, slope=a, intercept=b, guess=c)
                 m = rjk[k] - (rjk[k] + wjk[k]) * y_hat[0][0]
                 grade_a += (1 - c[0]) * m * theta[0]
                 grade_b += (1 - c[0]) * m
@@ -507,7 +507,7 @@ class MHRM(EM):
         # np.array().astype(np.double)
         burn = self.burn_in + self.iter * 2
         for i in range(start, end):
-            data = uirt_clib.sample_theta(
+            data = _uirt_clib.sample_theta(
                 theta=self.theta[i], slope=self.a, intercept=self.b, guess=self.c,
                 response=self.response[i:i + 1, :],
                 burn_in=burn,
@@ -518,7 +518,7 @@ class MHRM(EM):
 
     def _acceptance(self, theta):
 
-        return uirt_lib.log_likelihood(response=self.response, theta=theta,
+        return _uirt_lib.log_likelihood(response=self.response, theta=theta,
                                        slope=self.a, intercept=self.b, guess=self.c
                                        ).sum(axis=1) + np.log(norm.pdf(theta, loc=1))
 
@@ -551,7 +551,7 @@ class MHRM(EM):
         # for i in range(self.user_count):
         #     response = self.response[i:i + 1, :]
         #     theta = self.theta[i]
-        #     x = uirt_clib.sample_theta(theta=theta,
+        #     x = _uirt_clib.sample_theta(theta=theta,
         #                                slope=self.a, intercept=self.b, guess=self.c, response=response,
         #                                burn_in=self.burn_in, n=self.sample_count + self.burn_in)
         #     self._theta_sample[i, :] = x[1]
@@ -575,7 +575,7 @@ class MHRM(EM):
             c = self.c[j:j + 1]
             for i in range(self.sample_count):
                 theta = self._theta_sample[:, i]
-                _s, _h = uirt_clib.u2irt_item_jac_and_hessian(theta=theta, slope=a, intercept=b, guess=c,
+                _s, _h = _uirt_clib.u2irt_item_jac_and_hessian(theta=theta, slope=a, intercept=b, guess=c,
                                                               response=response)
                 s += _s[0, :].reshape((2, 1))
                 h += _h[0, :, :]
@@ -601,7 +601,7 @@ class MHRM(EM):
         jac = np.zeros((self.item_count, 2))
         hession = np.zeros((self.item_count, 2, 2))
         for i in range(self.sample_count):
-            _jac, _hession = uirt_lib.u2irt_item_jac_and_hessian(
+            _jac, _hession = _uirt_lib.u2irt_item_jac_and_hessian(
                 response=self.response,
                 theta=self._theta_sample[:, i],
                 slope=self.a,
@@ -630,13 +630,13 @@ class MHMLE(MHRM):
 
         def object_fun(x, theta, response):
             a, b, c = self._get_abc_from_x(x)
-            ret = -uirt_clib.log_likelihood(response=response, theta=theta, slope=a, intercept=b, guess=c)
+            ret = -_uirt_clib.log_likelihood(response=response, theta=theta, slope=a, intercept=b, guess=c)
             print('item llh=%f' % ret, " a=%f" % x[0], "b=%f" % x[1], end="\n")
             return ret
 
         def gradient(x, theta, response):
             a, b, c = self._get_abc_from_x(x)
-            ret = uirt_clib.u2irt_item_jac(response=response, theta=theta, slope=a, intercept=b, guess=c)[0, :]
+            ret = _uirt_clib.u2irt_item_jac(response=response, theta=theta, slope=a, intercept=b, guess=c)[0, :]
             # print(" a=%f" % x[0], "b=%f" % x[1], 'g_a=%f' % -ret[0], 'g_b=%f' % -ret[1])
             if self.model == '1PL':
                 return -ret[1:2]
@@ -675,10 +675,10 @@ class MHMLE(MHRM):
 
 
 if __name__ == "__main__":
-    from talirt.model.simulator import Simulator
+    from pyedm.model.simulator import Simulator
     from scipy import stats
     import pandas as pd
-    from talirt.model.irt import UIrt2PL
+    from pyedm.model.irt import UIrt2PL
 
     # df = pd.read_pickle("response.pk")
     # data = []
@@ -701,7 +701,7 @@ if __name__ == "__main__":
     # print(sim.user)
     # sim.user
     # response = lsat6
-    from talirt.data import social_life_feelings as slf
+    from pyedm.data import social_life_feelings as slf
     from sklearn.metrics import mean_squared_error, mean_absolute_error
 
 
