@@ -11,7 +11,6 @@ Date:    2018/4/24 14:18
 """
 import numpy as np
 import pandas as pd
-# from hmmlearn.hmm import MultinomialHMM
 import time
 # from scipy.special import logsumexp
 
@@ -26,25 +25,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 # import  pymc3
-def _cpu_count():
-    """Try to guess the number of CPUs in the system.
-
-    We use the number provided by psutil if that is installed.
-    If not, we use the number provided by multiprocessing, but assume
-    that half of the cpus are only hardware threads and ignore those.
-    """
-    try:
-        import psutil
-        cpus = psutil.cpu_count(False)
-    except ImportError:
-        import multiprocessing
-        try:
-            cpus = multiprocessing.cpu_count() // 2
-        except NotImplementedError:
-            cpus = 1
-    if cpus is None:
-        cpus = 1
-    return cpus
 
 
 class StandardBKT(BaseEstimator):

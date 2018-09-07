@@ -29,10 +29,11 @@ extensions = [
     Extension(name="pyedm.model.bkt._bkt_clib",
               sources=['pyedm/model/bkt/_bkt_clib' + ext],
               include_dirs=include_dirs,
+              libraries=["m"]  # Unix-like specific
               ),
     Extension(name="pyedm.model.irt._uirt_clib",
               sources=['pyedm/model/irt/_uirt_clib' + ext],
-              libraries=cython_gsl.get_libraries(),
+              libraries=[cython_gsl.get_libraries(),"m"],
               library_dirs=[cython_gsl.get_library_dir()],
               include_dirs=include_dirs,
               ),

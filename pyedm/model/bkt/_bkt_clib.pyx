@@ -11,69 +11,11 @@ from libc.stdlib cimport malloc, free
 # from  cimport
 # from libcpp.vector cimport vector
 # from libcpp.string cimport string
-#from libc.stdio cimport printf
+# from libc.stdio cimport printf
 # from scipy.misc import logsumexp
 
 
 ctypedef double dtype_t
-
-
-#
-# cdef normalize( np.ndarray a, unsigned int axis=0):
-#     """Normalizes the input array so that it sums to 1.
-#     Parameters
-#     ----------
-#     a : array
-#         Non-normalized input data.
-#     axis : int
-#         Dimension along which normalization is performed.
-#     Notes
-#     -----
-#     Modifies the input **inplace**.
-#     """
-#     a_sum = a.sum(axis)
-#     if axis and a.ndim > 1:
-#         # Make sure we don't divide by zero.
-#         a_sum[a_sum == 0] = 1
-#         shape = list((<object>a).shape)
-#         shape[axis] = 1
-#         a_sum.shape = shape
-#         # a_sum.shape[axis]=1
-#
-#     a /= a_sum
-#
-#
-# cdef log_normalize(np.ndarray a, unsigned int axis=0):
-#     """Normalizes the input array so that the exponent of the sum is 1.
-#     Parameters
-#     ----------
-#     a : array
-#         Non-normalized input data.
-#     axis : int
-#         Dimension along which normalization is performed.
-#     Notes
-#     -----
-#     Modifies the input **inplace**.
-#     """
-#     a_lse = logsumexp(a, axis)
-#     a -= a_lse[:, np.newaxis]
-
-
-#
-#
-# def log_mask_zero(a):
-#     """Computes the log of input probabilities masking divide by zero in log.
-#     Notes
-#     -----
-#     During the M-step of EM-algorithm, very small intermediate start
-#     or transition probabilities could be normalized to zero, causing a
-#     *RuntimeWarning: divide by zero encountered in log*.
-#     This function masks this unharmful warning.
-#     """
-#     a = np.asarray(a)
-#     with np.errstate(divide="ignore"):
-#         return np.log(a)
-
 
 
 @cython.boundscheck(False)
