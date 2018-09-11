@@ -13,7 +13,7 @@ from distutils.extension import Extension
 import numpy.distutils.misc_util
 import cython_gsl
 
-DESCRIPTION = 'A set of python modules for machine learning and data mining'
+DESCRIPTION = 'A set of python modules for machine learning and data mining in education'
 with open('README.rst') as f:
     LONG_DESCRIPTION = f.read()
 
@@ -33,7 +33,7 @@ extensions = [
               ),
     Extension(name="pyedm.model.irt._uirt_clib",
               sources=['pyedm/model/irt/_uirt_clib' + ext],
-              libraries=[cython_gsl.get_libraries(),"m"],
+              libraries=cython_gsl.get_libraries()+["m"],
               library_dirs=[cython_gsl.get_library_dir()],
               include_dirs=include_dirs,
               ),

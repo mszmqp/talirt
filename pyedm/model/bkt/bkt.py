@@ -23,8 +23,8 @@ from pyedm.utils import normalize, log_mask_zero, log_normalize, iter_from_X_len
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-
-# import  pymc3
+# from hmmlearn import
+DECODER_ALGORITHMS = {'viterbi', 'map'}
 
 
 class StandardBKT(BaseEstimator):
@@ -38,13 +38,13 @@ class StandardBKT(BaseEstimator):
 
     Parameters
     ----------
-    n_components : int
+    n_stats : int
         Number of states in the model.
 
-    startprior : array, shape (n_components, )
+    startprior : array, shape (n_stats, )
         Initial state occupation prior distribution.
 
-    transitionprior : array, shape (n_components, n_components)
+    transitionprior : array, shape (n_stats, n_stats)
         Matrix of prior transition probabilities between states.
 
     algorithm : string
@@ -84,10 +84,10 @@ class StandardBKT(BaseEstimator):
     monitor\_ : ConvergenceMonitor
         Monitor object used to check the convergence of EM.
 
-    startprob\_ : array, shape (n_components, )
+    startprob\_ : array, shape (n_stats, )
         Initial state occupation distribution.
 
-    transmat\_ : array, shape (n_components, n_components)
+    transmat\_ : array, shape (n_stats, n_stats)
         Matrix of transition probabilities between states.
     """
 
@@ -95,15 +95,15 @@ class StandardBKT(BaseEstimator):
                  start_init=np.array([0.5, 0.5]),
                  transition_init=np.array([[1, 0], [0.4, 0.6]]),
                  emission_init=np.array([[0.8, 0.2], [0.2, 0.8]]),
-                 algorithm="viterbi",
+
                  # random_state=None,
                  max_iter=10, tol=1e-2, njobs=0, **kwargs):
 
-        self.algorithm = algorithm
+        # self.algorithm = algorithm
         # self.random_state = random_state
         # self.verbose = verbose
-        self.n_components = 2
-        self.n_features = 2
+        self.n_stats = 2  # 隐状态的数量
+        self.n_obs = 2  # 观测状态的数量
         # self.start = np.array([0.5, 0.5])
         self.start_init = start_init
         # self.transition = np.array([[0.6, 0.4], [0, 1]])
@@ -114,7 +114,8 @@ class StandardBKT(BaseEstimator):
         self.max_iter = max_iter
         self.tol = tol
         self.njobs = njobs
-        self.cost_time = 0
+        self.train_cost_time = 0
+        self.predict_cost_time = 0
 
         # 约束条件
         self.start_lb = np.array([0, 0]).astype(np.float64)
@@ -124,7 +125,7 @@ class StandardBKT(BaseEstimator):
 
         self.emission_lb = np.array([[0.7, 0], [0, 0.7]]).astype(np.float64)
         self.emission_ub = np.array([[1, 0.3], [0.3, 1]]).astype(np.float64)
-
+        self.model = {}
         self._init_param(**kwargs)
 
     def _init_param(self, **kwargs):
@@ -181,7 +182,7 @@ class StandardBKT(BaseEstimator):
 
         Parameters
         ----------
-        X : array-like, shape (n_samples, n_features)
+        X : array-like, shape (n_samples, n_obs)
             Feature matrix of individual samples.
 
         lengths : array-like of integers, shape (n_sequences, ), optional
@@ -193,7 +194,7 @@ class StandardBKT(BaseEstimator):
         logprob : float
             Log likelihood of ``X``.
 
-        posteriors : array, shape (n_samples, n_components)
+        posteriors : array, shape (n_samples, n_stats)
             State-membership probabilities for each sample in ``X``.
 
         See Also
@@ -207,7 +208,7 @@ class StandardBKT(BaseEstimator):
         X = check_array(X)
         n_samples = X.shape[0]
         logprob = 0
-        posteriors = np.zeros((n_samples, self.n_components))
+        posteriors = np.zeros((n_samples, self.n_stats))
         for i, j in iter_from_X_lengths(X, lengths):
             framelogprob = self._compute_(X[i:j])
             logprobij, fwdlattice = self._do_forward_pass(framelogprob)
@@ -222,7 +223,7 @@ class StandardBKT(BaseEstimator):
 
         Parameters
         ----------
-        X : array-like, shape (n_samples, n_features)
+        X : array-like, shape (n_samples, n_obs)
             Feature matrix of individual samples.
 
         lengths : array-like of integers, shape (n_sequences, ), optional
@@ -252,9 +253,12 @@ class StandardBKT(BaseEstimator):
             logprob += logprobij
         return logprob
 
-    def _decode_viterbi(self, X):
-        framelogprob = self._compute_(X)
-        return self._do_viterbi_pass(framelogprob)
+    def _decode_viterbi(self, start: np.ndarray, transition: np.ndarray, emission: np.ndarray, obs: np.ndarray):
+        # n_samples, n_stats = framelogprob.shape
+
+        return bktc._viterbi(
+            obs.shape[0], self.n_stats, start,
+            transition, emission, obs)
 
     def _decode_map(self, X):
         _, posteriors = self.score_samples(X)
@@ -262,12 +266,12 @@ class StandardBKT(BaseEstimator):
         state_sequence = np.argmax(posteriors, axis=1)
         return logprob, state_sequence
 
-    def decode(self, X, lengths=None, algorithm=None):
+    def decode(self, trace, obs=None, algorithm="viterbi"):
         """Find most likely state sequence corresponding to ``X``.
 
         Parameters
         ----------
-        X : array-like, shape (n_samples, n_features)
+        X : array-like, shape (n_samples, n_obs)
             Feature matrix of individual samples.
 
         lengths : array-like of integers, shape (n_sequences, ), optional
@@ -293,10 +297,10 @@ class StandardBKT(BaseEstimator):
             posteriors.
         score : Compute the log probability under the model.
         """
-        check_is_fitted(self, "start")
-        self._check()
+        # check_is_fitted(self, "start")
+        # self._check()
 
-        algorithm = algorithm or self.algorithm
+        # algorithm = algorithm or self.algorithm
         if algorithm not in DECODER_ALGORITHMS:
             raise ValueError("Unknown decoder {0!r}".format(algorithm))
 
@@ -305,24 +309,26 @@ class StandardBKT(BaseEstimator):
             "map": self._decode_map
         }[algorithm]
 
-        X = check_array(X)
-        n_samples = X.shape[0]
-        logprob = 0
-        state_sequence = np.empty(n_samples, dtype=int)
-        for i, j in iter_from_X_lengths(X, lengths):
-            # XXX decoder works on a single sample at a time!
-            logprobij, state_sequenceij = decoder(X[i:j])
-            logprob += logprobij
-            state_sequence[i:j] = state_sequenceij
+        # X = check_array(X)
+        # n_samples = X.shape[0]
+        # logprob = 0
+        _model = self.model.get(trace, None)
+        if _model is None:
+            raise ValueError("未找到模型训练结果")
+        state_sequence, state_prob = decoder(_model['start'], _model['transition'], _model['emission'], obs)
 
-        return logprob, state_sequence
+        # 下到题目答对的概率
+        next_state = np.argmax(_model['transition'][state_sequence[-1], :])
+        next_prob = _model['emission'][next_state, 1]
+        return next_prob, next_state, state_sequence, state_prob
 
-    def predict(self, X, lengths=None):
+    # def predict
+    def predict_one(self, obs: np.ndarray, trace, group_key=None, algorithm='viterbi'):
         """Find most likely state sequence corresponding to ``X``.
 
         Parameters
         ----------
-        X : array-like, shape (n_samples, n_features)
+        X : array-like, shape (n_samples, n_obs)
             Feature matrix of individual samples.
 
         lengths : array-like of integers, shape (n_sequences, ), optional
@@ -334,13 +340,43 @@ class StandardBKT(BaseEstimator):
         state_sequence : array, shape (n_samples, )
             Labels for each sample from ``X``.
         """
-        _, state_sequence = self.decode(X, lengths)
-        return state_sequence
+        next_prob, next_state, state_sequence, state_prob = self.decode(trace=trace, obs=obs, algorithm=algorithm)
+        return next_prob, trace, group_key
+
+    def predict_batch(self, response: pd.DataFrame, trace_by=('knowledge',), group_by=('user',), sorted_by=None,
+                      njobs=1):
+
+        _start_time = time.time()
+        if njobs is None or njobs <= 0:
+            for trace_key, group_keys, train_x, lengths in self._split_data(response=response, trace_by=trace_by,
+                                                                            group_by=group_by, sorted_by=sorted_by):
+                # train_x = check_array(train_x)
+                for i, group_key in enumerate(group_keys):
+                    obs = train_x[lengths[i, 0]: lengths[i, 1]]
+                    next_prob, trace_key, group_key = self.predict_one(obs=obs, trace=trace_key, group_key=group_key)
+                    yield next_prob, trace_key, group_key
+
+        else:
+            if njobs == 1:
+                njobs = os.cpu_count()
+            with ThreadPoolExecutor(max_workers=self.njobs) as tp:
+                futures = []
+                for trace_key, group_keys, train_x, lengths in self._split_data(response=response, trace_by=trace_by,
+                                                                                group_by=group_by, sorted_by=sorted_by):
+                    for i, group_key in enumerate(group_keys):
+                        obs = train_x[lengths[i, 0]: lengths[i, 1]]
+                        futures.append(tp.submit(self.predict_one, obs=obs, trace=trace_key, group_key=group_key))
+
+                for future in as_completed(futures):
+                    next_prob, trace_key, group_key = future.result()
+                    yield next_prob, trace_key, group_key
+
+        self.predict_cost_time = time.time() - _start_time
 
     def predict_proba(self, X, lengths=None):
         """Compute the posterior probability for each state in the model.
 
-        X : array-like, shape (n_samples, n_features)
+        X : array-like, shape (n_samples, n_obs)
             Feature matrix of individual samples.
 
         lengths : array-like of integers, shape (n_sequences, ), optional
@@ -349,7 +385,7 @@ class StandardBKT(BaseEstimator):
 
         Returns
         -------
-        posteriors : array, shape (n_samples, n_components)
+        posteriors : array, shape (n_samples, n_stats)
             State-membership probabilities for each sample from ``X``.
         """
         _, posteriors = self.score_samples(X, lengths)
@@ -369,7 +405,7 @@ class StandardBKT(BaseEstimator):
 
         Returns
         -------
-        X : array, shape (n_samples, n_features)
+        X : array, shape (n_samples, n_obs)
             Feature matrix.
 
         state_sequence : array, shape (n_samples, )
@@ -409,6 +445,7 @@ class StandardBKT(BaseEstimator):
             train_x = []
             lengths = []
             pos = 0
+            group_keys = []
             for group_key, df_x in df_data.groupby(group_by):
                 if sorted_by is not None:
                     x = df_x.sort_values(sorted_by)['answer'].values.flatten().astype(np.int32)
@@ -417,10 +454,10 @@ class StandardBKT(BaseEstimator):
                 train_x.append(x)
                 lengths.append((pos, x.shape[0] + pos))
                 pos += x.shape[0]
-
+                group_keys.append(group_key)
             train_x = np.concatenate(train_x)
             lengths = np.asarray(lengths).astype(np.int32)
-            yield trace_key, group_key, train_x, lengths
+            yield trace_key, group_keys, train_x, lengths
 
     def fit(self, response: pd.DataFrame, trace_by=('knowledge',), group_by=('user',), sorted_by=None,
             **kwargs):
@@ -450,8 +487,8 @@ class StandardBKT(BaseEstimator):
         self.model = {}
         _start_time = time.time()
         if self.njobs is None or self.njobs <= 0:
-            for trace_key, group_key, train_x, lengths in self._split_data(response=response, trace_by=trace_by,
-                                                                           group_by=group_by, sorted_by=sorted_by):
+            for trace_key, group_keys, train_x, lengths in self._split_data(response=response, trace_by=trace_by,
+                                                                            group_by=group_by, sorted_by=sorted_by):
                 # train_x = check_array(train_x)
 
                 _, start, transition, emission, log_likelihood = self.fit_one(train_x=train_x, data_slice=lengths,
@@ -464,8 +501,8 @@ class StandardBKT(BaseEstimator):
                 self.njobs = os.cpu_count()
             with ThreadPoolExecutor(max_workers=self.njobs) as tp:
                 futures = []
-                for trace_key, group_key, train_x, lengths in self._split_data(response=response, trace_by=trace_by,
-                                                                               group_by=group_by, sorted_by=sorted_by):
+                for trace_key, group_keys, train_x, lengths in self._split_data(response=response, trace_by=trace_by,
+                                                                                group_by=group_by, sorted_by=sorted_by):
                     futures.append(tp.submit(self.fit_one, train_x=train_x, data_slice=lengths, trace=trace_key))
 
                 for future in as_completed(futures):
@@ -473,7 +510,7 @@ class StandardBKT(BaseEstimator):
                     self.model[trace_key] = {'start': start, "transition": transition, "emission": emission,
                                              'log_likelihood': log_likelihood}
 
-        self.cost_time = time.time() - _start_time
+        self.train_cost_time = time.time() - _start_time
         return self
 
     def fit_one(self, train_x: np.ndarray, data_slice: np.ndarray, trace=None):
@@ -514,14 +551,14 @@ class StandardBKT(BaseEstimator):
 
         Parameters
         ----------
-        X : array-like, shape (n_samples, n_features)
+        X : array-like, shape (n_samples, n_obs)
             Feature matrix of individual samples.
 
         lengths : array-like of integers, shape (n_sequences, )
             Lengths of the individual sequences in ``X``. The sum of
             these should be ``n_samples``.
         """
-        # init = 1. / self.n_components
+        # init = 1. / self.n_stats
         # self.start = np.array([0.5, 0.5])
         # self.transition = np.array([[,0.2],[0,]])
         # self.emission
@@ -538,16 +575,16 @@ class StandardBKT(BaseEstimator):
             don't sum to 1.
         """
         self.start = np.asarray(self.start)
-        if len(self.start) != self.n_components:
-            raise ValueError("start must have length n_components")
+        if len(self.start) != self.n_stats:
+            raise ValueError("start must have length n_stats")
         if not np.allclose(self.start.sum(), 1.0):
             raise ValueError("start must sum to 1.0 (got {0:.4f})"
                              .format(self.start.sum()))
 
         self.transition = np.asarray(self.transition)
-        if self.transition.shape != (self.n_components, self.n_components):
+        if self.transition.shape != (self.n_stats, self.n_stats):
             raise ValueError(
-                "transition must have shape (n_components, n_components)")
+                "transition must have shape (n_stats, n_stats)")
         if not np.allclose(self.transition.sum(axis=1), 1.0):
             raise ValueError("rows of transition must sum to 1.0 (got {0})"
                              .format(self.transition.sum(axis=1)))
@@ -557,12 +594,12 @@ class StandardBKT(BaseEstimator):
 
         Parameters
         ----------
-        X : array-like, shape (n_samples, n_features)
+        X : array-like, shape (n_samples, n_obs)
             Feature matrix of individual samples.
 
         Returns
         -------
-        logprob : array, shape (n_samples, n_components)
+        logprob : array, shape (n_samples, n_stats)
             Log probability of each sample in ``X`` for each of the
             model states.
         """
@@ -581,7 +618,7 @@ class StandardBKT(BaseEstimator):
 
         Returns
         -------
-        X : array, shape (n_features, )
+        X : array, shape (n_obs, )
             A random sample from the emission distribution corresponding
             to a given component.
         """
@@ -617,13 +654,17 @@ if __name__ == "__main__":
     df_data.loc[:, 'answer'] -= 1
     bkt = StandardBKT()
     bkt.fit(df_data, njobs=1)
-    print('cost time', bkt.cost_time)
+    print('cost time', bkt.train_cost_time)
     for key, value in bkt.model.items():
         print("--------", key, "-----------------")
         print("start_prob\n", value['start'])
         print("transmat\n", value['transition'])
         print("emissionprob\n", value['emission'])
 
+    for next_prob, trace_key, group_key in bkt.predict_batch(df_data, njobs=1):
+        print(trace_key, group_key, next_prob)
+
+    print('cost_time', bkt.predict_cost_time)
     # for line in open("/Users/haoweilai/Documents/projects/talirt/train_sample.txt"):
     #     answer, stu, question, skills = line.strip('\r\n').split('\t')
     #     if not skills or skills == '.' or skills == ' ':
