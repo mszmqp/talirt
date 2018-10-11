@@ -35,8 +35,8 @@ sys.path.append("./talirt")
 if os.getenv('map_input_file'):
     os.environ['COMPILEDIR'] = './.theano'
 
-from model.simulator import Simulator
-from model.irt import UIrt2PL, UIrt3PL, MIrt2PL, MIrt3PL, MIrt2PLN, MIrt3PLN
+from pyedm.model.simulator import Simulator
+from pyedm.model.irt.irt import UIrt2PL, UIrt3PL, MIrt2PL, MIrt3PL, MIrt2PLN, MIrt3PLN
 import math
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 

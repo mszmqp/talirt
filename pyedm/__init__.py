@@ -10,3 +10,4 @@ Authors: zhangzhenhu(zhangzhenhu1@100tal.com)
 Date:    2018/5/29 17:05
 """
 __version__ = "0.0.1"
+from .model import *

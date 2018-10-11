@@ -13,7 +13,7 @@ import sys
 import argparse
 import pandas as pd
 import numpy as np
-from talirt.model import irt
+from pyedm import irt
 __version__ = 1.0
 import ibis
 ibis.options.sql.default_limit = None
