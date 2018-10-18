@@ -5,7 +5,6 @@
 .. toctree::
     :maxdepth: 2
 
-    info.rst
     MLE.rst
     MAP.rst
 
@@ -18,6 +17,5 @@
 .. toctree::
     :maxdepth: 2
 
-    info.rst
     EM.rst
     MHRM.rst

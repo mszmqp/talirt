@@ -9,7 +9,10 @@
     :numbered:
 
     irt.rst
-    estimation/index.rst
+    estimation/MLE.rst
+    estimation/MAP.rst
+    estimation/EM.rst
+    estimation/MHRM.rst
     评估.rst
 
 

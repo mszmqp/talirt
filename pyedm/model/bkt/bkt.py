@@ -316,6 +316,7 @@ class StandardBKT(BaseEstimator):
         if _model is None:
             raise ValueError("未找到模型训练结果")
         state_sequence, state_prob = decoder(_model['start'], _model['transition'], _model['emission'], obs)
+        # todo 第一题的预测
 
         # 下到题目答对的概率
         next_state = np.argmax(_model['transition'][state_sequence[-1], :])
