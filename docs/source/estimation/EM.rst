@@ -201,7 +201,7 @@ EM原理
 .. math::
      g(\pmb{\theta} | \mathbf{Y},\pmb{\omega} ) =
     \frac{L( \mathbf{Y}|\pmb{\theta},\pmb{\omega})p(\pmb{\theta},\pmb{\omega})}
-    {\sum_{\pmb{\theta}' \in \Theta} L(\mathbf{Y}|\pmb{\theta}',\pmb{\omega})p(\pmb{\theta}',\pmb{\omega})  }  \tag{7}
+    {\sum_{\pmb{\theta}' \in \Theta} L(\mathbf{Y}|\pmb{\theta}',\pmb{\omega})p(\pmb{\theta}',\pmb{\omega})  }
 
 .. note::
     什么是先验概率、后验概率，这里不介绍了，自己恶补概率论基础吧。
@@ -226,7 +226,6 @@ EM原理
 .. math::
     \pmb{\omega}^{(t+1)} = \mathop{\arg\max}_{\pmb{\omega} \in \pmb{\Omega}}
     \sum_{\pmb{\theta} \in \pmb{\Theta}} g(\pmb{\theta}|\mathbf{Y},\pmb{\omega}^{(t)}) ln L(\mathbf{Y},\pmb{\theta}|\pmb{\omega})
-    \tag{10}
 
 - 重复E步和M步直到满足收敛条件
     - :math:`\pmb{\omega}` 不再变化 :math:`|\pmb{\omega}^{(t+1)} - \pmb{\omega}^{(t)}|<\epsilon`
