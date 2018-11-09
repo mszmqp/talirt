@@ -302,6 +302,11 @@ double HMM::estimate(int *x, int *lengths, int n_lengths, int max_iter, double t
             break;
         }
     }
+
+
+    this->iter = iter;
+    this->log_likelihood = cur_log_likelihood;
+
     free(PI);
     free2D(A, this->n_stat);
     free2D(B, this->n_stat);
@@ -405,7 +410,7 @@ double HMM::emmit_pdf(int stat, int obs) {
 
 
 void HMM::getPI(double *out) {
-    if(this->PI==NULL || out==NULL){
+    if (this->PI == NULL || out == NULL) {
         return;
     }
     for (int i = 0; i < this->n_stat; ++i) {
@@ -414,7 +419,7 @@ void HMM::getPI(double *out) {
 }
 
 void HMM::getA(double *out) {
-    if(this->A==NULL || out==NULL){
+    if (this->A == NULL || out == NULL) {
         return;
     }
     for (int i = 0; i < this->n_stat; ++i) {
@@ -426,7 +431,7 @@ void HMM::getA(double *out) {
 }
 
 void HMM::getB(double *out) {
-    if(this->B==NULL || out==NULL){
+    if (this->B == NULL || out == NULL) {
         return;
     }
     for (int i = 0; i < this->n_stat; ++i) {
