@@ -517,7 +517,18 @@ class StandardBKT(BaseEstimator):
         return self
 
     def fit_one_bak(self, train_x: np.ndarray, lengths: np.ndarray, trace=None):
+        """
+        这个函数在测试集下0.6秒
+        Parameters
+        ----------
+        train_x
+        lengths
+        trace
 
+        Returns
+        -------
+
+        """
         start = self.start_init.copy()
         transition = self.transition_init.copy()
         emission = self.emission_init.copy()
@@ -543,13 +554,23 @@ class StandardBKT(BaseEstimator):
         return trace, start, transition, emission, log_likelihood
 
     def fit_one(self, train_x: np.ndarray, lengths: np.ndarray, trace=None):
+        """
+        这个函数在测试集下0.3秒
+        Parameters
+        ----------
+        train_x
+        lengths
+        trace
 
+        Returns
+        -------
+
+        """
         start = self.start_init
         transition = self.transition_init
         emission = self.emission_init
 
-
-        hmm = bktcpp.pyHMM(2, 2)
+        hmm = bktcpp.pyHMM(self.n_stats, self.n_obs)
         hmm.init(start, transition, emission)
         hmm.set_bounded_start(self.start_lb, self.start_ub)
         hmm.set_bounded_transition(self.transition_lb, self.transition_ub)
@@ -672,7 +693,6 @@ if __name__ == "__main__":
     df_data = pd.read_csv(file_name, sep='\t', header=None, names=['answer', 'user', 'item', 'knowledge'])
     df_data.loc[:, 'answer'] -= 1
 
-
     bkt = StandardBKT()
     bkt.fit(df_data, njobs=1)
     print('cost time', bkt.train_cost_time)
@@ -681,7 +701,6 @@ if __name__ == "__main__":
         print("start_prob\n", value['start'])
         print("transmat\n", value['transition'])
         print("emissionprob\n", value['emission'])
-
 
     # for next_prob, trace_key, group_key in bkt.predict_batch(df_data, njobs=1):
     #     print(trace_key, group_key, next_prob)

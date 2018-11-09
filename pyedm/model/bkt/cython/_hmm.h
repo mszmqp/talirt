@@ -362,6 +362,10 @@ public:
 
     void getB(double *out);
 
+    void
+    predict_next(double *out, int *x, int n_x, double *pi = NULL, double *a = NULL, double *b = NULL, int n_stat = 0,
+                 int n_obs = 0);
+
 private:
     double forward(int *x, int n_x, double *PI, double **A);
 

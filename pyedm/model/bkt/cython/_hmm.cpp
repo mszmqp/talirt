@@ -441,4 +441,93 @@ void HMM::getB(double *out) {
     }
 }
 
+void HMM::predict_next(double *out, int *x, int n_x, double *start, double *transition, double *emission, int n_stat,
+                       int n_obs) {
+    if (x == NULL) {
+        return;
+    }
+    if (n_stat == 0) {
+        n_stat = this->n_stat;
+    }
+    if (n_obs == 0) {
+        n_obs = this->n_obs;
+    }
+    double *PI;
+    double **A, **B;
+    bool free_A = false, free_B = false;
+    if (start == NULL) {
+        PI = this->PI;
+    } else {
+        PI = start;
+    }
+    if (transition == NULL) {
+        A = this->A;
+    } else {
+        A = init2D<double>(n_stat, n_stat);
+        free_A = true;
+        for (int i = 0; i < n_stat; ++i) {
+            for (int j = 0; j < n_stat; ++j) {
+                A[i][j] = transition[i * n_stat + j];
+            }
+        }
+    }
 
+    if (emission == NULL) {
+        B = this->B;
+    } else {
+        free_B = true;
+        B = init2D<double>(n_stat, n_stat);
+        for (int i = 0; i < n_stat; ++i) {
+            for (int j = 0; j < n_stat; ++j) {
+                B[i][j] = emission[i * n_stat + j];
+            }
+        }
+    }
+    // 前向算法推进时，只需要保留两个状态即可，所以申请长度2的序列就行
+    double **fwdlattice = init2D<double>(2, n_stat);
+    double cn;
+    double log_likelihood = 0;
+
+    for (int i = 0; i < n_stat; i++) {
+        fwdlattice[0][i] = PI[i] * B[i][x[0]];
+    }
+    cn = normalize1D(fwdlattice[0], n_stat);
+    log_likelihood += log(cn);
+
+    for (int t = 1; t < n_x; t++) {
+
+        for (int i = 0; i < n_stat; i++) {
+            // 用t%2 找到 fwdlattice 的位置
+            fwdlattice[t % 2][i] = 0;
+
+            for (int j = 0; j < n_stat; ++j) {
+                fwdlattice[t % 2][i] += fwdlattice[(t - 1) % 2][j] * A[j][i];
+            }
+            fwdlattice[t % 2][i] *= B[i][x[t]];
+        }
+        cn = normalize1D(fwdlattice[t % 2], n_stat);
+        log_likelihood += log(cn);
+    }
+    // fwdlattice[-1]是最后时刻，隐状态的概率分布
+    for (int k = 0; k < n_obs; ++k) {
+        out[k] = 0;
+        for (int i = 0; i < n_stat; ++i) {
+            // 预测下一时刻隐状态分布
+            fwdlattice[n_x % 2][i] = 0;
+            for (int j = 0; j < n_stat; ++j) {
+                fwdlattice[n_x % 2][i] += fwdlattice[(n_x - 1) % 2][j] * A[j][i];
+            }
+
+            out[k] += fwdlattice[n_x % 2][i] * B[i][k];
+        }
+
+    }
+
+    print1D(fwdlattice[n_x % 2], n_obs);
+
+    if (free_A)free2D(A, n_stat);
+    if (free_B)free2D(B, n_stat);
+    free2D(fwdlattice, 2);
+//    return log_likelihood;
+
+}

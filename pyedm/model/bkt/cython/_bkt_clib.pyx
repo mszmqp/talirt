@@ -479,11 +479,11 @@ def fit(int[:] data,
         bounded1d(startprob, startprob_lb, startprob_ub)
         bounded2d(transmat, transmat_lb, transmat_ub)
         bounded2d(emissionprob,emissionprob_lb, emissionprob_ub)
-        print("-------",iter,'----------',abs(cur_log_likelihood - log_likelihood),tol)
-        print_1d("start_raw",startprob)
-        print_2d("transmat_raw",transmat)
-        print_2d("emission_raw",emissionprob)
-        print("ll",log_likelihood,cur_log_likelihood)
+        # print("-------",iter,'----------',abs(cur_log_likelihood - log_likelihood),tol)
+        # print_1d("start_raw",startprob)
+        # print_2d("transmat_raw",transmat)
+        # print_2d("emission_raw",emissionprob)
+        # print("ll",log_likelihood,cur_log_likelihood)
         # quit(0)
         if abs(cur_log_likelihood - log_likelihood) < tol:
             log_likelihood = cur_log_likelihood

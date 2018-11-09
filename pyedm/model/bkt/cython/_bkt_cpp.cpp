@@ -1074,12 +1074,12 @@ typedef npy_double __pyx_t_5numpy_double_t;
  */
 typedef npy_longdouble __pyx_t_5numpy_longdouble_t;
 
-/* "pyedm/model/bkt/cython/_bkt_cpp.pyx":27
+/* "pyedm/model/bkt/cython/_bkt_cpp.pyx":28
  * 
  * 
  * ctypedef double dtype_t             # <<<<<<<<<<<<<<
  * 
- * 
+ * cdef void *get_pointer(np.ndarray arr):
  */
 typedef double __pyx_t_5pyedm_5model_3bkt_8_bkt_cpp_dtype_t;
 /* Declarations.proto */
@@ -1710,6 +1710,7 @@ static PyObject *__pyx_builtin_RuntimeError;
 static PyObject *__pyx_builtin_ImportError;
 static const char __pyx_k_x[] = "x";
 static const char __pyx_k_np[] = "np";
+static const char __pyx_k_n_x[] = "n_x";
 static const char __pyx_k_tol[] = "tol";
 static const char __pyx_k_main[] = "__main__";
 static const char __pyx_k_name[] = "__name__";
@@ -1775,6 +1776,7 @@ static PyObject *__pyx_n_s_main;
 static PyObject *__pyx_n_s_max_iter;
 static PyObject *__pyx_n_s_n_obs;
 static PyObject *__pyx_n_s_n_stat;
+static PyObject *__pyx_n_s_n_x;
 static PyObject *__pyx_n_s_name;
 static PyObject *__pyx_kp_u_ndarray_is_not_C_contiguous;
 static PyObject *__pyx_kp_u_ndarray_is_not_Fortran_contiguou;
@@ -1804,14 +1806,15 @@ static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_4set_bounded_start
 static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_6set_bounded_transition(struct __pyx_obj_5pyedm_5model_3bkt_8_bkt_cpp_pyHMM *__pyx_v_self, PyArrayObject *__pyx_v_lower, PyArrayObject *__pyx_v_upper); /* proto */
 static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_8set_bounded_emission(struct __pyx_obj_5pyedm_5model_3bkt_8_bkt_cpp_pyHMM *__pyx_v_self, PyArrayObject *__pyx_v_lower, PyArrayObject *__pyx_v_upper); /* proto */
 static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_10estimate(struct __pyx_obj_5pyedm_5model_3bkt_8_bkt_cpp_pyHMM *__pyx_v_self, PyArrayObject *__pyx_v_x, PyArrayObject *__pyx_v_lengths, int __pyx_v_max_iter, double __pyx_v_tol); /* proto */
+static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_12predict_next(struct __pyx_obj_5pyedm_5model_3bkt_8_bkt_cpp_pyHMM *__pyx_v_self, PyArrayObject *__pyx_v_x, int __pyx_v_n_x, PyArrayObject *__pyx_v_start, PyArrayObject *__pyx_v_transition, PyArrayObject *__pyx_v_emission, int __pyx_v_n_stat, int __pyx_v_n_obs); /* proto */
 static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_5start___get__(struct __pyx_obj_5pyedm_5model_3bkt_8_bkt_cpp_pyHMM *__pyx_v_self); /* proto */
 static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_10transition___get__(struct __pyx_obj_5pyedm_5model_3bkt_8_bkt_cpp_pyHMM *__pyx_v_self); /* proto */
 static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_8emission___get__(struct __pyx_obj_5pyedm_5model_3bkt_8_bkt_cpp_pyHMM *__pyx_v_self); /* proto */
 static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_4iter___get__(struct __pyx_obj_5pyedm_5model_3bkt_8_bkt_cpp_pyHMM *__pyx_v_self); /* proto */
 static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_14log_likelihood___get__(struct __pyx_obj_5pyedm_5model_3bkt_8_bkt_cpp_pyHMM *__pyx_v_self); /* proto */
-static void __pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_12__dealloc__(struct __pyx_obj_5pyedm_5model_3bkt_8_bkt_cpp_pyHMM *__pyx_v_self); /* proto */
-static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_14__reduce_cython__(CYTHON_UNUSED struct __pyx_obj_5pyedm_5model_3bkt_8_bkt_cpp_pyHMM *__pyx_v_self); /* proto */
-static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_16__setstate_cython__(CYTHON_UNUSED struct __pyx_obj_5pyedm_5model_3bkt_8_bkt_cpp_pyHMM *__pyx_v_self, CYTHON_UNUSED PyObject *__pyx_v___pyx_state); /* proto */
+static void __pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_14__dealloc__(struct __pyx_obj_5pyedm_5model_3bkt_8_bkt_cpp_pyHMM *__pyx_v_self); /* proto */
+static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_16__reduce_cython__(CYTHON_UNUSED struct __pyx_obj_5pyedm_5model_3bkt_8_bkt_cpp_pyHMM *__pyx_v_self); /* proto */
+static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_18__setstate_cython__(CYTHON_UNUSED struct __pyx_obj_5pyedm_5model_3bkt_8_bkt_cpp_pyHMM *__pyx_v_self, CYTHON_UNUSED PyObject *__pyx_v___pyx_state); /* proto */
 static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, Py_buffer *__pyx_v_info, int __pyx_v_flags); /* proto */
 static void __pyx_pf_5numpy_7ndarray_2__releasebuffer__(PyArrayObject *__pyx_v_self, Py_buffer *__pyx_v_info); /* proto */
 static PyObject *__pyx_tp_new_5pyedm_5model_3bkt_8_bkt_cpp_pyHMM(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
@@ -1829,9 +1832,9 @@ static PyObject *__pyx_tuple__11;
 /* Late includes */
 
 /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":30
+ * ctypedef double dtype_t
  * 
- * 
- * cdef void * get_pointer(np.ndarray arr):             # <<<<<<<<<<<<<<
+ * cdef void *get_pointer(np.ndarray arr):             # <<<<<<<<<<<<<<
  *     if arr is None:
  *         return NULL
  */
@@ -1850,7 +1853,7 @@ static void *__pyx_f_5pyedm_5model_3bkt_8_bkt_cpp_get_pointer(PyArrayObject *__p
 
   /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":31
  * 
- * cdef void * get_pointer(np.ndarray arr):
+ * cdef void *get_pointer(np.ndarray arr):
  *     if arr is None:             # <<<<<<<<<<<<<<
  *         return NULL
  *     if not arr.flags['C_CONTIGUOUS']:
@@ -1860,18 +1863,18 @@ static void *__pyx_f_5pyedm_5model_3bkt_8_bkt_cpp_get_pointer(PyArrayObject *__p
   if (__pyx_t_2) {
 
     /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":32
- * cdef void * get_pointer(np.ndarray arr):
+ * cdef void *get_pointer(np.ndarray arr):
  *     if arr is None:
  *         return NULL             # <<<<<<<<<<<<<<
  *     if not arr.flags['C_CONTIGUOUS']:
- *             arr = np.ascontiguousarray(arr)
+ *         arr = np.ascontiguousarray(arr)
  */
     __pyx_r = NULL;
     goto __pyx_L0;
 
     /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":31
  * 
- * cdef void * get_pointer(np.ndarray arr):
+ * cdef void *get_pointer(np.ndarray arr):
  *     if arr is None:             # <<<<<<<<<<<<<<
  *         return NULL
  *     if not arr.flags['C_CONTIGUOUS']:
@@ -1882,7 +1885,7 @@ static void *__pyx_f_5pyedm_5model_3bkt_8_bkt_cpp_get_pointer(PyArrayObject *__p
  *     if arr is None:
  *         return NULL
  *     if not arr.flags['C_CONTIGUOUS']:             # <<<<<<<<<<<<<<
- *             arr = np.ascontiguousarray(arr)
+ *         arr = np.ascontiguousarray(arr)
  *     # cdef double[::1] lower_view = arr
  */
   __pyx_t_3 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_arr), __pyx_n_s_flags); if (unlikely(!__pyx_t_3)) __PYX_ERR(1, 33, __pyx_L1_error)
@@ -1898,7 +1901,7 @@ static void *__pyx_f_5pyedm_5model_3bkt_8_bkt_cpp_get_pointer(PyArrayObject *__p
     /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":34
  *         return NULL
  *     if not arr.flags['C_CONTIGUOUS']:
- *             arr = np.ascontiguousarray(arr)             # <<<<<<<<<<<<<<
+ *         arr = np.ascontiguousarray(arr)             # <<<<<<<<<<<<<<
  *     # cdef double[::1] lower_view = arr
  *     return arr.data
  */
@@ -1958,13 +1961,13 @@ static void *__pyx_f_5pyedm_5model_3bkt_8_bkt_cpp_get_pointer(PyArrayObject *__p
  *     if arr is None:
  *         return NULL
  *     if not arr.flags['C_CONTIGUOUS']:             # <<<<<<<<<<<<<<
- *             arr = np.ascontiguousarray(arr)
+ *         arr = np.ascontiguousarray(arr)
  *     # cdef double[::1] lower_view = arr
  */
   }
 
   /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":36
- *             arr = np.ascontiguousarray(arr)
+ *         arr = np.ascontiguousarray(arr)
  *     # cdef double[::1] lower_view = arr
  *     return arr.data             # <<<<<<<<<<<<<<
  * 
@@ -1974,9 +1977,9 @@ static void *__pyx_f_5pyedm_5model_3bkt_8_bkt_cpp_get_pointer(PyArrayObject *__p
   goto __pyx_L0;
 
   /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":30
+ * ctypedef double dtype_t
  * 
- * 
- * cdef void * get_pointer(np.ndarray arr):             # <<<<<<<<<<<<<<
+ * cdef void *get_pointer(np.ndarray arr):             # <<<<<<<<<<<<<<
  *     if arr is None:
  *         return NULL
  */
@@ -1998,9 +2001,9 @@ static void *__pyx_f_5pyedm_5model_3bkt_8_bkt_cpp_get_pointer(PyArrayObject *__p
 /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":42
  *     cdef int n_stat
  *     cdef int n_obs
- *     def __cinit__(self,int n_stat=2,int n_obs=2):             # <<<<<<<<<<<<<<
- *         self.c_object = new HMM(n_stat,n_obs)
- *         self.n_stat= n_stat
+ *     def __cinit__(self, int n_stat=2, int n_obs=2):             # <<<<<<<<<<<<<<
+ *         self.c_object = new HMM(n_stat, n_obs)
+ *         self.n_stat = n_stat
  */
 
 /* Python wrapper */
@@ -2086,9 +2089,9 @@ static int __pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM___cinit__(struct __pyx_o
 
   /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":43
  *     cdef int n_obs
- *     def __cinit__(self,int n_stat=2,int n_obs=2):
- *         self.c_object = new HMM(n_stat,n_obs)             # <<<<<<<<<<<<<<
- *         self.n_stat= n_stat
+ *     def __cinit__(self, int n_stat=2, int n_obs=2):
+ *         self.c_object = new HMM(n_stat, n_obs)             # <<<<<<<<<<<<<<
+ *         self.n_stat = n_stat
  *         self.n_obs = n_obs
  */
   try {
@@ -2100,29 +2103,29 @@ static int __pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM___cinit__(struct __pyx_o
   __pyx_v_self->c_object = __pyx_t_1;
 
   /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":44
- *     def __cinit__(self,int n_stat=2,int n_obs=2):
- *         self.c_object = new HMM(n_stat,n_obs)
- *         self.n_stat= n_stat             # <<<<<<<<<<<<<<
+ *     def __cinit__(self, int n_stat=2, int n_obs=2):
+ *         self.c_object = new HMM(n_stat, n_obs)
+ *         self.n_stat = n_stat             # <<<<<<<<<<<<<<
  *         self.n_obs = n_obs
  * 
  */
   __pyx_v_self->n_stat = __pyx_v_n_stat;
 
   /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":45
- *         self.c_object = new HMM(n_stat,n_obs)
- *         self.n_stat= n_stat
+ *         self.c_object = new HMM(n_stat, n_obs)
+ *         self.n_stat = n_stat
  *         self.n_obs = n_obs             # <<<<<<<<<<<<<<
  * 
- *     def init(self,np.ndarray start=None,np.ndarray transition=None,np.ndarray emission=None):
+ *     def init(self, np.ndarray start=None, np.ndarray transition=None, np.ndarray emission=None):
  */
   __pyx_v_self->n_obs = __pyx_v_n_obs;
 
   /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":42
  *     cdef int n_stat
  *     cdef int n_obs
- *     def __cinit__(self,int n_stat=2,int n_obs=2):             # <<<<<<<<<<<<<<
- *         self.c_object = new HMM(n_stat,n_obs)
- *         self.n_stat= n_stat
+ *     def __cinit__(self, int n_stat=2, int n_obs=2):             # <<<<<<<<<<<<<<
+ *         self.c_object = new HMM(n_stat, n_obs)
+ *         self.n_stat = n_stat
  */
 
   /* function exit code */
@@ -2139,9 +2142,9 @@ static int __pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM___cinit__(struct __pyx_o
 /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":47
  *         self.n_obs = n_obs
  * 
- *     def init(self,np.ndarray start=None,np.ndarray transition=None,np.ndarray emission=None):             # <<<<<<<<<<<<<<
- * 
- *         self.c_object.init(<double*>get_pointer(start),<double*>get_pointer(transition),<double*>get_pointer(emission))
+ *     def init(self, np.ndarray start=None, np.ndarray transition=None, np.ndarray emission=None):             # <<<<<<<<<<<<<<
+ *         self.c_object.init(<double*> get_pointer(start), <double*> get_pointer(transition),
+ *                            <double*> get_pointer(emission))
  */
 
 /* Python wrapper */
@@ -2238,21 +2241,21 @@ static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_2init(struct __pyx
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("init", 0);
 
-  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":49
- *     def init(self,np.ndarray start=None,np.ndarray transition=None,np.ndarray emission=None):
+  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":48
  * 
- *         self.c_object.init(<double*>get_pointer(start),<double*>get_pointer(transition),<double*>get_pointer(emission))             # <<<<<<<<<<<<<<
+ *     def init(self, np.ndarray start=None, np.ndarray transition=None, np.ndarray emission=None):
+ *         self.c_object.init(<double*> get_pointer(start), <double*> get_pointer(transition),             # <<<<<<<<<<<<<<
+ *                            <double*> get_pointer(emission))
  * 
- *     def set_bounded_start(self,np.ndarray lower=None,np.ndarray upper=None):
  */
   __pyx_v_self->c_object->init(((double *)__pyx_f_5pyedm_5model_3bkt_8_bkt_cpp_get_pointer(__pyx_v_start)), ((double *)__pyx_f_5pyedm_5model_3bkt_8_bkt_cpp_get_pointer(__pyx_v_transition)), ((double *)__pyx_f_5pyedm_5model_3bkt_8_bkt_cpp_get_pointer(__pyx_v_emission)));
 
   /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":47
  *         self.n_obs = n_obs
  * 
- *     def init(self,np.ndarray start=None,np.ndarray transition=None,np.ndarray emission=None):             # <<<<<<<<<<<<<<
- * 
- *         self.c_object.init(<double*>get_pointer(start),<double*>get_pointer(transition),<double*>get_pointer(emission))
+ *     def init(self, np.ndarray start=None, np.ndarray transition=None, np.ndarray emission=None):             # <<<<<<<<<<<<<<
+ *         self.c_object.init(<double*> get_pointer(start), <double*> get_pointer(transition),
+ *                            <double*> get_pointer(emission))
  */
 
   /* function exit code */
@@ -2263,11 +2266,11 @@ static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_2init(struct __pyx
 }
 
 /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":51
- *         self.c_object.init(<double*>get_pointer(start),<double*>get_pointer(transition),<double*>get_pointer(emission))
+ *                            <double*> get_pointer(emission))
  * 
- *     def set_bounded_start(self,np.ndarray lower=None,np.ndarray upper=None):             # <<<<<<<<<<<<<<
- * 
+ *     def set_bounded_start(self, np.ndarray lower=None, np.ndarray upper=None):             # <<<<<<<<<<<<<<
  *         self.c_object.setBoundedPI(<double *> get_pointer(lower), <double *> get_pointer(upper))
+ * 
  */
 
 /* Python wrapper */
@@ -2350,21 +2353,21 @@ static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_4set_bounded_start
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("set_bounded_start", 0);
 
-  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":53
- *     def set_bounded_start(self,np.ndarray lower=None,np.ndarray upper=None):
+  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":52
  * 
+ *     def set_bounded_start(self, np.ndarray lower=None, np.ndarray upper=None):
  *         self.c_object.setBoundedPI(<double *> get_pointer(lower), <double *> get_pointer(upper))             # <<<<<<<<<<<<<<
  * 
- *     def set_bounded_transition(self,np.ndarray lower=None,np.ndarray upper=None):
+ *     def set_bounded_transition(self, np.ndarray lower=None, np.ndarray upper=None):
  */
   __pyx_v_self->c_object->setBoundedPI(((double *)__pyx_f_5pyedm_5model_3bkt_8_bkt_cpp_get_pointer(__pyx_v_lower)), ((double *)__pyx_f_5pyedm_5model_3bkt_8_bkt_cpp_get_pointer(__pyx_v_upper)));
 
   /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":51
- *         self.c_object.init(<double*>get_pointer(start),<double*>get_pointer(transition),<double*>get_pointer(emission))
+ *                            <double*> get_pointer(emission))
  * 
- *     def set_bounded_start(self,np.ndarray lower=None,np.ndarray upper=None):             # <<<<<<<<<<<<<<
- * 
+ *     def set_bounded_start(self, np.ndarray lower=None, np.ndarray upper=None):             # <<<<<<<<<<<<<<
  *         self.c_object.setBoundedPI(<double *> get_pointer(lower), <double *> get_pointer(upper))
+ * 
  */
 
   /* function exit code */
@@ -2374,12 +2377,12 @@ static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_4set_bounded_start
   return __pyx_r;
 }
 
-/* "pyedm/model/bkt/cython/_bkt_cpp.pyx":55
+/* "pyedm/model/bkt/cython/_bkt_cpp.pyx":54
  *         self.c_object.setBoundedPI(<double *> get_pointer(lower), <double *> get_pointer(upper))
  * 
- *     def set_bounded_transition(self,np.ndarray lower=None,np.ndarray upper=None):             # <<<<<<<<<<<<<<
- * 
+ *     def set_bounded_transition(self, np.ndarray lower=None, np.ndarray upper=None):             # <<<<<<<<<<<<<<
  *         self.c_object.setBoundedA(<double *> get_pointer(lower), <double *> get_pointer(upper))
+ * 
  */
 
 /* Python wrapper */
@@ -2421,7 +2424,7 @@ static PyObject *__pyx_pw_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_7set_bounded_trans
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "set_bounded_transition") < 0)) __PYX_ERR(1, 55, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "set_bounded_transition") < 0)) __PYX_ERR(1, 54, __pyx_L3_error)
       }
     } else {
       switch (PyTuple_GET_SIZE(__pyx_args)) {
@@ -2438,14 +2441,14 @@ static PyObject *__pyx_pw_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_7set_bounded_trans
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("set_bounded_transition", 0, 0, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(1, 55, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("set_bounded_transition", 0, 0, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(1, 54, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("pyedm.model.bkt._bkt_cpp.pyHMM.set_bounded_transition", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_lower), __pyx_ptype_5numpy_ndarray, 1, "lower", 0))) __PYX_ERR(1, 55, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_upper), __pyx_ptype_5numpy_ndarray, 1, "upper", 0))) __PYX_ERR(1, 55, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_lower), __pyx_ptype_5numpy_ndarray, 1, "lower", 0))) __PYX_ERR(1, 54, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_upper), __pyx_ptype_5numpy_ndarray, 1, "upper", 0))) __PYX_ERR(1, 54, __pyx_L1_error)
   __pyx_r = __pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_6set_bounded_transition(((struct __pyx_obj_5pyedm_5model_3bkt_8_bkt_cpp_pyHMM *)__pyx_v_self), __pyx_v_lower, __pyx_v_upper);
 
   /* function exit code */
@@ -2462,21 +2465,21 @@ static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_6set_bounded_trans
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("set_bounded_transition", 0);
 
-  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":57
- *     def set_bounded_transition(self,np.ndarray lower=None,np.ndarray upper=None):
+  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":55
  * 
+ *     def set_bounded_transition(self, np.ndarray lower=None, np.ndarray upper=None):
  *         self.c_object.setBoundedA(<double *> get_pointer(lower), <double *> get_pointer(upper))             # <<<<<<<<<<<<<<
  * 
- *     def set_bounded_emission(self,np.ndarray lower=None,np.ndarray upper=None):
+ *     def set_bounded_emission(self, np.ndarray lower=None, np.ndarray upper=None):
  */
   __pyx_v_self->c_object->setBoundedA(((double *)__pyx_f_5pyedm_5model_3bkt_8_bkt_cpp_get_pointer(__pyx_v_lower)), ((double *)__pyx_f_5pyedm_5model_3bkt_8_bkt_cpp_get_pointer(__pyx_v_upper)));
 
-  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":55
+  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":54
  *         self.c_object.setBoundedPI(<double *> get_pointer(lower), <double *> get_pointer(upper))
  * 
- *     def set_bounded_transition(self,np.ndarray lower=None,np.ndarray upper=None):             # <<<<<<<<<<<<<<
- * 
+ *     def set_bounded_transition(self, np.ndarray lower=None, np.ndarray upper=None):             # <<<<<<<<<<<<<<
  *         self.c_object.setBoundedA(<double *> get_pointer(lower), <double *> get_pointer(upper))
+ * 
  */
 
   /* function exit code */
@@ -2486,11 +2489,11 @@ static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_6set_bounded_trans
   return __pyx_r;
 }
 
-/* "pyedm/model/bkt/cython/_bkt_cpp.pyx":59
+/* "pyedm/model/bkt/cython/_bkt_cpp.pyx":57
  *         self.c_object.setBoundedA(<double *> get_pointer(lower), <double *> get_pointer(upper))
  * 
- *     def set_bounded_emission(self,np.ndarray lower=None,np.ndarray upper=None):             # <<<<<<<<<<<<<<
- *         self.c_object.setBoundedB( <double *> get_pointer(lower), <double *> get_pointer(upper))
+ *     def set_bounded_emission(self, np.ndarray lower=None, np.ndarray upper=None):             # <<<<<<<<<<<<<<
+ *         self.c_object.setBoundedB(<double *> get_pointer(lower), <double *> get_pointer(upper))
  * 
  */
 
@@ -2533,7 +2536,7 @@ static PyObject *__pyx_pw_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_9set_bounded_emiss
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "set_bounded_emission") < 0)) __PYX_ERR(1, 59, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "set_bounded_emission") < 0)) __PYX_ERR(1, 57, __pyx_L3_error)
       }
     } else {
       switch (PyTuple_GET_SIZE(__pyx_args)) {
@@ -2550,14 +2553,14 @@ static PyObject *__pyx_pw_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_9set_bounded_emiss
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("set_bounded_emission", 0, 0, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(1, 59, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("set_bounded_emission", 0, 0, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(1, 57, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("pyedm.model.bkt._bkt_cpp.pyHMM.set_bounded_emission", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_lower), __pyx_ptype_5numpy_ndarray, 1, "lower", 0))) __PYX_ERR(1, 59, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_upper), __pyx_ptype_5numpy_ndarray, 1, "upper", 0))) __PYX_ERR(1, 59, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_lower), __pyx_ptype_5numpy_ndarray, 1, "lower", 0))) __PYX_ERR(1, 57, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_upper), __pyx_ptype_5numpy_ndarray, 1, "upper", 0))) __PYX_ERR(1, 57, __pyx_L1_error)
   __pyx_r = __pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_8set_bounded_emission(((struct __pyx_obj_5pyedm_5model_3bkt_8_bkt_cpp_pyHMM *)__pyx_v_self), __pyx_v_lower, __pyx_v_upper);
 
   /* function exit code */
@@ -2574,20 +2577,20 @@ static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_8set_bounded_emiss
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("set_bounded_emission", 0);
 
-  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":60
+  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":58
  * 
- *     def set_bounded_emission(self,np.ndarray lower=None,np.ndarray upper=None):
- *         self.c_object.setBoundedB( <double *> get_pointer(lower), <double *> get_pointer(upper))             # <<<<<<<<<<<<<<
+ *     def set_bounded_emission(self, np.ndarray lower=None, np.ndarray upper=None):
+ *         self.c_object.setBoundedB(<double *> get_pointer(lower), <double *> get_pointer(upper))             # <<<<<<<<<<<<<<
  * 
- * 
+ *     def estimate(self, np.ndarray[int, ndim=1] x, np.ndarray[int, ndim=1] lengths, int max_iter = 20,
  */
   __pyx_v_self->c_object->setBoundedB(((double *)__pyx_f_5pyedm_5model_3bkt_8_bkt_cpp_get_pointer(__pyx_v_lower)), ((double *)__pyx_f_5pyedm_5model_3bkt_8_bkt_cpp_get_pointer(__pyx_v_upper)));
 
-  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":59
+  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":57
  *         self.c_object.setBoundedA(<double *> get_pointer(lower), <double *> get_pointer(upper))
  * 
- *     def set_bounded_emission(self,np.ndarray lower=None,np.ndarray upper=None):             # <<<<<<<<<<<<<<
- *         self.c_object.setBoundedB( <double *> get_pointer(lower), <double *> get_pointer(upper))
+ *     def set_bounded_emission(self, np.ndarray lower=None, np.ndarray upper=None):             # <<<<<<<<<<<<<<
+ *         self.c_object.setBoundedB(<double *> get_pointer(lower), <double *> get_pointer(upper))
  * 
  */
 
@@ -2598,12 +2601,12 @@ static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_8set_bounded_emiss
   return __pyx_r;
 }
 
-/* "pyedm/model/bkt/cython/_bkt_cpp.pyx":63
+/* "pyedm/model/bkt/cython/_bkt_cpp.pyx":60
+ *         self.c_object.setBoundedB(<double *> get_pointer(lower), <double *> get_pointer(upper))
  * 
- * 
- *     def estimate(self, np.ndarray[int,ndim=1] x, np.ndarray[int,ndim=1] lengths, int max_iter = 20, double tol = 1e-2):             # <<<<<<<<<<<<<<
- *         # if not x.flags['C_CONTIGUOUS']:
- *         #     x = np.ascontiguousarray(x)
+ *     def estimate(self, np.ndarray[int, ndim=1] x, np.ndarray[int, ndim=1] lengths, int max_iter = 20,             # <<<<<<<<<<<<<<
+ *                  double tol = 1e-2):
+ *         return self.c_object.estimate(<int*> get_pointer(x), <int*> get_pointer(lengths), lengths.shape[0], max_iter,
  */
 
 /* Python wrapper */
@@ -2643,7 +2646,7 @@ static PyObject *__pyx_pw_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_11estimate(PyObjec
         case  1:
         if (likely((values[1] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_lengths)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("estimate", 0, 2, 4, 1); __PYX_ERR(1, 63, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("estimate", 0, 2, 4, 1); __PYX_ERR(1, 60, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  2:
@@ -2659,7 +2662,7 @@ static PyObject *__pyx_pw_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_11estimate(PyObjec
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "estimate") < 0)) __PYX_ERR(1, 63, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "estimate") < 0)) __PYX_ERR(1, 60, __pyx_L3_error)
       }
     } else {
       switch (PyTuple_GET_SIZE(__pyx_args)) {
@@ -2676,26 +2679,26 @@ static PyObject *__pyx_pw_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_11estimate(PyObjec
     __pyx_v_x = ((PyArrayObject *)values[0]);
     __pyx_v_lengths = ((PyArrayObject *)values[1]);
     if (values[2]) {
-      __pyx_v_max_iter = __Pyx_PyInt_As_int(values[2]); if (unlikely((__pyx_v_max_iter == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 63, __pyx_L3_error)
+      __pyx_v_max_iter = __Pyx_PyInt_As_int(values[2]); if (unlikely((__pyx_v_max_iter == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 60, __pyx_L3_error)
     } else {
       __pyx_v_max_iter = ((int)20);
     }
     if (values[3]) {
-      __pyx_v_tol = __pyx_PyFloat_AsDouble(values[3]); if (unlikely((__pyx_v_tol == (double)-1) && PyErr_Occurred())) __PYX_ERR(1, 63, __pyx_L3_error)
+      __pyx_v_tol = __pyx_PyFloat_AsDouble(values[3]); if (unlikely((__pyx_v_tol == (double)-1) && PyErr_Occurred())) __PYX_ERR(1, 61, __pyx_L3_error)
     } else {
       __pyx_v_tol = ((double)1e-2);
     }
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("estimate", 0, 2, 4, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(1, 63, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("estimate", 0, 2, 4, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(1, 60, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("pyedm.model.bkt._bkt_cpp.pyHMM.estimate", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_x), __pyx_ptype_5numpy_ndarray, 1, "x", 0))) __PYX_ERR(1, 63, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_lengths), __pyx_ptype_5numpy_ndarray, 1, "lengths", 0))) __PYX_ERR(1, 63, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_x), __pyx_ptype_5numpy_ndarray, 1, "x", 0))) __PYX_ERR(1, 60, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_lengths), __pyx_ptype_5numpy_ndarray, 1, "lengths", 0))) __PYX_ERR(1, 60, __pyx_L1_error)
   __pyx_r = __pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_10estimate(((struct __pyx_obj_5pyedm_5model_3bkt_8_bkt_cpp_pyHMM *)__pyx_v_self), __pyx_v_x, __pyx_v_lengths, __pyx_v_max_iter, __pyx_v_tol);
 
   /* function exit code */
@@ -2726,35 +2729,43 @@ static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_10estimate(struct 
   __pyx_pybuffernd_lengths.rcbuffer = &__pyx_pybuffer_lengths;
   {
     __Pyx_BufFmt_StackElem __pyx_stack[1];
-    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_x.rcbuffer->pybuffer, (PyObject*)__pyx_v_x, &__Pyx_TypeInfo_int, PyBUF_FORMAT| PyBUF_STRIDES, 1, 0, __pyx_stack) == -1)) __PYX_ERR(1, 63, __pyx_L1_error)
+    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_x.rcbuffer->pybuffer, (PyObject*)__pyx_v_x, &__Pyx_TypeInfo_int, PyBUF_FORMAT| PyBUF_STRIDES, 1, 0, __pyx_stack) == -1)) __PYX_ERR(1, 60, __pyx_L1_error)
   }
   __pyx_pybuffernd_x.diminfo[0].strides = __pyx_pybuffernd_x.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_x.diminfo[0].shape = __pyx_pybuffernd_x.rcbuffer->pybuffer.shape[0];
   {
     __Pyx_BufFmt_StackElem __pyx_stack[1];
-    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_lengths.rcbuffer->pybuffer, (PyObject*)__pyx_v_lengths, &__Pyx_TypeInfo_int, PyBUF_FORMAT| PyBUF_STRIDES, 1, 0, __pyx_stack) == -1)) __PYX_ERR(1, 63, __pyx_L1_error)
+    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_lengths.rcbuffer->pybuffer, (PyObject*)__pyx_v_lengths, &__Pyx_TypeInfo_int, PyBUF_FORMAT| PyBUF_STRIDES, 1, 0, __pyx_stack) == -1)) __PYX_ERR(1, 60, __pyx_L1_error)
   }
   __pyx_pybuffernd_lengths.diminfo[0].strides = __pyx_pybuffernd_lengths.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_lengths.diminfo[0].shape = __pyx_pybuffernd_lengths.rcbuffer->pybuffer.shape[0];
 
-  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":72
- *         # cdef int[::1] lengths_memview = lengths
- * 
- *         return self.c_object.estimate(<int*>get_pointer(x), <int*>get_pointer(lengths), lengths.shape[0] ,  max_iter,  tol)             # <<<<<<<<<<<<<<
- * 
- *     @property
+  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":62
+ *     def estimate(self, np.ndarray[int, ndim=1] x, np.ndarray[int, ndim=1] lengths, int max_iter = 20,
+ *                  double tol = 1e-2):
+ *         return self.c_object.estimate(<int*> get_pointer(x), <int*> get_pointer(lengths), lengths.shape[0], max_iter,             # <<<<<<<<<<<<<<
+ *                                       tol)
+ *     def predict_next(self, np.ndarray x, int n_x, np.ndarray start=None, np.ndarray transition=None,
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->c_object->estimate(((int *)__pyx_f_5pyedm_5model_3bkt_8_bkt_cpp_get_pointer(((PyArrayObject *)__pyx_v_x))), ((int *)__pyx_f_5pyedm_5model_3bkt_8_bkt_cpp_get_pointer(((PyArrayObject *)__pyx_v_lengths))), (__pyx_v_lengths->dimensions[0]), __pyx_v_max_iter, __pyx_v_tol)); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 72, __pyx_L1_error)
+
+  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":63
+ *                  double tol = 1e-2):
+ *         return self.c_object.estimate(<int*> get_pointer(x), <int*> get_pointer(lengths), lengths.shape[0], max_iter,
+ *                                       tol)             # <<<<<<<<<<<<<<
+ *     def predict_next(self, np.ndarray x, int n_x, np.ndarray start=None, np.ndarray transition=None,
+ *                      np.ndarray emission=None,
+ */
+  __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->c_object->estimate(((int *)__pyx_f_5pyedm_5model_3bkt_8_bkt_cpp_get_pointer(((PyArrayObject *)__pyx_v_x))), ((int *)__pyx_f_5pyedm_5model_3bkt_8_bkt_cpp_get_pointer(((PyArrayObject *)__pyx_v_lengths))), (__pyx_v_lengths->dimensions[0]), __pyx_v_max_iter, __pyx_v_tol)); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 62, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":63
+  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":60
+ *         self.c_object.setBoundedB(<double *> get_pointer(lower), <double *> get_pointer(upper))
  * 
- * 
- *     def estimate(self, np.ndarray[int,ndim=1] x, np.ndarray[int,ndim=1] lengths, int max_iter = 20, double tol = 1e-2):             # <<<<<<<<<<<<<<
- *         # if not x.flags['C_CONTIGUOUS']:
- *         #     x = np.ascontiguousarray(x)
+ *     def estimate(self, np.ndarray[int, ndim=1] x, np.ndarray[int, ndim=1] lengths, int max_iter = 20,             # <<<<<<<<<<<<<<
+ *                  double tol = 1e-2):
+ *         return self.c_object.estimate(<int*> get_pointer(x), <int*> get_pointer(lengths), lengths.shape[0], max_iter,
  */
 
   /* function exit code */
@@ -2779,12 +2790,288 @@ static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_10estimate(struct 
   return __pyx_r;
 }
 
-/* "pyedm/model/bkt/cython/_bkt_cpp.pyx":75
- * 
+/* "pyedm/model/bkt/cython/_bkt_cpp.pyx":64
+ *         return self.c_object.estimate(<int*> get_pointer(x), <int*> get_pointer(lengths), lengths.shape[0], max_iter,
+ *                                       tol)
+ *     def predict_next(self, np.ndarray x, int n_x, np.ndarray start=None, np.ndarray transition=None,             # <<<<<<<<<<<<<<
+ *                      np.ndarray emission=None,
+ *                      int n_stat=0, int n_obs=0):
+ */
+
+/* Python wrapper */
+static PyObject *__pyx_pw_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_13predict_next(PyObject *__pyx_v_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
+static PyObject *__pyx_pw_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_13predict_next(PyObject *__pyx_v_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
+  PyArrayObject *__pyx_v_x = 0;
+  int __pyx_v_n_x;
+  PyArrayObject *__pyx_v_start = 0;
+  PyArrayObject *__pyx_v_transition = 0;
+  PyArrayObject *__pyx_v_emission = 0;
+  int __pyx_v_n_stat;
+  int __pyx_v_n_obs;
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("predict_next (wrapper)", 0);
+  {
+    static PyObject **__pyx_pyargnames[] = {&__pyx_n_s_x,&__pyx_n_s_n_x,&__pyx_n_s_start,&__pyx_n_s_transition,&__pyx_n_s_emission,&__pyx_n_s_n_stat,&__pyx_n_s_n_obs,0};
+    PyObject* values[7] = {0,0,0,0,0,0,0};
+    values[2] = (PyObject *)((PyArrayObject *)Py_None);
+    values[3] = (PyObject *)((PyArrayObject *)Py_None);
+
+    /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":65
+ *                                       tol)
+ *     def predict_next(self, np.ndarray x, int n_x, np.ndarray start=None, np.ndarray transition=None,
+ *                      np.ndarray emission=None,             # <<<<<<<<<<<<<<
+ *                      int n_stat=0, int n_obs=0):
+ *         out = np.zeros(n_obs if n_obs > 0 else self.n_obs, dtype=np.float64);
+ */
+    values[4] = (PyObject *)((PyArrayObject *)Py_None);
+    if (unlikely(__pyx_kwds)) {
+      Py_ssize_t kw_args;
+      const Py_ssize_t pos_args = PyTuple_GET_SIZE(__pyx_args);
+      switch (pos_args) {
+        case  7: values[6] = PyTuple_GET_ITEM(__pyx_args, 6);
+        CYTHON_FALLTHROUGH;
+        case  6: values[5] = PyTuple_GET_ITEM(__pyx_args, 5);
+        CYTHON_FALLTHROUGH;
+        case  5: values[4] = PyTuple_GET_ITEM(__pyx_args, 4);
+        CYTHON_FALLTHROUGH;
+        case  4: values[3] = PyTuple_GET_ITEM(__pyx_args, 3);
+        CYTHON_FALLTHROUGH;
+        case  3: values[2] = PyTuple_GET_ITEM(__pyx_args, 2);
+        CYTHON_FALLTHROUGH;
+        case  2: values[1] = PyTuple_GET_ITEM(__pyx_args, 1);
+        CYTHON_FALLTHROUGH;
+        case  1: values[0] = PyTuple_GET_ITEM(__pyx_args, 0);
+        CYTHON_FALLTHROUGH;
+        case  0: break;
+        default: goto __pyx_L5_argtuple_error;
+      }
+      kw_args = PyDict_Size(__pyx_kwds);
+      switch (pos_args) {
+        case  0:
+        if (likely((values[0] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_x)) != 0)) kw_args--;
+        else goto __pyx_L5_argtuple_error;
+        CYTHON_FALLTHROUGH;
+        case  1:
+        if (likely((values[1] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_n_x)) != 0)) kw_args--;
+        else {
+          __Pyx_RaiseArgtupleInvalid("predict_next", 0, 2, 7, 1); __PYX_ERR(1, 64, __pyx_L3_error)
+        }
+        CYTHON_FALLTHROUGH;
+        case  2:
+        if (kw_args > 0) {
+          PyObject* value = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_start);
+          if (value) { values[2] = value; kw_args--; }
+        }
+        CYTHON_FALLTHROUGH;
+        case  3:
+        if (kw_args > 0) {
+          PyObject* value = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_transition);
+          if (value) { values[3] = value; kw_args--; }
+        }
+        CYTHON_FALLTHROUGH;
+        case  4:
+        if (kw_args > 0) {
+          PyObject* value = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_emission);
+          if (value) { values[4] = value; kw_args--; }
+        }
+        CYTHON_FALLTHROUGH;
+        case  5:
+        if (kw_args > 0) {
+          PyObject* value = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_n_stat);
+          if (value) { values[5] = value; kw_args--; }
+        }
+        CYTHON_FALLTHROUGH;
+        case  6:
+        if (kw_args > 0) {
+          PyObject* value = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_n_obs);
+          if (value) { values[6] = value; kw_args--; }
+        }
+      }
+      if (unlikely(kw_args > 0)) {
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "predict_next") < 0)) __PYX_ERR(1, 64, __pyx_L3_error)
+      }
+    } else {
+      switch (PyTuple_GET_SIZE(__pyx_args)) {
+        case  7: values[6] = PyTuple_GET_ITEM(__pyx_args, 6);
+        CYTHON_FALLTHROUGH;
+        case  6: values[5] = PyTuple_GET_ITEM(__pyx_args, 5);
+        CYTHON_FALLTHROUGH;
+        case  5: values[4] = PyTuple_GET_ITEM(__pyx_args, 4);
+        CYTHON_FALLTHROUGH;
+        case  4: values[3] = PyTuple_GET_ITEM(__pyx_args, 3);
+        CYTHON_FALLTHROUGH;
+        case  3: values[2] = PyTuple_GET_ITEM(__pyx_args, 2);
+        CYTHON_FALLTHROUGH;
+        case  2: values[1] = PyTuple_GET_ITEM(__pyx_args, 1);
+        values[0] = PyTuple_GET_ITEM(__pyx_args, 0);
+        break;
+        default: goto __pyx_L5_argtuple_error;
+      }
+    }
+    __pyx_v_x = ((PyArrayObject *)values[0]);
+    __pyx_v_n_x = __Pyx_PyInt_As_int(values[1]); if (unlikely((__pyx_v_n_x == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 64, __pyx_L3_error)
+    __pyx_v_start = ((PyArrayObject *)values[2]);
+    __pyx_v_transition = ((PyArrayObject *)values[3]);
+    __pyx_v_emission = ((PyArrayObject *)values[4]);
+    if (values[5]) {
+      __pyx_v_n_stat = __Pyx_PyInt_As_int(values[5]); if (unlikely((__pyx_v_n_stat == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 66, __pyx_L3_error)
+    } else {
+      __pyx_v_n_stat = ((int)0);
+    }
+    if (values[6]) {
+      __pyx_v_n_obs = __Pyx_PyInt_As_int(values[6]); if (unlikely((__pyx_v_n_obs == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 66, __pyx_L3_error)
+    } else {
+      __pyx_v_n_obs = ((int)0);
+    }
+  }
+  goto __pyx_L4_argument_unpacking_done;
+  __pyx_L5_argtuple_error:;
+  __Pyx_RaiseArgtupleInvalid("predict_next", 0, 2, 7, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(1, 64, __pyx_L3_error)
+  __pyx_L3_error:;
+  __Pyx_AddTraceback("pyedm.model.bkt._bkt_cpp.pyHMM.predict_next", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_RefNannyFinishContext();
+  return NULL;
+  __pyx_L4_argument_unpacking_done:;
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_x), __pyx_ptype_5numpy_ndarray, 1, "x", 0))) __PYX_ERR(1, 64, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_start), __pyx_ptype_5numpy_ndarray, 1, "start", 0))) __PYX_ERR(1, 64, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_transition), __pyx_ptype_5numpy_ndarray, 1, "transition", 0))) __PYX_ERR(1, 64, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_emission), __pyx_ptype_5numpy_ndarray, 1, "emission", 0))) __PYX_ERR(1, 65, __pyx_L1_error)
+  __pyx_r = __pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_12predict_next(((struct __pyx_obj_5pyedm_5model_3bkt_8_bkt_cpp_pyHMM *)__pyx_v_self), __pyx_v_x, __pyx_v_n_x, __pyx_v_start, __pyx_v_transition, __pyx_v_emission, __pyx_v_n_stat, __pyx_v_n_obs);
+
+  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":64
+ *         return self.c_object.estimate(<int*> get_pointer(x), <int*> get_pointer(lengths), lengths.shape[0], max_iter,
+ *                                       tol)
+ *     def predict_next(self, np.ndarray x, int n_x, np.ndarray start=None, np.ndarray transition=None,             # <<<<<<<<<<<<<<
+ *                      np.ndarray emission=None,
+ *                      int n_stat=0, int n_obs=0):
+ */
+
+  /* function exit code */
+  goto __pyx_L0;
+  __pyx_L1_error:;
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_12predict_next(struct __pyx_obj_5pyedm_5model_3bkt_8_bkt_cpp_pyHMM *__pyx_v_self, PyArrayObject *__pyx_v_x, int __pyx_v_n_x, PyArrayObject *__pyx_v_start, PyArrayObject *__pyx_v_transition, PyArrayObject *__pyx_v_emission, int __pyx_v_n_stat, int __pyx_v_n_obs) {
+  PyObject *__pyx_v_out = NULL;
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  PyObject *__pyx_t_2 = NULL;
+  PyObject *__pyx_t_3 = NULL;
+  PyObject *__pyx_t_4 = NULL;
+  PyObject *__pyx_t_5 = NULL;
+  __Pyx_RefNannySetupContext("predict_next", 0);
+
+  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":67
+ *                      np.ndarray emission=None,
+ *                      int n_stat=0, int n_obs=0):
+ *         out = np.zeros(n_obs if n_obs > 0 else self.n_obs, dtype=np.float64);             # <<<<<<<<<<<<<<
+ *         self.c_object.predict_next(<double*> get_pointer(out), <int*> get_pointer(x), n_x,
+ *                                    <double*> get_pointer(start),
+ */
+  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 67, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_zeros); if (unlikely(!__pyx_t_2)) __PYX_ERR(1, 67, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  if (((__pyx_v_n_obs > 0) != 0)) {
+    __pyx_t_3 = __Pyx_PyInt_From_int(__pyx_v_n_obs); if (unlikely(!__pyx_t_3)) __PYX_ERR(1, 67, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_3);
+    __pyx_t_1 = __pyx_t_3;
+    __pyx_t_3 = 0;
+  } else {
+    __pyx_t_3 = __Pyx_PyInt_From_int(__pyx_v_self->n_obs); if (unlikely(!__pyx_t_3)) __PYX_ERR(1, 67, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_3);
+    __pyx_t_1 = __pyx_t_3;
+    __pyx_t_3 = 0;
+  }
+  __pyx_t_3 = PyTuple_New(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(1, 67, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_3);
+  __Pyx_GIVEREF(__pyx_t_1);
+  PyTuple_SET_ITEM(__pyx_t_3, 0, __pyx_t_1);
+  __pyx_t_1 = 0;
+  __pyx_t_1 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 67, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_t_4 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_4)) __PYX_ERR(1, 67, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_4);
+  __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_n_s_float64); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 67, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_5);
+  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+  if (PyDict_SetItem(__pyx_t_1, __pyx_n_s_dtype, __pyx_t_5) < 0) __PYX_ERR(1, 67, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+  __pyx_t_5 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_3, __pyx_t_1); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 67, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_5);
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  __pyx_v_out = __pyx_t_5;
+  __pyx_t_5 = 0;
+
+  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":68
+ *                      int n_stat=0, int n_obs=0):
+ *         out = np.zeros(n_obs if n_obs > 0 else self.n_obs, dtype=np.float64);
+ *         self.c_object.predict_next(<double*> get_pointer(out), <int*> get_pointer(x), n_x,             # <<<<<<<<<<<<<<
+ *                                    <double*> get_pointer(start),
+ *                                    <double*> get_pointer(transition),
+ */
+  if (!(likely(((__pyx_v_out) == Py_None) || likely(__Pyx_TypeTest(__pyx_v_out, __pyx_ptype_5numpy_ndarray))))) __PYX_ERR(1, 68, __pyx_L1_error)
+
+  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":72
+ *                                    <double*> get_pointer(transition),
+ *                                    <double*> get_pointer(emission),
+ *                                    n_stat,n_obs)             # <<<<<<<<<<<<<<
+ *         return out
+ *         pass
+ */
+  __pyx_v_self->c_object->predict_next(((double *)__pyx_f_5pyedm_5model_3bkt_8_bkt_cpp_get_pointer(((PyArrayObject *)__pyx_v_out))), ((int *)__pyx_f_5pyedm_5model_3bkt_8_bkt_cpp_get_pointer(__pyx_v_x)), __pyx_v_n_x, ((double *)__pyx_f_5pyedm_5model_3bkt_8_bkt_cpp_get_pointer(__pyx_v_start)), ((double *)__pyx_f_5pyedm_5model_3bkt_8_bkt_cpp_get_pointer(__pyx_v_transition)), ((double *)__pyx_f_5pyedm_5model_3bkt_8_bkt_cpp_get_pointer(__pyx_v_emission)), __pyx_v_n_stat, __pyx_v_n_obs);
+
+  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":73
+ *                                    <double*> get_pointer(emission),
+ *                                    n_stat,n_obs)
+ *         return out             # <<<<<<<<<<<<<<
+ *         pass
+ *     @property
+ */
+  __Pyx_XDECREF(__pyx_r);
+  __Pyx_INCREF(__pyx_v_out);
+  __pyx_r = __pyx_v_out;
+  goto __pyx_L0;
+
+  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":64
+ *         return self.c_object.estimate(<int*> get_pointer(x), <int*> get_pointer(lengths), lengths.shape[0], max_iter,
+ *                                       tol)
+ *     def predict_next(self, np.ndarray x, int n_x, np.ndarray start=None, np.ndarray transition=None,             # <<<<<<<<<<<<<<
+ *                      np.ndarray emission=None,
+ *                      int n_stat=0, int n_obs=0):
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_2);
+  __Pyx_XDECREF(__pyx_t_3);
+  __Pyx_XDECREF(__pyx_t_4);
+  __Pyx_XDECREF(__pyx_t_5);
+  __Pyx_AddTraceback("pyedm.model.bkt._bkt_cpp.pyHMM.predict_next", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XDECREF(__pyx_v_out);
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "pyedm/model/bkt/cython/_bkt_cpp.pyx":76
+ *         pass
  *     @property
  *     def start(self):             # <<<<<<<<<<<<<<
- *         pi = np.zeros(self.n_stat,dtype=np.float64)
- *         self.c_object.getPI(<double*>get_pointer(pi))
+ *         pi = np.zeros(self.n_stat, dtype=np.float64)
+ *         self.c_object.getPI(<double*> get_pointer(pi))
  */
 
 /* Python wrapper */
@@ -2811,35 +3098,35 @@ static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_5start___get__(str
   PyObject *__pyx_t_5 = NULL;
   __Pyx_RefNannySetupContext("__get__", 0);
 
-  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":76
+  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":77
  *     @property
  *     def start(self):
- *         pi = np.zeros(self.n_stat,dtype=np.float64)             # <<<<<<<<<<<<<<
- *         self.c_object.getPI(<double*>get_pointer(pi))
+ *         pi = np.zeros(self.n_stat, dtype=np.float64)             # <<<<<<<<<<<<<<
+ *         self.c_object.getPI(<double*> get_pointer(pi))
  *         return pi
  */
-  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 76, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 77, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_zeros); if (unlikely(!__pyx_t_2)) __PYX_ERR(1, 76, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_zeros); if (unlikely(!__pyx_t_2)) __PYX_ERR(1, 77, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->n_stat); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 76, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->n_stat); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 77, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_3 = PyTuple_New(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(1, 76, __pyx_L1_error)
+  __pyx_t_3 = PyTuple_New(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(1, 77, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_GIVEREF(__pyx_t_1);
   PyTuple_SET_ITEM(__pyx_t_3, 0, __pyx_t_1);
   __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 76, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 77, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_4 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_4)) __PYX_ERR(1, 76, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_4)) __PYX_ERR(1, 77, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_n_s_float64); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 76, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_n_s_float64); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 77, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-  if (PyDict_SetItem(__pyx_t_1, __pyx_n_s_dtype, __pyx_t_5) < 0) __PYX_ERR(1, 76, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_1, __pyx_n_s_dtype, __pyx_t_5) < 0) __PYX_ERR(1, 77, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-  __pyx_t_5 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_3, __pyx_t_1); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 76, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_3, __pyx_t_1); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 77, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
@@ -2847,19 +3134,19 @@ static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_5start___get__(str
   __pyx_v_pi = __pyx_t_5;
   __pyx_t_5 = 0;
 
-  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":77
+  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":78
  *     def start(self):
- *         pi = np.zeros(self.n_stat,dtype=np.float64)
- *         self.c_object.getPI(<double*>get_pointer(pi))             # <<<<<<<<<<<<<<
+ *         pi = np.zeros(self.n_stat, dtype=np.float64)
+ *         self.c_object.getPI(<double*> get_pointer(pi))             # <<<<<<<<<<<<<<
  *         return pi
  * 
  */
-  if (!(likely(((__pyx_v_pi) == Py_None) || likely(__Pyx_TypeTest(__pyx_v_pi, __pyx_ptype_5numpy_ndarray))))) __PYX_ERR(1, 77, __pyx_L1_error)
+  if (!(likely(((__pyx_v_pi) == Py_None) || likely(__Pyx_TypeTest(__pyx_v_pi, __pyx_ptype_5numpy_ndarray))))) __PYX_ERR(1, 78, __pyx_L1_error)
   (void)(__pyx_v_self->c_object->getPI(((double *)__pyx_f_5pyedm_5model_3bkt_8_bkt_cpp_get_pointer(((PyArrayObject *)__pyx_v_pi)))));
 
-  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":78
- *         pi = np.zeros(self.n_stat,dtype=np.float64)
- *         self.c_object.getPI(<double*>get_pointer(pi))
+  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":79
+ *         pi = np.zeros(self.n_stat, dtype=np.float64)
+ *         self.c_object.getPI(<double*> get_pointer(pi))
  *         return pi             # <<<<<<<<<<<<<<
  * 
  *     @property
@@ -2869,12 +3156,12 @@ static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_5start___get__(str
   __pyx_r = __pyx_v_pi;
   goto __pyx_L0;
 
-  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":75
- * 
+  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":76
+ *         pass
  *     @property
  *     def start(self):             # <<<<<<<<<<<<<<
- *         pi = np.zeros(self.n_stat,dtype=np.float64)
- *         self.c_object.getPI(<double*>get_pointer(pi))
+ *         pi = np.zeros(self.n_stat, dtype=np.float64)
+ *         self.c_object.getPI(<double*> get_pointer(pi))
  */
 
   /* function exit code */
@@ -2893,12 +3180,12 @@ static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_5start___get__(str
   return __pyx_r;
 }
 
-/* "pyedm/model/bkt/cython/_bkt_cpp.pyx":81
+/* "pyedm/model/bkt/cython/_bkt_cpp.pyx":82
  * 
  *     @property
  *     def transition(self):             # <<<<<<<<<<<<<<
- *         arr = np.zeros(shape=(self.n_stat,self.n_stat),dtype=np.float64)
- *         self.c_object.getA(<double*>get_pointer(arr))
+ *         arr = np.zeros(shape=(self.n_stat, self.n_stat), dtype=np.float64)
+ *         self.c_object.getA(<double*> get_pointer(arr))
  */
 
 /* Python wrapper */
@@ -2925,25 +3212,25 @@ static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_10transition___get
   PyObject *__pyx_t_5 = NULL;
   __Pyx_RefNannySetupContext("__get__", 0);
 
-  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":82
+  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":83
  *     @property
  *     def transition(self):
- *         arr = np.zeros(shape=(self.n_stat,self.n_stat),dtype=np.float64)             # <<<<<<<<<<<<<<
- *         self.c_object.getA(<double*>get_pointer(arr))
+ *         arr = np.zeros(shape=(self.n_stat, self.n_stat), dtype=np.float64)             # <<<<<<<<<<<<<<
+ *         self.c_object.getA(<double*> get_pointer(arr))
  *         return arr
  */
-  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 82, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 83, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_zeros); if (unlikely(!__pyx_t_2)) __PYX_ERR(1, 82, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_zeros); if (unlikely(!__pyx_t_2)) __PYX_ERR(1, 83, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_PyDict_NewPresized(2); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 82, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyDict_NewPresized(2); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 83, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_3 = __Pyx_PyInt_From_int(__pyx_v_self->n_stat); if (unlikely(!__pyx_t_3)) __PYX_ERR(1, 82, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyInt_From_int(__pyx_v_self->n_stat); if (unlikely(!__pyx_t_3)) __PYX_ERR(1, 83, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_4 = __Pyx_PyInt_From_int(__pyx_v_self->n_stat); if (unlikely(!__pyx_t_4)) __PYX_ERR(1, 82, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyInt_From_int(__pyx_v_self->n_stat); if (unlikely(!__pyx_t_4)) __PYX_ERR(1, 83, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  __pyx_t_5 = PyTuple_New(2); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 82, __pyx_L1_error)
+  __pyx_t_5 = PyTuple_New(2); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 83, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
   __Pyx_GIVEREF(__pyx_t_3);
   PyTuple_SET_ITEM(__pyx_t_5, 0, __pyx_t_3);
@@ -2951,35 +3238,35 @@ static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_10transition___get
   PyTuple_SET_ITEM(__pyx_t_5, 1, __pyx_t_4);
   __pyx_t_3 = 0;
   __pyx_t_4 = 0;
-  if (PyDict_SetItem(__pyx_t_1, __pyx_n_s_shape, __pyx_t_5) < 0) __PYX_ERR(1, 82, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_1, __pyx_n_s_shape, __pyx_t_5) < 0) __PYX_ERR(1, 83, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-  __pyx_t_5 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 82, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 83, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_5, __pyx_n_s_float64); if (unlikely(!__pyx_t_4)) __PYX_ERR(1, 82, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_5, __pyx_n_s_float64); if (unlikely(!__pyx_t_4)) __PYX_ERR(1, 83, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-  if (PyDict_SetItem(__pyx_t_1, __pyx_n_s_dtype, __pyx_t_4) < 0) __PYX_ERR(1, 82, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_1, __pyx_n_s_dtype, __pyx_t_4) < 0) __PYX_ERR(1, 83, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-  __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_empty_tuple, __pyx_t_1); if (unlikely(!__pyx_t_4)) __PYX_ERR(1, 82, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_empty_tuple, __pyx_t_1); if (unlikely(!__pyx_t_4)) __PYX_ERR(1, 83, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_v_arr = __pyx_t_4;
   __pyx_t_4 = 0;
 
-  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":83
+  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":84
  *     def transition(self):
- *         arr = np.zeros(shape=(self.n_stat,self.n_stat),dtype=np.float64)
- *         self.c_object.getA(<double*>get_pointer(arr))             # <<<<<<<<<<<<<<
+ *         arr = np.zeros(shape=(self.n_stat, self.n_stat), dtype=np.float64)
+ *         self.c_object.getA(<double*> get_pointer(arr))             # <<<<<<<<<<<<<<
  *         return arr
  * 
  */
-  if (!(likely(((__pyx_v_arr) == Py_None) || likely(__Pyx_TypeTest(__pyx_v_arr, __pyx_ptype_5numpy_ndarray))))) __PYX_ERR(1, 83, __pyx_L1_error)
+  if (!(likely(((__pyx_v_arr) == Py_None) || likely(__Pyx_TypeTest(__pyx_v_arr, __pyx_ptype_5numpy_ndarray))))) __PYX_ERR(1, 84, __pyx_L1_error)
   (void)(__pyx_v_self->c_object->getA(((double *)__pyx_f_5pyedm_5model_3bkt_8_bkt_cpp_get_pointer(((PyArrayObject *)__pyx_v_arr)))));
 
-  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":84
- *         arr = np.zeros(shape=(self.n_stat,self.n_stat),dtype=np.float64)
- *         self.c_object.getA(<double*>get_pointer(arr))
+  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":85
+ *         arr = np.zeros(shape=(self.n_stat, self.n_stat), dtype=np.float64)
+ *         self.c_object.getA(<double*> get_pointer(arr))
  *         return arr             # <<<<<<<<<<<<<<
  * 
  *     @property
@@ -2989,12 +3276,12 @@ static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_10transition___get
   __pyx_r = __pyx_v_arr;
   goto __pyx_L0;
 
-  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":81
+  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":82
  * 
  *     @property
  *     def transition(self):             # <<<<<<<<<<<<<<
- *         arr = np.zeros(shape=(self.n_stat,self.n_stat),dtype=np.float64)
- *         self.c_object.getA(<double*>get_pointer(arr))
+ *         arr = np.zeros(shape=(self.n_stat, self.n_stat), dtype=np.float64)
+ *         self.c_object.getA(<double*> get_pointer(arr))
  */
 
   /* function exit code */
@@ -3013,12 +3300,12 @@ static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_10transition___get
   return __pyx_r;
 }
 
-/* "pyedm/model/bkt/cython/_bkt_cpp.pyx":87
+/* "pyedm/model/bkt/cython/_bkt_cpp.pyx":88
  * 
  *     @property
  *     def emission(self):             # <<<<<<<<<<<<<<
- *         arr = np.zeros(shape=(self.n_stat,self.n_obs),dtype=np.float64)
- *         self.c_object.getB(<double*>get_pointer(arr))
+ *         arr = np.zeros(shape=(self.n_stat, self.n_obs), dtype=np.float64)
+ *         self.c_object.getB(<double*> get_pointer(arr))
  */
 
 /* Python wrapper */
@@ -3045,25 +3332,25 @@ static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_8emission___get__(
   PyObject *__pyx_t_5 = NULL;
   __Pyx_RefNannySetupContext("__get__", 0);
 
-  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":88
+  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":89
  *     @property
  *     def emission(self):
- *         arr = np.zeros(shape=(self.n_stat,self.n_obs),dtype=np.float64)             # <<<<<<<<<<<<<<
- *         self.c_object.getB(<double*>get_pointer(arr))
+ *         arr = np.zeros(shape=(self.n_stat, self.n_obs), dtype=np.float64)             # <<<<<<<<<<<<<<
+ *         self.c_object.getB(<double*> get_pointer(arr))
  *         return arr
  */
-  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 88, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 89, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_zeros); if (unlikely(!__pyx_t_2)) __PYX_ERR(1, 88, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_zeros); if (unlikely(!__pyx_t_2)) __PYX_ERR(1, 89, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_PyDict_NewPresized(2); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 88, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyDict_NewPresized(2); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 89, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_3 = __Pyx_PyInt_From_int(__pyx_v_self->n_stat); if (unlikely(!__pyx_t_3)) __PYX_ERR(1, 88, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyInt_From_int(__pyx_v_self->n_stat); if (unlikely(!__pyx_t_3)) __PYX_ERR(1, 89, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_4 = __Pyx_PyInt_From_int(__pyx_v_self->n_obs); if (unlikely(!__pyx_t_4)) __PYX_ERR(1, 88, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyInt_From_int(__pyx_v_self->n_obs); if (unlikely(!__pyx_t_4)) __PYX_ERR(1, 89, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  __pyx_t_5 = PyTuple_New(2); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 88, __pyx_L1_error)
+  __pyx_t_5 = PyTuple_New(2); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 89, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
   __Pyx_GIVEREF(__pyx_t_3);
   PyTuple_SET_ITEM(__pyx_t_5, 0, __pyx_t_3);
@@ -3071,35 +3358,35 @@ static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_8emission___get__(
   PyTuple_SET_ITEM(__pyx_t_5, 1, __pyx_t_4);
   __pyx_t_3 = 0;
   __pyx_t_4 = 0;
-  if (PyDict_SetItem(__pyx_t_1, __pyx_n_s_shape, __pyx_t_5) < 0) __PYX_ERR(1, 88, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_1, __pyx_n_s_shape, __pyx_t_5) < 0) __PYX_ERR(1, 89, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-  __pyx_t_5 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 88, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 89, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_5, __pyx_n_s_float64); if (unlikely(!__pyx_t_4)) __PYX_ERR(1, 88, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_5, __pyx_n_s_float64); if (unlikely(!__pyx_t_4)) __PYX_ERR(1, 89, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-  if (PyDict_SetItem(__pyx_t_1, __pyx_n_s_dtype, __pyx_t_4) < 0) __PYX_ERR(1, 88, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_1, __pyx_n_s_dtype, __pyx_t_4) < 0) __PYX_ERR(1, 89, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-  __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_empty_tuple, __pyx_t_1); if (unlikely(!__pyx_t_4)) __PYX_ERR(1, 88, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_empty_tuple, __pyx_t_1); if (unlikely(!__pyx_t_4)) __PYX_ERR(1, 89, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_v_arr = __pyx_t_4;
   __pyx_t_4 = 0;
 
-  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":89
+  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":90
  *     def emission(self):
- *         arr = np.zeros(shape=(self.n_stat,self.n_obs),dtype=np.float64)
- *         self.c_object.getB(<double*>get_pointer(arr))             # <<<<<<<<<<<<<<
+ *         arr = np.zeros(shape=(self.n_stat, self.n_obs), dtype=np.float64)
+ *         self.c_object.getB(<double*> get_pointer(arr))             # <<<<<<<<<<<<<<
  *         return arr
  * 
  */
-  if (!(likely(((__pyx_v_arr) == Py_None) || likely(__Pyx_TypeTest(__pyx_v_arr, __pyx_ptype_5numpy_ndarray))))) __PYX_ERR(1, 89, __pyx_L1_error)
+  if (!(likely(((__pyx_v_arr) == Py_None) || likely(__Pyx_TypeTest(__pyx_v_arr, __pyx_ptype_5numpy_ndarray))))) __PYX_ERR(1, 90, __pyx_L1_error)
   (void)(__pyx_v_self->c_object->getB(((double *)__pyx_f_5pyedm_5model_3bkt_8_bkt_cpp_get_pointer(((PyArrayObject *)__pyx_v_arr)))));
 
-  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":90
- *         arr = np.zeros(shape=(self.n_stat,self.n_obs),dtype=np.float64)
- *         self.c_object.getB(<double*>get_pointer(arr))
+  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":91
+ *         arr = np.zeros(shape=(self.n_stat, self.n_obs), dtype=np.float64)
+ *         self.c_object.getB(<double*> get_pointer(arr))
  *         return arr             # <<<<<<<<<<<<<<
  * 
  *     @property
@@ -3109,12 +3396,12 @@ static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_8emission___get__(
   __pyx_r = __pyx_v_arr;
   goto __pyx_L0;
 
-  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":87
+  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":88
  * 
  *     @property
  *     def emission(self):             # <<<<<<<<<<<<<<
- *         arr = np.zeros(shape=(self.n_stat,self.n_obs),dtype=np.float64)
- *         self.c_object.getB(<double*>get_pointer(arr))
+ *         arr = np.zeros(shape=(self.n_stat, self.n_obs), dtype=np.float64)
+ *         self.c_object.getB(<double*> get_pointer(arr))
  */
 
   /* function exit code */
@@ -3133,7 +3420,7 @@ static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_8emission___get__(
   return __pyx_r;
 }
 
-/* "pyedm/model/bkt/cython/_bkt_cpp.pyx":93
+/* "pyedm/model/bkt/cython/_bkt_cpp.pyx":94
  * 
  *     @property
  *     def iter(self):             # <<<<<<<<<<<<<<
@@ -3160,7 +3447,7 @@ static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_4iter___get__(stru
   PyObject *__pyx_t_1 = NULL;
   __Pyx_RefNannySetupContext("__get__", 0);
 
-  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":94
+  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":95
  *     @property
  *     def iter(self):
  *         return self.c_object.iter             # <<<<<<<<<<<<<<
@@ -3168,13 +3455,13 @@ static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_4iter___get__(stru
  *     @property
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->c_object->iter); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 94, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->c_object->iter); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 95, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":93
+  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":94
  * 
  *     @property
  *     def iter(self):             # <<<<<<<<<<<<<<
@@ -3193,7 +3480,7 @@ static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_4iter___get__(stru
   return __pyx_r;
 }
 
-/* "pyedm/model/bkt/cython/_bkt_cpp.pyx":97
+/* "pyedm/model/bkt/cython/_bkt_cpp.pyx":98
  * 
  *     @property
  *     def log_likelihood(self):             # <<<<<<<<<<<<<<
@@ -3220,7 +3507,7 @@ static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_14log_likelihood__
   PyObject *__pyx_t_1 = NULL;
   __Pyx_RefNannySetupContext("__get__", 0);
 
-  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":98
+  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":99
  *     @property
  *     def log_likelihood(self):
  *         return self.c_object.log_likelihood             # <<<<<<<<<<<<<<
@@ -3228,13 +3515,13 @@ static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_14log_likelihood__
  *     def __dealloc__(self):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->c_object->log_likelihood); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 98, __pyx_L1_error)
+  __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->c_object->log_likelihood); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 99, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":97
+  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":98
  * 
  *     @property
  *     def log_likelihood(self):             # <<<<<<<<<<<<<<
@@ -3253,7 +3540,7 @@ static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_14log_likelihood__
   return __pyx_r;
 }
 
-/* "pyedm/model/bkt/cython/_bkt_cpp.pyx":100
+/* "pyedm/model/bkt/cython/_bkt_cpp.pyx":101
  *         return self.c_object.log_likelihood
  * 
  *     def __dealloc__(self):             # <<<<<<<<<<<<<<
@@ -3261,28 +3548,28 @@ static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_14log_likelihood__
  */
 
 /* Python wrapper */
-static void __pyx_pw_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_13__dealloc__(PyObject *__pyx_v_self); /*proto*/
-static void __pyx_pw_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_13__dealloc__(PyObject *__pyx_v_self) {
+static void __pyx_pw_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_15__dealloc__(PyObject *__pyx_v_self); /*proto*/
+static void __pyx_pw_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_15__dealloc__(PyObject *__pyx_v_self) {
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__dealloc__ (wrapper)", 0);
-  __pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_12__dealloc__(((struct __pyx_obj_5pyedm_5model_3bkt_8_bkt_cpp_pyHMM *)__pyx_v_self));
+  __pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_14__dealloc__(((struct __pyx_obj_5pyedm_5model_3bkt_8_bkt_cpp_pyHMM *)__pyx_v_self));
 
   /* function exit code */
   __Pyx_RefNannyFinishContext();
 }
 
-static void __pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_12__dealloc__(struct __pyx_obj_5pyedm_5model_3bkt_8_bkt_cpp_pyHMM *__pyx_v_self) {
+static void __pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_14__dealloc__(struct __pyx_obj_5pyedm_5model_3bkt_8_bkt_cpp_pyHMM *__pyx_v_self) {
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__dealloc__", 0);
 
-  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":101
+  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":102
  * 
  *     def __dealloc__(self):
  *         del self.c_object             # <<<<<<<<<<<<<<
  */
   delete __pyx_v_self->c_object;
 
-  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":100
+  /* "pyedm/model/bkt/cython/_bkt_cpp.pyx":101
  *         return self.c_object.log_likelihood
  * 
  *     def __dealloc__(self):             # <<<<<<<<<<<<<<
@@ -3300,19 +3587,19 @@ static void __pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_12__dealloc__(struct __
  */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_15__reduce_cython__(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused); /*proto*/
-static PyObject *__pyx_pw_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_15__reduce_cython__(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused) {
+static PyObject *__pyx_pw_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_17__reduce_cython__(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused); /*proto*/
+static PyObject *__pyx_pw_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_17__reduce_cython__(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused) {
   PyObject *__pyx_r = 0;
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__reduce_cython__ (wrapper)", 0);
-  __pyx_r = __pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_14__reduce_cython__(((struct __pyx_obj_5pyedm_5model_3bkt_8_bkt_cpp_pyHMM *)__pyx_v_self));
+  __pyx_r = __pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_16__reduce_cython__(((struct __pyx_obj_5pyedm_5model_3bkt_8_bkt_cpp_pyHMM *)__pyx_v_self));
 
   /* function exit code */
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_14__reduce_cython__(CYTHON_UNUSED struct __pyx_obj_5pyedm_5model_3bkt_8_bkt_cpp_pyHMM *__pyx_v_self) {
+static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_16__reduce_cython__(CYTHON_UNUSED struct __pyx_obj_5pyedm_5model_3bkt_8_bkt_cpp_pyHMM *__pyx_v_self) {
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   PyObject *__pyx_t_1 = NULL;
@@ -3354,19 +3641,19 @@ static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_14__reduce_cython_
  */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_17__setstate_cython__(PyObject *__pyx_v_self, PyObject *__pyx_v___pyx_state); /*proto*/
-static PyObject *__pyx_pw_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_17__setstate_cython__(PyObject *__pyx_v_self, PyObject *__pyx_v___pyx_state) {
+static PyObject *__pyx_pw_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_19__setstate_cython__(PyObject *__pyx_v_self, PyObject *__pyx_v___pyx_state); /*proto*/
+static PyObject *__pyx_pw_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_19__setstate_cython__(PyObject *__pyx_v_self, PyObject *__pyx_v___pyx_state) {
   PyObject *__pyx_r = 0;
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__setstate_cython__ (wrapper)", 0);
-  __pyx_r = __pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_16__setstate_cython__(((struct __pyx_obj_5pyedm_5model_3bkt_8_bkt_cpp_pyHMM *)__pyx_v_self), ((PyObject *)__pyx_v___pyx_state));
+  __pyx_r = __pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_18__setstate_cython__(((struct __pyx_obj_5pyedm_5model_3bkt_8_bkt_cpp_pyHMM *)__pyx_v_self), ((PyObject *)__pyx_v___pyx_state));
 
   /* function exit code */
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_16__setstate_cython__(CYTHON_UNUSED struct __pyx_obj_5pyedm_5model_3bkt_8_bkt_cpp_pyHMM *__pyx_v_self, CYTHON_UNUSED PyObject *__pyx_v___pyx_state) {
+static PyObject *__pyx_pf_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_18__setstate_cython__(CYTHON_UNUSED struct __pyx_obj_5pyedm_5model_3bkt_8_bkt_cpp_pyHMM *__pyx_v_self, CYTHON_UNUSED PyObject *__pyx_v___pyx_state) {
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   PyObject *__pyx_t_1 = NULL;
@@ -5887,7 +6174,7 @@ static void __pyx_tp_dealloc_5pyedm_5model_3bkt_8_bkt_cpp_pyHMM(PyObject *o) {
     PyObject *etype, *eval, *etb;
     PyErr_Fetch(&etype, &eval, &etb);
     ++Py_REFCNT(o);
-    __pyx_pw_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_13__dealloc__(o);
+    __pyx_pw_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_15__dealloc__(o);
     --Py_REFCNT(o);
     PyErr_Restore(etype, eval, etb);
   }
@@ -5920,8 +6207,9 @@ static PyMethodDef __pyx_methods_5pyedm_5model_3bkt_8_bkt_cpp_pyHMM[] = {
   {"set_bounded_transition", (PyCFunction)__pyx_pw_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_7set_bounded_transition, METH_VARARGS|METH_KEYWORDS, 0},
   {"set_bounded_emission", (PyCFunction)__pyx_pw_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_9set_bounded_emission, METH_VARARGS|METH_KEYWORDS, 0},
   {"estimate", (PyCFunction)__pyx_pw_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_11estimate, METH_VARARGS|METH_KEYWORDS, 0},
-  {"__reduce_cython__", (PyCFunction)__pyx_pw_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_15__reduce_cython__, METH_NOARGS, 0},
-  {"__setstate_cython__", (PyCFunction)__pyx_pw_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_17__setstate_cython__, METH_O, 0},
+  {"predict_next", (PyCFunction)__pyx_pw_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_13predict_next, METH_VARARGS|METH_KEYWORDS, 0},
+  {"__reduce_cython__", (PyCFunction)__pyx_pw_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_17__reduce_cython__, METH_NOARGS, 0},
+  {"__setstate_cython__", (PyCFunction)__pyx_pw_5pyedm_5model_3bkt_8_bkt_cpp_5pyHMM_19__setstate_cython__, METH_O, 0},
   {0, 0, 0, 0}
 };
 
@@ -6051,6 +6339,7 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_max_iter, __pyx_k_max_iter, sizeof(__pyx_k_max_iter), 0, 0, 1, 1},
   {&__pyx_n_s_n_obs, __pyx_k_n_obs, sizeof(__pyx_k_n_obs), 0, 0, 1, 1},
   {&__pyx_n_s_n_stat, __pyx_k_n_stat, sizeof(__pyx_k_n_stat), 0, 0, 1, 1},
+  {&__pyx_n_s_n_x, __pyx_k_n_x, sizeof(__pyx_k_n_x), 0, 0, 1, 1},
   {&__pyx_n_s_name, __pyx_k_name, sizeof(__pyx_k_name), 0, 0, 1, 1},
   {&__pyx_kp_u_ndarray_is_not_C_contiguous, __pyx_k_ndarray_is_not_C_contiguous, sizeof(__pyx_k_ndarray_is_not_C_contiguous), 0, 1, 0, 0},
   {&__pyx_kp_u_ndarray_is_not_Fortran_contiguou, __pyx_k_ndarray_is_not_Fortran_contiguou, sizeof(__pyx_k_ndarray_is_not_Fortran_contiguou), 0, 1, 0, 0},

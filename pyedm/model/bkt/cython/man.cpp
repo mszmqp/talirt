@@ -85,5 +85,10 @@ int main() {
     cout << "B" << endl;
     print2D(hmm.B, n_stat, n_obs);
 
+    cout << "predict next observation" << endl;
+    double next[2]={0};
+    hmm.predict_next(next,response,lengths[0]);
+    print1D(next,2);
+
     return 0;
 }
