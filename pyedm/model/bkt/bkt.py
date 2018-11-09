@@ -18,6 +18,7 @@ from sklearn.base import BaseEstimator, _pprint
 from sklearn.utils import check_array, check_random_state
 from sklearn.utils.validation import check_is_fitted
 from pyedm.model.bkt import _bkt_clib as bktc
+from pyedm.model.bkt import _bkt_cpp as bktcpp
 
 from pyedm.utils import normalize, log_mask_zero, log_normalize, iter_from_X_lengths, logsumexp
 import os
@@ -453,7 +454,8 @@ class StandardBKT(BaseEstimator):
                 else:
                     x = df_x['answer'].values.flatten().astype(np.int32)
                 train_x.append(x)
-                lengths.append((pos, x.shape[0] + pos))
+                # lengths.append((pos, x.shape[0] + pos))
+                lengths.append(x.shape[0])
                 pos += x.shape[0]
                 group_keys.append(group_key)
             train_x = np.concatenate(train_x)
@@ -492,7 +494,7 @@ class StandardBKT(BaseEstimator):
                                                                             group_by=group_by, sorted_by=sorted_by):
                 # train_x = check_array(train_x)
 
-                _, start, transition, emission, log_likelihood = self.fit_one(train_x=train_x, data_slice=lengths,
+                _, start, transition, emission, log_likelihood = self.fit_one(train_x=train_x, lengths=lengths,
                                                                               trace=None)
                 self.model[trace_key] = {'start': start, "transition": transition, "emission": emission,
                                          'log_likelihood': log_likelihood}
@@ -504,7 +506,7 @@ class StandardBKT(BaseEstimator):
                 futures = []
                 for trace_key, group_keys, train_x, lengths in self._split_data(response=response, trace_by=trace_by,
                                                                                 group_by=group_by, sorted_by=sorted_by):
-                    futures.append(tp.submit(self.fit_one, train_x=train_x, data_slice=lengths, trace=trace_key))
+                    futures.append(tp.submit(self.fit_one, train_x=train_x, lengths=lengths, trace=trace_key))
 
                 for future in as_completed(futures):
                     trace_key, start, transition, emission, log_likelihood = future.result()
@@ -514,13 +516,12 @@ class StandardBKT(BaseEstimator):
         self.train_cost_time = time.time() - _start_time
         return self
 
-    def fit_one(self, train_x: np.ndarray, data_slice: np.ndarray, trace=None):
+    def fit_one_bak(self, train_x: np.ndarray, lengths: np.ndarray, trace=None):
 
         start = self.start_init.copy()
         transition = self.transition_init.copy()
         emission = self.emission_init.copy()
-
-        log_likelihood = bktc.fit(train_x, data_slice, start, transition, emission,
+        log_likelihood = bktc.fit(train_x, lengths, start, transition, emission,
                                   self.start_lb, self.start_ub,
                                   self.transition_lb, self.transition_ub,
                                   self.emission_lb, self.emission_ub,
@@ -540,6 +541,23 @@ class StandardBKT(BaseEstimator):
         # print("cost time", cost_time)
         # print("iter", iter)
         return trace, start, transition, emission, log_likelihood
+
+    def fit_one(self, train_x: np.ndarray, lengths: np.ndarray, trace=None):
+
+        start = self.start_init
+        transition = self.transition_init
+        emission = self.emission_init
+
+
+        hmm = bktcpp.pyHMM(2, 2)
+        hmm.init(start, transition, emission)
+        hmm.set_bounded_start(self.start_lb, self.start_ub)
+        hmm.set_bounded_transition(self.transition_lb, self.transition_ub)
+        hmm.set_bounded_emission(self.emission_lb, self.emission_ub)
+        # _t = time.time()
+        hmm.estimate(train_x, lengths)
+        # print('train cost', time.time() - _t)
+        return trace, hmm.start, hmm.transition, hmm.emission, hmm.log_likelihood
 
     def bounded(self, data, lb, ub):
 
@@ -650,9 +668,11 @@ if __name__ == "__main__":
     stu_set = set()
     print("read data...", file=sys.stderr)
 
-    file_name = "/Users/haoweilai/Documents/projects/talirt/train_sample.txt"
+    file_name = "/Users/zhangzhenhu/Documents/projects/talirt/train_sample.txt"
     df_data = pd.read_csv(file_name, sep='\t', header=None, names=['answer', 'user', 'item', 'knowledge'])
     df_data.loc[:, 'answer'] -= 1
+
+
     bkt = StandardBKT()
     bkt.fit(df_data, njobs=1)
     print('cost time', bkt.train_cost_time)
@@ -662,10 +682,11 @@ if __name__ == "__main__":
         print("transmat\n", value['transition'])
         print("emissionprob\n", value['emission'])
 
-    for next_prob, trace_key, group_key in bkt.predict_batch(df_data, njobs=1):
-        print(trace_key, group_key, next_prob)
 
-    print('cost_time', bkt.predict_cost_time)
+    # for next_prob, trace_key, group_key in bkt.predict_batch(df_data, njobs=1):
+    #     print(trace_key, group_key, next_prob)
+
+    # print('cost_time', bkt.predict_cost_time)
     # for line in open("/Users/haoweilai/Documents/projects/talirt/train_sample.txt"):
     #     answer, stu, question, skills = line.strip('\r\n').split('\t')
     #     if not skills or skills == '.' or skills == ' ':
