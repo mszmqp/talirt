@@ -336,7 +336,7 @@ private:
     double **fwdlattice;
     double **backlattice;
     double **gammalattice;
-    double **xi_sum;
+//    double **xi_sum;
     double *cn;
 
 //    EmissionDistribution *ed;
@@ -356,11 +356,11 @@ public:
 
     double estimate(int x[], int lengths[], int n_lengths, int max_iter = 20, double tol = 1e-2);
 
-    double getPI(double *out);
+    void getPI(double *out);
 
-    double getA(double *out);
+    void getA(double *out);
 
-    double getB(double *out);
+    void getB(double *out);
 
 private:
     double forward(int *x, int n_x, double *PI, double **A);

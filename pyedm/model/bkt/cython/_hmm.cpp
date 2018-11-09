@@ -404,13 +404,19 @@ double HMM::emmit_pdf(int stat, int obs) {
 }
 
 
-double HMM::getPI(double *out) {
+void HMM::getPI(double *out) {
+    if(this->PI==NULL || out==NULL){
+        return;
+    }
     for (int i = 0; i < this->n_stat; ++i) {
         out[i] = this->PI[i];
     }
 }
 
-double HMM::getA(double *out) {
+void HMM::getA(double *out) {
+    if(this->A==NULL || out==NULL){
+        return;
+    }
     for (int i = 0; i < this->n_stat; ++i) {
         for (int j = 0; j < this->n_stat; ++j) {
             out[i * this->n_stat + j] = this->A[i][j];
@@ -419,8 +425,10 @@ double HMM::getA(double *out) {
 
 }
 
-double HMM::getB(double *out) {
-
+void HMM::getB(double *out) {
+    if(this->B==NULL || out==NULL){
+        return;
+    }
     for (int i = 0; i < this->n_stat; ++i) {
         for (int j = 0; j < this->n_obs; ++j) {
             out[i * this->n_stat + j] = this->B[i][j];

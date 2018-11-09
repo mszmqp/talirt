@@ -61,15 +61,15 @@ cdef class pyHMM:
 
 
     def estimate(self, np.ndarray[int,ndim=1] x, np.ndarray[int,ndim=1] lengths, int max_iter = 20, double tol = 1e-2):
-        if not x.flags['C_CONTIGUOUS']:
-            x = np.ascontiguousarray(x)
-        cdef int[::1] x_memview = x
+        # if not x.flags['C_CONTIGUOUS']:
+        #     x = np.ascontiguousarray(x)
+        # cdef int[::1] x_memview = x
+        #
+        # if not lengths.flags['C_CONTIGUOUS']:
+        #     lengths = np.ascontiguousarray(lengths)
+        # cdef int[::1] lengths_memview = lengths
 
-        if not lengths.flags['C_CONTIGUOUS']:
-            lengths = np.ascontiguousarray(lengths)
-        cdef int[::1] lengths_memview = lengths
-
-        return self.c_object.estimate(&x_memview[0], &lengths_memview[0], lengths_memview.shape[0] ,  max_iter,  tol)
+        return self.c_object.estimate(<int*>get_pointer(x), <int*>get_pointer(lengths), lengths.shape[0] ,  max_iter,  tol)
 
     @property
     def start(self):
