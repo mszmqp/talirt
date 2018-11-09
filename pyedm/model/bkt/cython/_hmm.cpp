@@ -373,7 +373,8 @@ void HMM::gamma(int *x, int n, double **fwdlattice, double **backlattice, double
     // 为了和xi的长度一样，这里少算一个。
     for (int t = 0; t < n - 1; ++t) {
         for (int i = 0; i < this->n_stat; ++i) {
-
+            // 注意这里乘上了this->cn[t]
+            // 是因为，在论文中，最后算转移概率和发射概率时，都必须要乘以一下。而不影响算初始概率。
             this->gammalattice[t][i] = fwdlattice[t][i] * backlattice[t][i] * this->cn[t];
             gamma_sum[i] += this->gammalattice[t][i];
         }
@@ -383,12 +384,14 @@ void HMM::gamma(int *x, int n, double **fwdlattice, double **backlattice, double
 
 void HMM::xi(int *x, int n, double **fwdlattice, double **backlattice, double **xi_sum) {
 
+    // xi的值并不需要每个时刻保留，而只用到所有时刻累加的结果。
+    // 面对多序列时，全部累加在一起就行
     for (int t = 0; t < n - 1; ++t) {
         for (int i = 0; i < this->n_stat; ++i) {
             for (int j = 0; j < this->n_stat; ++j) {
 
                 xi_sum[i][j] += fwdlattice[t][i] * this->A[i][j] * this->emmit_pdf(j, x[t + 1]) *
-                                backlattice[t + 1][j];// * this->cn[t];
+                                backlattice[t + 1][j];
             }
         }
 
