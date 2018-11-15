@@ -77,20 +77,25 @@ void HMM::setBoundedPI(double lower[], double upper[]) {
 void HMM::setBoundedA(double lower[], double upper[]) {
 
     if (lower != NULL) {
-        gsl_matrix_view m = gsl_matrix_view_array(lower, this->n_stat, this->n_stat);
+//        gsl_matrix_view m = gsl_matrix_view_array(lower, this->n_stat, this->n_stat);
+
+        MatrixView<double> m(this->n_stat,this->n_stat,lower);
         for (int i = 0; i < this->n_stat; ++i) {
             for (int j = 0; j < this->n_stat; ++j) {
-                this->A_LOW[i][j] = gsl_matrix_get(&m.matrix, i, j);
+//                this->A_LOW[i][j] = gsl_matrix_get(&m.matrix, i, j);
+                this->A_LOW[i][j] = m[i][j];
 
             }
 
         }
     }
     if (upper != NULL) {
-        gsl_matrix_view m = gsl_matrix_view_array(upper, this->n_stat, this->n_stat);
+//        gsl_matrix_view m = gsl_matrix_view_array(upper, this->n_stat, this->n_stat);
+        MatrixView<double> m(this->n_stat,this->n_stat,upper);
         for (int i = 0; i < this->n_stat; ++i) {
             for (int j = 0; j < this->n_stat; ++j) {
-                this->A_UPPER[i][j] = gsl_matrix_get(&m.matrix, i, j);
+//                this->A_UPPER[i][j] = gsl_matrix_get(&m.matrix, i, j);
+                this->A_UPPER[i][j] = m[i][j];
 
             }
 
@@ -101,20 +106,24 @@ void HMM::setBoundedA(double lower[], double upper[]) {
 
 void HMM::setBoundedB(double lower[], double upper[]) {
     if (lower != NULL) {
-        gsl_matrix_view m = gsl_matrix_view_array(lower, this->n_stat, this->n_obs);
+//        gsl_matrix_view m = gsl_matrix_view_array(lower, this->n_stat, this->n_obs);
+        MatrixView<double> m(this->n_stat,this->n_obs,lower);
+
         for (int i = 0; i < this->n_stat; ++i) {
             for (int j = 0; j < this->n_stat; ++j) {
-                this->B_LOW[i][j] = gsl_matrix_get(&m.matrix, i, j);
+                this->B_LOW[i][j] = m[i][j];
 
             }
 
         }
     }
     if (upper != NULL) {
-        gsl_matrix_view m = gsl_matrix_view_array(upper, this->n_stat, this->n_obs);
+        MatrixView<double> m(this->n_stat,this->n_obs,upper);
+
+//        gsl_matrix_view m = gsl_matrix_view_array(upper, this->n_stat, this->n_obs);
         for (int i = 0; i < this->n_stat; ++i) {
             for (int j = 0; j < this->n_stat; ++j) {
-                this->B_UPPER[i][j] = gsl_matrix_get(&m.matrix, i, j);
+                this->B_UPPER[i][j] = m[i][j];
 
             }
 
@@ -148,11 +157,12 @@ void HMM::init(double pi[], double a[], double b[]) {
 
 
     } else {
-
-        gsl_matrix_view m = gsl_matrix_view_array(a, this->n_stat, this->n_obs);
+        MatrixView<double> m(this->n_stat,this->n_stat,a);
+//        gsl_matrix_view m = gsl_matrix_view_array(a, this->n_stat, this->n_stat);
         for (int i = 0; i < this->n_stat; ++i) {
             for (int j = 0; j < this->n_stat; ++j) {
-                this->A[i][j] = gsl_matrix_get(&m.matrix, i, j);
+//                this->A[i][j] = gsl_matrix_get(&m.matrix, i, j);
+                this->A[i][j] = m[i][j];
 
             }
         }
@@ -162,11 +172,12 @@ void HMM::init(double pi[], double a[], double b[]) {
     if (b == NULL) {
 
     } else {
-//        cpy2D<double>(B, this->B, this->n_stat, this->n_obs);
-        gsl_matrix_view m = gsl_matrix_view_array(b, this->n_stat, this->n_obs);
+//        gsl_matrix_view m = gsl_matrix_view_array(b, this->n_stat, this->n_obs);
+        MatrixView<double> m(this->n_stat,this->n_obs,b);
         for (int i = 0; i < this->n_stat; ++i) {
-            for (int j = 0; j < this->n_stat; ++j) {
-                this->B[i][j] = gsl_matrix_get(&m.matrix, i, j);
+            for (int j = 0; j < this->n_obs; ++j) {
+//                this->B[i][j] = gsl_matrix_get(&m.matrix, i, j);
+                this->B[i][j] = m[i][j];
 
             }
         }
@@ -453,7 +464,7 @@ void HMM::predict_next(double *out, int *x, int n_x, double *start, double *tran
         n_obs = this->n_obs;
     }
     double *PI;
-    double **A, **B;
+
     bool free_A = false, free_B = false;
     if (start == NULL) {
         PI = this->PI;
@@ -461,27 +472,31 @@ void HMM::predict_next(double *out, int *x, int n_x, double *start, double *tran
         PI = start;
     }
     if (transition == NULL) {
-        A = this->A;
+        double **A = this->A;
     } else {
-        A = init2D<double>(n_stat, n_stat);
-        free_A = true;
-        for (int i = 0; i < n_stat; ++i) {
-            for (int j = 0; j < n_stat; ++j) {
-                A[i][j] = transition[i * n_stat + j];
-            }
-        }
+//        A = init2D<double>(n_stat, n_stat);
+//        free_A = true;
+//        for (int i = 0; i < n_stat; ++i) {
+//            for (int j = 0; j < n_stat; ++j) {
+//                A[i][j] = transition[i * n_stat + j];
+//            }
+//        }
+        MatrixView<double> A (n_stat,n_stat,transition);
     }
 
     if (emission == NULL) {
-        B = this->B;
+        double  **B = this->B;
     } else {
-        free_B = true;
-        B = init2D<double>(n_stat, n_stat);
-        for (int i = 0; i < n_stat; ++i) {
-            for (int j = 0; j < n_stat; ++j) {
-                B[i][j] = emission[i * n_stat + j];
-            }
-        }
+//        free_B = true;
+//        B = init2D<double>(n_stat, n_stat);
+//        for (int i = 0; i < n_stat; ++i) {
+//            for (int j = 0; j < n_stat; ++j) {
+//                B[i][j] = emission[i * n_stat + j];
+//            }
+//        }
+        MatrixView<double> B (n_stat,n_obs,emission);
+//        cout << "4r4rer "<<B[0][0] <<" "<<B[0][1]<<endl;
+//        cout<< B[1][0]<<" " << B[1][1] <<endl;
     }
     // 前向算法推进时，只需要保留两个状态即可，所以申请长度2的序列就行
     double **fwdlattice = init2D<double>(2, n_stat);
@@ -523,10 +538,10 @@ void HMM::predict_next(double *out, int *x, int n_x, double *start, double *tran
 
     }
 
-    print1D(fwdlattice[n_x % 2], n_obs);
+//    print1D(fwdlattice[n_x % 2], n_obs);
 
-    if (free_A)free2D(A, n_stat);
-    if (free_B)free2D(B, n_stat);
+//    if (free_A)free2D(A, n_stat);
+//    if (free_B)free2D(B, n_stat);
     free2D(fwdlattice, 2);
 //    return log_likelihood;
 

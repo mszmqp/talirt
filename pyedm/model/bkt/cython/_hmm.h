@@ -2,7 +2,7 @@
 // Created by 张振虎 on 2018/10/31.
 //
 #include <iostream>
-#include <gsl/gsl_matrix.h>
+//#include <gsl/gsl_matrix.h>
 
 using namespace std;
 #ifndef BKT_HMM_H
@@ -312,6 +312,17 @@ void bounded2D(T **source, T **low, T **upper, int size1, int size2) {
 
 }
 
+template<class C>
+class MatrixView {
+public:
+    C *data;
+    int rows;
+    int cols;
+
+    MatrixView(int rows,int cols,C *ptr):rows(rows),cols(cols),data(ptr) { };
+
+    C *operator[](int k) { return &(this->data[k*this->cols]); }
+};
 
 /*
  * HMM的估计算法中涉及到缩放因子和多序列问题，

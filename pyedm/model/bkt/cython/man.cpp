@@ -87,7 +87,10 @@ int main() {
 
     cout << "predict next observation" << endl;
     double next[2]={0};
-    hmm.predict_next(next,response,lengths[0]);
+    double start[]={0.955115,0.0444221 };
+    double transition[]={1,0,0.0715796,0.92842};
+    double emission[]={0.872745 ,0.127255,0.3, 0.7};
+    hmm.predict_next(next,response,lengths[0],start,transition,emission);
     print1D(next,2);
 
     return 0;
