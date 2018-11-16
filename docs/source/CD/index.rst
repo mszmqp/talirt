@@ -8,6 +8,9 @@ CD
     :maxdepth: 2
     :numbered:
 
-    contents.rst
-
+    引言.rst
+    define.rst
+    develop.rst
+    theoryRelated.rst
+    algorithmRelated.rst
 
