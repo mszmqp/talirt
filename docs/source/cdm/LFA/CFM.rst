@@ -28,21 +28,21 @@ CFM的公式定义如下：
 
     = \sum_{r=1}^n (y_rlog(p_r) + (1-y_r)log(1 - p_r))
 
-接着对上式在:math:`\pmb{\theta_i}`、:math:`\pmb{\beta_k}`、:math:`\pmb{\gamma_k}`出求梯度更新对应的值，三式如下：
+接着对上式在 :math:`\pmb{\theta_i}`、:math:`\pmb{\beta_k}`、:math:`\pmb{\gamma_k}` 出求梯度更新对应的值，三式如下：
 
-对于:math:`\pmb{\theta_i}`来说，需要找到学生i的所有答题记录，
+对于 :math:`\pmb{\theta_i}` 来说，需要找到学生i的所有答题记录，
 
 .. math::
 
     \frac{dl}{d\pmb{\theta_i}} = \sum_{r=1}^n (\frac{p_r - y_r}{p_r - 1} \sum_{k=1}^K (\frac{1}{1 + e^z_{rk}}))
 
-对于:math:`\pmb{\beta_k}`来说，需要找到能力点k的所有答题记录，
+对于 :math:`\pmb{\beta_k}` 来说，需要找到能力点k的所有答题记录，
 
 .. math::
 
     \frac{dl}{d\pmb{\beta_k}} = \sum_{i,r \in [1,n]} (\frac{p_r - y_r}{p_r - 1} \frac {e^{k\pmb{\theta_i} + \sum_{k=1}^K \pmb{\beta_k}+ \sum_{k=1}^K \pmb{\gamma_k}T_{ik}}} {\prod_{k=1}^K (1 + e^z_{rk})} \frac {1}{1 + e^z_{rk}})
 
-对于:math:`\pmb{\gamma_k}`来说，需要找到能力点k的所有答题记录，
+对于 :math:`\pmb{\gamma_k}` 来说，需要找到能力点k的所有答题记录，
 
 .. math::
 
