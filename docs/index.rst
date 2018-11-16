@@ -12,11 +12,13 @@ Welcome to talirt's documentation!
 
    source/ctt/index.rst
    source/irt/index.rst
+   source/认知诊断/index.rst
    source/cdm/index.rst
    source/bkt/index.rst
    source/estimation/index.rst
    source/literature/index.rst
    source/论文概览.rst
+
 
 Indices and tables
 ==================
