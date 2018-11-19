@@ -12,7 +12,7 @@ Welcome to talirt's documentation!
 
    source/ctt/index.rst
    source/irt/index.rst
-   source/CD/index.rst
+   source/cdm/index.rst
    source/bkt/index.rst
    source/estimation/index.rst
    source/literature/index.rst
