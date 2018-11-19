@@ -12,3 +12,4 @@
     AHM.rst
     DINA.rst
     ./LFA/index.rst
+    compare.rst
