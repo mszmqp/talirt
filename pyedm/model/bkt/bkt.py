@@ -14,21 +14,18 @@ import pandas as pd
 import time
 # from scipy.special import logsumexp
 
-from sklearn.base import BaseEstimator, _pprint
+# from sklearn.base import BaseEstimator, _pprint
 from sklearn.utils import check_array, check_random_state
 from sklearn.utils.validation import check_is_fitted
 from pyedm.model.bkt import _bkt_clib as bktc
-from pyedm.model.bkt import _bkt_cpp as bktcpp
+from pyedm.model.bkt._bkt_cpp import SBKT as StandardBKT
 
 from pyedm.utils import normalize, log_mask_zero, log_normalize, iter_from_X_lengths, logsumexp
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# from hmmlearn import
-DECODER_ALGORITHMS = {'viterbi', 'map'}
 
-
-class StandardBKT(BaseEstimator):
+class BKT:
     """Base class for Hidden Markov Models.
 
     This class allows for easy evaluation of, sampling from, and
@@ -100,9 +97,6 @@ class StandardBKT(BaseEstimator):
                  # random_state=None,
                  max_iter=10, tol=1e-2, njobs=0, **kwargs):
 
-        # self.algorithm = algorithm
-        # self.random_state = random_state
-        # self.verbose = verbose
         self.n_stats = 2  # 隐状态的数量
         self.n_obs = 2  # 观测状态的数量
         # self.start = np.array([0.5, 0.5])
@@ -118,12 +112,11 @@ class StandardBKT(BaseEstimator):
         self.train_cost_time = 0
         self.predict_cost_time = 0
 
-        # 约束条件
+        # 约束条 0表示会，1表示不会，0表示做对，1表示做错 件
         self.start_lb = np.array([0, 0]).astype(np.float64)
         self.start_ub = np.array([1, 1]).astype(np.float64)
         self.transition_lb = np.array([[1, 0], [0, 0]]).astype(np.float64)
         self.transition_ub = np.array([[1, 0], [1, 1]]).astype(np.float64)
-
         self.emission_lb = np.array([[0.7, 0], [0, 0.7]]).astype(np.float64)
         self.emission_ub = np.array([[1, 0.3], [0.3, 1]]).astype(np.float64)
         self.model = {}
@@ -570,8 +563,9 @@ class StandardBKT(BaseEstimator):
         transition = self.transition_init
         emission = self.emission_init
 
-        hmm = bktcpp.pyHMM(self.n_stats, self.n_obs)
+        hmm = StandardBKT(self.n_stats, self.n_obs)
         hmm.init(start, transition, emission)
+        # hmm.set_bounded_start()
         hmm.set_bounded_start(self.start_lb, self.start_ub)
         hmm.set_bounded_transition(self.transition_lb, self.transition_ub)
         hmm.set_bounded_emission(self.emission_lb, self.emission_ub)
@@ -579,91 +573,6 @@ class StandardBKT(BaseEstimator):
         hmm.estimate(train_x, lengths)
         # print('train cost', time.time() - _t)
         return trace, hmm.start, hmm.transition, hmm.emission, hmm.log_likelihood
-
-    def bounded(self, data, lb, ub):
-
-        data = np.where(data < lb, lb, data)
-        data = np.where(data > ub, ub, data)
-        return data
-
-    def _init(self, X, lengths):
-        """Initializes model parameters prior to fitting.
-
-        Parameters
-        ----------
-        X : array-like, shape (n_samples, n_obs)
-            Feature matrix of individual samples.
-
-        lengths : array-like of integers, shape (n_sequences, )
-            Lengths of the individual sequences in ``X``. The sum of
-            these should be ``n_samples``.
-        """
-        # init = 1. / self.n_stats
-        # self.start = np.array([0.5, 0.5])
-        # self.transition = np.array([[,0.2],[0,]])
-        # self.emission
-        pass
-
-    def _check(self):
-        """Validates model parameters prior to fitting.
-
-        Raises
-        ------
-
-        ValueError
-            If any of the parameters are invalid, e.g. if :attr:`start`
-            don't sum to 1.
-        """
-        self.start = np.asarray(self.start)
-        if len(self.start) != self.n_stats:
-            raise ValueError("start must have length n_stats")
-        if not np.allclose(self.start.sum(), 1.0):
-            raise ValueError("start must sum to 1.0 (got {0:.4f})"
-                             .format(self.start.sum()))
-
-        self.transition = np.asarray(self.transition)
-        if self.transition.shape != (self.n_stats, self.n_stats):
-            raise ValueError(
-                "transition must have shape (n_stats, n_stats)")
-        if not np.allclose(self.transition.sum(axis=1), 1.0):
-            raise ValueError("rows of transition must sum to 1.0 (got {0})"
-                             .format(self.transition.sum(axis=1)))
-
-    def _compute_(self, X):
-        """Computes per-component log probability under the model.
-
-        Parameters
-        ----------
-        X : array-like, shape (n_samples, n_obs)
-            Feature matrix of individual samples.
-
-        Returns
-        -------
-        logprob : array, shape (n_samples, n_stats)
-            Log probability of each sample in ``X`` for each of the
-            model states.
-        """
-
-    def _generate_sample_from_state(self, state, random_state=None):
-        """Generates a random sample from a given component.
-
-        Parameters
-        ----------
-        state : int
-            Index of the component to condition on.
-
-        random_state: RandomState or an int seed
-            A random number generator instance. If ``None``, the object's
-            ``random_state`` is used.
-
-        Returns
-        -------
-        X : array, shape (n_obs, )
-            A random sample from the emission distribution corresponding
-            to a given component.
-        """
-
-    # Methods used by self.fit()
 
 
 if __name__ == "__main__":
@@ -693,7 +602,7 @@ if __name__ == "__main__":
     df_data = pd.read_csv(file_name, sep='\t', header=None, names=['answer', 'user', 'item', 'knowledge'])
     df_data.loc[:, 'answer'] -= 1
 
-    bkt = StandardBKT()
+    bkt = BKT()
     bkt.fit(df_data, njobs=1)
     print('cost time', bkt.train_cost_time)
     for key, value in bkt.model.items():

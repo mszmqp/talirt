@@ -2,7 +2,7 @@
 // Created by 张振虎 on 2018/11/6.
 //
 
-#include "_hmm.h"
+#include "_bkt.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -44,9 +44,9 @@ int main() {
 
     HMM hmm(2, 2);
     hmm.init(PI, A, B);
-    hmm.setBoundedPI(PI_LOW, PI_UPPER);
-    hmm.setBoundedA(A_LOW, A_UPPER);
-    hmm.setBoundedB(B_LOW, B_UPPER);
+    hmm.set_bound_pi(PI_LOW, PI_UPPER);
+    hmm.set_bound_a(A_LOW, A_UPPER);
+    hmm.set_bound_b(B_LOW, B_UPPER);
 
     int x = 0, n_x = 0, i = 0, j = 0;
     int *response = new int[50000];

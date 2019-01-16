@@ -4,7 +4,7 @@
 #include <iostream>
 //#include <gsl/gsl_matrix.h>
 
-using namespace std;
+
 #ifndef BKT_HMM_H
 #define BKT_HMM_H
 
@@ -16,313 +16,8 @@ using namespace std;
 #include <math.h>
 #include <memory.h>
 
+#include "utils.h"
 
-#define Malloc(type, n) (type *)malloc((n)*sizeof(type))
-#define Calloc(type, n) (type *)calloc(n,sizeof(type))
-#define MAX(x, y) (((x) > (y)) ? (x) : (y))
-#define MIN(x, y) (((x) < (y)) ? (x) : (y))
-
-
-template<typename T>
-void print2D(T **ar, int size1, int size2) {
-    for (int i = 0; i < size1; i++) {
-        for (int j = 0; j < size2; j++)
-            cout << ar[i][j] << " ";
-        cout << endl;
-    }
-
-}
-
-template<typename T>
-void print1D(T *ar, int size1) {
-    for (int i = 0; i < size1; i++) {
-        cout << ar[i] << " ";
-    }
-    cout << endl;
-
-}
-
-template<typename T>
-void toZero1D(T *ar, int size) {
-    for (int i = 0; i < size; i++)
-        ar[i] = 0;
-}
-
-template<typename T>
-void setConstant1D(T *ar, int size, T value) {
-    for (int i = 0; i < size; i++)
-        ar[i] = value;
-}
-
-template<typename T>
-void toZero2D(T **ar, int size1, int size2) {
-    for (int i = 0; i < size1; i++)
-        for (int j = 0; j < size2; j++)
-            ar[i][j] = 0;
-}
-
-template<typename T>
-void setConstant2D(T **ar, int size1, int size2, T value) {
-    for (int i = 0; i < size1; i++)
-        for (int j = 0; j < size2; j++)
-            ar[i][j] = value;
-}
-
-
-template<typename T>
-void toZero3D(T ***ar, int size1, int size2, int size3) {
-    for (int i = 0; i < size1; i++)
-        for (int j = 0; j < size2; j++)
-            for (int l = 0; l < size3; l++)
-                ar[i][j][l] = 0;
-}
-
-template<typename T>
-void toZero4D(T ****ar, int size1, int size2, int size3, int size4) {
-    for (int i = 0; i < size1; i++)
-        for (int j = 0; j < size2; j++)
-            for (int l = 0; l < size3; l++)
-                for (int n = 0; n < size4; n++)
-                    ar[i][j][l][n] = 0;
-}
-
-template<typename T>
-T *init1D(int size) {
-    T *ar = Calloc(T, (size_t) size);
-//    toZero1D()
-    return ar;
-}
-
-template<typename T>
-T **init2D(int size1, int size2) {
-    T **ar = (T **) Calloc(T *, (size_t) size1);
-    for (int i = 0; i < size1; i++)
-        ar[i] = (T *) Calloc(T, (size_t) size2);
-    return ar;
-}
-
-template<typename T>
-T ***init3D(int size1, int size2, int size3) {
-    int i, j;
-    T ***ar = Calloc(T **, (size_t) size1);
-    for (i = 0; i < size1; i++) {
-        ar[i] = Calloc(T*, (size_t) size2);
-        for (j = 0; j < size2; j++)
-            ar[i][j] = Calloc(T, (size_t) size3);
-    }
-    return ar;
-}
-
-template<typename T>
-T ****init4D(int size1, int size2, int size3, int size4) {
-    int i, j, l;
-    T ****ar = Calloc(T ***, (size_t) size1);
-    for (i = 0; i < size1; i++) {
-        ar[i] = Calloc(T**, (size_t) size2);
-        for (j = 0; j < size2; j++) {
-            ar[i][j] = Calloc(T*, (size_t) size3);
-            for (l = 0; l < size3; l++)
-                ar[i][j][l] = Calloc(T, (size_t) size4);
-        }
-    }
-    return ar;
-}
-
-
-template<typename T>
-void free2D(T **ar, int size1) {
-    for (int i = 0; i < size1; i++)
-        free(ar[i]);
-    free(ar);
-    //    &ar = NULL;
-}
-
-template<typename T>
-void free3D(T ***ar, int size1, int size2) {
-    for (int i = 0; i < size1; i++) {
-        for (int j = 0; j < size2; j++)
-            free(ar[i][j]);
-        free(ar[i]);
-    }
-    free(ar);
-    //    &ar = NULL;
-}
-
-template<typename T>
-void free4D(T ****ar, int size1, int size2, int size3) {
-    for (int i = 0; i < size1; i++) {
-        for (int j = 0; j < size2; j++) {
-            for (int l = 0; l < size3; l++)
-                free(ar[i][j][l]);
-            free(ar[i][j]);
-        }
-        free(ar[i]);
-    }
-    free(ar);
-    //    &ar = NULL;
-}
-
-
-template<typename T>
-void cpy1D(T *source, T *target, int size) {
-    memcpy(target, source, sizeof(T) * (size_t) size);
-}
-
-template<typename T>
-void cpy2D(T **source, T **target, int size1, int size2) {
-    for (int i = 0; i < size1; i++)
-        memcpy(target[i], source[i], sizeof(T) * (size_t) size2);
-}
-
-template<typename T>
-void cpy3D(T ***source, T ***target, int size1, int size2, int size3) {
-    for (int t = 0; t < size1; t++)
-        for (int i = 0; i < size2; i++)
-            memcpy(target[t][i], source[t][i], sizeof(T) * (size_t) size3);
-}
-
-template<typename T>
-void cpy4D(T ****source, T ****target, int size1, int size2, int size3, int size4) {
-    for (int t = 0; t < size1; t++)
-        for (int i = 0; i < size2; i++)
-            for (int j = 0; j < size3; j++)
-                memcpy(target[t][i][j], source[t][i][j], sizeof(T) * (size_t) size4);
-}
-
-
-template<typename T>
-void swap1D(T *source, T *target, int size) {
-    T *buffer = init1D<T>(size); // init1<NUMBER>(size);
-    memcpy(buffer, target, sizeof(T) * (size_t) size); // reversed order, destination then source
-    memcpy(target, source, sizeof(T) * (size_t) size);
-    memcpy(source, buffer, sizeof(T) * (size_t) size);
-    free(buffer);
-}
-
-template<typename T>
-void swap2D(T **source, T **target, int size1, int size2) {
-    T **buffer = init2D<T>(size1, size2);
-    cpy2D<T>(buffer, target, size1, size2);
-    cpy2D<T>(target, source, size1, size2);
-    cpy2D<T>(source, buffer, size1, size2);
-    free2D<T>(buffer, size1);
-}
-
-template<typename T>
-void swap3D(T ***source, T ***target, int size1, int size2, int size3) {
-    T ***buffer = init3D<T>(size1, size2, size3);
-    cpy3D<T>(buffer, target, size1, size2, size3);
-    cpy3D<T>(target, source, size1, size2, size3);
-    cpy3D<T>(source, buffer, size1, size2, size3);
-    free3D<T>(buffer, size1, size2);
-}
-
-template<typename T>
-void swap4D(T ****source, T ****target, int size1, int size2, int size3, int size4) {
-    T ****buffer = init4D<T>(size1, size2, size3, size4);
-    cpy4D<T>(buffer, target, size1, size2, size3, size4);
-    cpy4D<T>(target, source, size1, size2, size3, size4);
-    cpy4D<T>(source, buffer, size1, size2, size3, size4);
-    free4D<T>(buffer, size1, size2, size3);
-}
-
-template<typename T>
-T max1D(T *ar, int size1) {
-    T value = 0;
-    if (size1 < 1) {
-        return value;
-    }
-    value = ar[0];
-    for (int i = 0; i < size1; ++i) {
-        if (ar[i] > value) {
-            value = ar[i];
-        }
-    }
-    return value;
-}
-
-
-template<typename T>
-T sum1D(T *ar, int size1) {
-    T sum = 0;
-
-    for (int i = 0; i < size1; ++i) {
-        sum += ar[i];
-    }
-    return sum;
-}
-
-template<typename T>
-T sum2D(T **ar, int size1, int size2) {
-    T sum = 0;
-
-    for (int i = 0; i < size1; ++i) {
-        for (int j = 0; j < size2; ++j) {
-            sum += ar[i][j];
-        }
-    }
-    return sum;
-}
-
-template<typename T>
-double normalize1D(T *ar, int size1) {
-    T sum = sum1D(ar, size1);
-    for (int i = 0; i < size1; ++i) {
-        ar[i] /= sum;
-    }
-    return sum;
-}
-
-template<typename T>
-double normalize2D(T **ar, int size1, int size2) {
-    T sum = sum2D(ar, size1, size2);
-    for (int i = 0; i < size1; ++i) {
-        for (int j = 0; j < size2; ++j) {
-            ar[i][j] /= sum;
-        }
-    }
-    return sum;
-
-}
-
-template<typename T>
-void bounded1D(T *source, T *low, T *upper, int size) {
-    for (int k = 0; k < size; ++k) {
-        if (source[k] > upper[k]) {
-            source[k] = upper[k];
-        }
-        if (source[k] < low[k]) {
-            source[k] = low[k];
-        }
-    }
-}
-
-template<typename T>
-void bounded2D(T **source, T **low, T **upper, int size1, int size2) {
-    for (int i = 0; i < size1; ++i) {
-        for (int k = 0; k < size2; ++k) {
-            if (source[i][k] > upper[i][k]) {
-                source[i][k] = upper[i][k];
-            }
-            if (source[i][k] < low[i][k]) {
-                source[i][k] = low[i][k];
-            }
-        }
-    }
-
-}
-
-template<class C>
-class MatrixView {
-public:
-    C *data;
-    int rows;
-    int cols;
-
-    MatrixView(int rows,int cols,C *ptr):rows(rows),cols(cols),data(ptr) { };
-
-    C *operator[](int k) { return &(this->data[k*this->cols]); }
-};
 
 /*
  * HMM的估计算法中涉及到缩放因子和多序列问题，
@@ -350,52 +45,106 @@ private:
 //    double **xi_sum;
     double *cn;
 
+    int x_pos;
+    int *x_ptr;
+
 //    EmissionDistribution *ed;
 
 public:
+    ///
+    /// \param n_stat 隐状态的数量
+    /// \param n_obs  观测状态的数量
     HMM(int n_stat = 2, int n_obs = 2);
 
     ~HMM();
 
+    /// 初始化设置参数
+    /// \param pi 初始概率
+    /// \param a 转移概率
+    /// \param b 发射概率
     void init(double pi[] = NULL, double a[] = NULL, double b[] = NULL);
 
-    void setBoundedPI(double lower[] = NULL, double upper[] = NULL);
+    /// 设置初始概率PI的约束
+    /// \param lower 对应位置值的下限。一维数组。
+    /// \param upper 对应位置值的上限。一维数组。
+    void set_bound_pi(double lower[] = NULL, double upper[] = NULL);
 
-    void setBoundedA(double lower[] = NULL, double upper[] = NULL);
+    /// 设置转移概率矩阵A的约束
+    /// \param lower 对应位置值的下限。用一维连续空间表示二维数组。
+    /// \param upper 对应位置值的上限。用一维连续空间表示二维数组。
+    void set_bound_a(double lower[] = NULL, double upper[] = NULL);
 
-    void setBoundedB(double lower[] = NULL, double upper[] = NULL);
+    /// 设置发射概率矩阵B的约束
+    /// \param lower 对应位置值的下限。用一维连续空间表示二维数组。
+    /// \param upper 对应位置值的上限。用一维连续空间表示二维数组。
+    void set_bound_b(double lower[] = NULL, double upper[] = NULL);
 
+    /// 估计模型参数
+    /// \param x 观测值序列。可以是多个不同的观测序列堆在一起，lengths数组记录每个观测序列的长度。len(x)=sum(lengths)
+    /// \param lengths 每个观测序列的长度。
+    /// \param n_lengths lengths数组的长度，也就是有多少个不同的观测序列。
+    /// \param max_iter 最大迭代次数
+    /// \param tol 收敛的精度，当两轮迭代似然值的差值小于tol时，结束迭代。
+    /// \return
     double estimate(int x[], int lengths[], int n_lengths, int max_iter = 20, double tol = 1e-2);
 
-    void getPI(double *out);
+    /// 获取初始概率的值
+    /// \param out 用于保存输出值。一维数组的指针。
+    void get_pi(double *out);
 
-    void getA(double *out);
+    /// 获取转移概率的值
+    /// \param out 用于保存输出值。用一维连续空间表示二维数组。
+    void get_a(double *out);
 
-    void getB(double *out);
+    /// 获取发射概率的值
+    /// \param out 用于保存输出值。用一维连续空间表示二维数组。
+    void get_b(double *out);
 
+    /// 预测下一个观测值
+    /// \param out [输出] 预测的每个观测状态的概率值
+    /// \param x [输入] 已知的观测序列
+    /// \param n_x [输入] 已知观测序列的长度
+    /// \param pi [输入，可选] 初始概率值。如果为空指针，就使用类对象已有值。
+    /// \param a [输入，可选] 转移概率矩阵。如果为空指针，就使用类对象已有值。用一维连续空间表示二维数组。
+    /// \param b [输入，可选] 发射概率矩阵。如果为空指针，就使用类对象已有值。用一维连续空间表示二维数组。
+    /// \param n_stat [输入，可选] 隐状态的数量
+    /// \param n_obs [输入，可选] 观测状态的数量
     void
     predict_next(double *out, int *x, int n_x, double *pi = NULL, double *a = NULL, double *b = NULL, int n_stat = 0,
                  int n_obs = 0);
 
 private:
-    double forward(int *x, int n_x, double *PI, double **A);
+    /// 前向算法
+    /// \param x
+    /// \param n_x
+    /// \param PI
+    /// \param A
+    /// \return
+    double forward(int x_pos, int n_x, double *PI, double **A);
 
-    double backward(int *x, int n_x, double *PI, double **A);
+    /// 后向算法
+    /// \param x
+    /// \param n_x
+    /// \param PI
+    /// \param A
+    /// \return
+    double backward(int x_pos, int n_x, double *PI, double **A);
 
-    void gamma(int *x, int n, double **fwdlattice, double **backlattice, double *gamma_sum);
+    /// 计算gamma
+    /// \param x
+    /// \param n
+    /// \param fwdlattice
+    /// \param backlattice
+    /// \param gamma_sum
+    void gamma(int x_pos, int n, double **fwdlattice, double **backlattice, double *gamma_sum);
 
-    void xi(int *x, int n, double **fwdlattice, double **backlattice, double **xi_sum);
+    void xi(int x_pos, int n, double **fwdlattice, double **backlattice, double **xi_sum);
 
-    double emmit_pdf(int stat, int obs);
+    double emmit_pdf(int x_pos,int stat, int obs);
 
     void bounded();
 };
 
-
-class StandardBKT : public HMM {
-public:
-    StandardBKT(int n_obs = 2, int n_stat = 2) : HMM(n_obs, n_stat) {};
-};
 
 
 #endif //BKT_HMM_H

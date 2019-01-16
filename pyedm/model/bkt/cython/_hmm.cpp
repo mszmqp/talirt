@@ -3,30 +3,8 @@
 //
 
 #include "_hmm.h"
+//#include <iostream>
 
-void printAlpha(double **alpha, double *cn, int n_x, int n_stat) {
-    double c = 1;
-    for (int t = 0; t < n_x; ++t) {
-        c *= cn[t];
-        cout << t;
-        for (int i = 0; i < n_stat; ++i) {
-            cout << " " << alpha[t][i] * c;
-        }
-        cout << endl;
-    }
-}
-
-void printBeta(double **beta, double *cn, int n_x, int n_stat) {
-    double c = 1;
-    for (int t = n_x - 1; t >= 0; --t) {
-        c *= cn[t];
-        cout << t;
-        for (int i = 0; i < n_stat; ++i) {
-            cout << " " << beta[t][i] * c;
-        }
-        cout << endl;
-    }
-}
 
 HMM::HMM(int n_stat, int n_obs) {
     this->n_obs = n_obs;
@@ -51,6 +29,13 @@ HMM::HMM(int n_stat, int n_obs) {
     toZero2D(this->B_LOW, this->n_stat, this->n_obs);
     setConstant2D(this->B_UPPER, this->n_stat, this->n_obs, 1.0);
 
+    this->fwdlattice = NULL;
+    this->backlattice = NULL;
+    this->x_ptr = NULL;
+    this->x_pos = 0;
+    this->gammalattice = NULL;
+    this->cn = NULL;
+
 }
 
 HMM::~HMM() {
@@ -65,7 +50,7 @@ HMM::~HMM() {
     free2D(this->B_UPPER, this->n_stat);
 }
 
-void HMM::setBoundedPI(double lower[], double upper[]) {
+void HMM::set_bound_pi(double *lower, double *upper) {
     if (lower != NULL) {
         cpy1D(lower, this->PI_LOW, this->n_stat);
     }
@@ -74,12 +59,12 @@ void HMM::setBoundedPI(double lower[], double upper[]) {
     }
 }
 
-void HMM::setBoundedA(double lower[], double upper[]) {
+void HMM::set_bound_a(double lower[], double upper[]) {
 
     if (lower != NULL) {
 //        gsl_matrix_view m = gsl_matrix_view_array(lower, this->n_stat, this->n_stat);
 
-        MatrixView<double> m(this->n_stat,this->n_stat,lower);
+        MatrixView<double> m(this->n_stat, this->n_stat, lower);
         for (int i = 0; i < this->n_stat; ++i) {
             for (int j = 0; j < this->n_stat; ++j) {
 //                this->A_LOW[i][j] = gsl_matrix_get(&m.matrix, i, j);
@@ -91,7 +76,7 @@ void HMM::setBoundedA(double lower[], double upper[]) {
     }
     if (upper != NULL) {
 //        gsl_matrix_view m = gsl_matrix_view_array(upper, this->n_stat, this->n_stat);
-        MatrixView<double> m(this->n_stat,this->n_stat,upper);
+        MatrixView<double> m(this->n_stat, this->n_stat, upper);
         for (int i = 0; i < this->n_stat; ++i) {
             for (int j = 0; j < this->n_stat; ++j) {
 //                this->A_UPPER[i][j] = gsl_matrix_get(&m.matrix, i, j);
@@ -104,10 +89,10 @@ void HMM::setBoundedA(double lower[], double upper[]) {
     }
 }
 
-void HMM::setBoundedB(double lower[], double upper[]) {
+void HMM::set_bound_b(double lower[], double upper[]) {
     if (lower != NULL) {
 //        gsl_matrix_view m = gsl_matrix_view_array(lower, this->n_stat, this->n_obs);
-        MatrixView<double> m(this->n_stat,this->n_obs,lower);
+        MatrixView<double> m(this->n_stat, this->n_obs, lower);
 
         for (int i = 0; i < this->n_stat; ++i) {
             for (int j = 0; j < this->n_stat; ++j) {
@@ -118,7 +103,7 @@ void HMM::setBoundedB(double lower[], double upper[]) {
         }
     }
     if (upper != NULL) {
-        MatrixView<double> m(this->n_stat,this->n_obs,upper);
+        MatrixView<double> m(this->n_stat, this->n_obs, upper);
 
 //        gsl_matrix_view m = gsl_matrix_view_array(upper, this->n_stat, this->n_obs);
         for (int i = 0; i < this->n_stat; ++i) {
@@ -157,7 +142,7 @@ void HMM::init(double pi[], double a[], double b[]) {
 
 
     } else {
-        MatrixView<double> m(this->n_stat,this->n_stat,a);
+        MatrixView<double> m(this->n_stat, this->n_stat, a);
 //        gsl_matrix_view m = gsl_matrix_view_array(a, this->n_stat, this->n_stat);
         for (int i = 0; i < this->n_stat; ++i) {
             for (int j = 0; j < this->n_stat; ++j) {
@@ -173,7 +158,7 @@ void HMM::init(double pi[], double a[], double b[]) {
 
     } else {
 //        gsl_matrix_view m = gsl_matrix_view_array(b, this->n_stat, this->n_obs);
-        MatrixView<double> m(this->n_stat,this->n_obs,b);
+        MatrixView<double> m(this->n_stat, this->n_obs, b);
         for (int i = 0; i < this->n_stat; ++i) {
             for (int j = 0; j < this->n_obs; ++j) {
 //                this->B[i][j] = gsl_matrix_get(&m.matrix, i, j);
@@ -191,10 +176,16 @@ double HMM::estimate(int *x, int *lengths, int n_lengths, int max_iter, double t
     // 最长的序列长度
     int max_n_x = max1D(lengths, n_lengths);
 
+    // 先释放原来的空间
+    free2D(this->fwdlattice, max_n_x);
+    free2D(this->backlattice, max_n_x);
+    free2D(this->gammalattice, max_n_x);
+    free(this->cn);
+
+    // 申请新空间
     this->fwdlattice = init2D<double>(max_n_x, this->n_stat);
     this->backlattice = init2D<double>(max_n_x, this->n_stat);
     this->gammalattice = init2D<double>(max_n_x, this->n_stat);
-
     this->cn = init1D<double>(max_n_x);
 
     toZero1D(cn, max_n_x);
@@ -214,13 +205,15 @@ double HMM::estimate(int *x, int *lengths, int n_lengths, int max_iter, double t
 
 
     int n_x, iter;
-    int *x_pos;
+    int x_pos;
     double cur_log_likelihood = 0, pre_log_likelihood = 0;
 
+    this->x_ptr = x;
 
     for (iter = 0; iter < max_iter; ++iter) {
 //        start_pos = 0;
-        x_pos = x;
+//        this->x_pos = 0;
+        x_pos = 0;
         n_x = 0;
         toZero1D<double>(PI, this->n_stat);
         toZero2D<double>(A, this->n_stat, this->n_stat);
@@ -235,6 +228,7 @@ double HMM::estimate(int *x, int *lengths, int n_lengths, int max_iter, double t
 
         // 注意gamma_obs_sum gamma_sum xi_sum 是累计了所有观测序列的值
         for (int c = 0; c < n_lengths; ++c) {
+//            this->x_pos += n_x; // 当前观测序列的位置
             x_pos += n_x; // 当前序列的位置
             n_x = lengths[c]; // 当前序列的长度
             if (n_x < 2) {
@@ -275,7 +269,7 @@ double HMM::estimate(int *x, int *lengths, int n_lengths, int max_iter, double t
             // 发射概率的分子部分
             for (int t = 0; t < n_x - 1; t++) {
                 for (int i = 0; i < this->n_stat; ++i) {
-                    gamma_obs_sum[i][x_pos[t]] += this->gammalattice[t][i];
+                    gamma_obs_sum[i][x[x_pos + t]] += this->gammalattice[t][i];
                 }
             }
         }
@@ -342,11 +336,14 @@ double HMM::estimate(int *x, int *lengths, int n_lengths, int max_iter, double t
 /*
  * 缩放因子参考 https://pdfs.semanticscholar.org/4ce1/9ab0e07da9aa10be1c336400c8e4d8fc36c5.pdf
  */
-double HMM::forward(int *x, int n_x, double *PI, double **A) {
+double HMM::forward(int x_pos, int n_x, double *PI, double **A) {
+
+
+    int *x = this->x_ptr + x_pos;
 
     double log_likelihood = 0;
     for (int i = 0; i < this->n_stat; i++) {
-        this->fwdlattice[0][i] = PI[i] * this->emmit_pdf(i, x[0]);
+        this->fwdlattice[0][i] = PI[i] * this->emmit_pdf(x_pos, i, x[0]);
     }
     this->cn[0] = normalize1D(this->fwdlattice[0], this->n_stat);
     log_likelihood += log(this->cn[0]);
@@ -357,7 +354,7 @@ double HMM::forward(int *x, int n_x, double *PI, double **A) {
             for (int j = 0; j < this->n_stat; ++j) {
                 this->fwdlattice[t][i] += this->fwdlattice[t - 1][j] * A[j][i];
             }
-            this->fwdlattice[t][i] *= this->emmit_pdf(i, x[t]);
+            this->fwdlattice[t][i] *= this->emmit_pdf(x_pos, i, x[t]);
         }
         this->cn[t] = normalize1D(this->fwdlattice[t], this->n_stat);
         log_likelihood += log(this->cn[t]);
@@ -366,8 +363,10 @@ double HMM::forward(int *x, int n_x, double *PI, double **A) {
     return log_likelihood;
 }
 
-double HMM::backward(int *x, int n_x, double *PI, double **A) {
+double HMM::backward(int x_pos, int n_x, double *PI, double **A) {
 //    double likelihood = 0;
+    int *x = this->x_ptr + x_pos;
+
     for (int i = 0; i < this->n_stat; ++i) {
         this->backlattice[n_x - 1][i] = 1 / this->cn[n_x - 1];
     }
@@ -377,7 +376,7 @@ double HMM::backward(int *x, int n_x, double *PI, double **A) {
 
             this->backlattice[t][i] = 0;
             for (int j = 0; j < this->n_stat; ++j) {
-                this->backlattice[t][i] += A[i][j] * this->emmit_pdf(j, x[t + 1]) * this->backlattice[t + 1][j];
+                this->backlattice[t][i] += A[i][j] * this->emmit_pdf(x_pos, j, x[t + 1]) * this->backlattice[t + 1][j];
             }
             this->backlattice[t][i] /= this->cn[t];
         }
@@ -385,7 +384,8 @@ double HMM::backward(int *x, int n_x, double *PI, double **A) {
     return 0;
 }
 
-void HMM::gamma(int *x, int n, double **fwdlattice, double **backlattice, double *gamma_sum) {
+void HMM::gamma(int x_pos, int n, double **fwdlattice, double **backlattice, double *gamma_sum) {
+    int *x = this->x_ptr + x_pos;
     // 为了和xi的长度一样，这里少算一个。
     for (int t = 0; t < n - 1; ++t) {
         for (int i = 0; i < this->n_stat; ++i) {
@@ -398,15 +398,16 @@ void HMM::gamma(int *x, int n, double **fwdlattice, double **backlattice, double
     }
 }
 
-void HMM::xi(int *x, int n, double **fwdlattice, double **backlattice, double **xi_sum) {
+void HMM::xi(int x_pos, int n, double **fwdlattice, double **backlattice, double **xi_sum) {
 
+    int *x = this->x_ptr + x_pos;
     // xi的值并不需要每个时刻保留，而只用到所有时刻累加的结果。
     // 面对多序列时，全部累加在一起就行
     for (int t = 0; t < n - 1; ++t) {
         for (int i = 0; i < this->n_stat; ++i) {
             for (int j = 0; j < this->n_stat; ++j) {
 
-                xi_sum[i][j] += fwdlattice[t][i] * this->A[i][j] * this->emmit_pdf(j, x[t + 1]) *
+                xi_sum[i][j] += fwdlattice[t][i] * this->A[i][j] * this->emmit_pdf(x_pos, j, x[t + 1]) *
                                 backlattice[t + 1][j];
             }
         }
@@ -415,12 +416,12 @@ void HMM::xi(int *x, int n, double **fwdlattice, double **backlattice, double **
 
 }
 
-double HMM::emmit_pdf(int stat, int obs) {
+double HMM::emmit_pdf(int x_pos, int stat, int obs) {
     return this->B[stat][obs];
 }
 
 
-void HMM::getPI(double *out) {
+void HMM::get_pi(double *out) {
     if (this->PI == NULL || out == NULL) {
         return;
     }
@@ -429,7 +430,7 @@ void HMM::getPI(double *out) {
     }
 }
 
-void HMM::getA(double *out) {
+void HMM::get_a(double *out) {
     if (this->A == NULL || out == NULL) {
         return;
     }
@@ -441,7 +442,7 @@ void HMM::getA(double *out) {
 
 }
 
-void HMM::getB(double *out) {
+void HMM::get_b(double *out) {
     if (this->B == NULL || out == NULL) {
         return;
     }
@@ -464,8 +465,8 @@ void HMM::predict_next(double *out, int *x, int n_x, double *start, double *tran
         n_obs = this->n_obs;
     }
     double *PI;
-
     bool free_A = false, free_B = false;
+
     if (start == NULL) {
         PI = this->PI;
     } else {
@@ -474,27 +475,13 @@ void HMM::predict_next(double *out, int *x, int n_x, double *start, double *tran
     if (transition == NULL) {
         double **A = this->A;
     } else {
-//        A = init2D<double>(n_stat, n_stat);
-//        free_A = true;
-//        for (int i = 0; i < n_stat; ++i) {
-//            for (int j = 0; j < n_stat; ++j) {
-//                A[i][j] = transition[i * n_stat + j];
-//            }
-//        }
-        MatrixView<double> A (n_stat,n_stat,transition);
+        MatrixView<double> A(n_stat, n_stat, transition);
     }
 
     if (emission == NULL) {
-        double  **B = this->B;
+        double **B = this->B;
     } else {
-//        free_B = true;
-//        B = init2D<double>(n_stat, n_stat);
-//        for (int i = 0; i < n_stat; ++i) {
-//            for (int j = 0; j < n_stat; ++j) {
-//                B[i][j] = emission[i * n_stat + j];
-//            }
-//        }
-        MatrixView<double> B (n_stat,n_obs,emission);
+        MatrixView<double> B(n_stat, n_obs, emission);
 //        cout << "4r4rer "<<B[0][0] <<" "<<B[0][1]<<endl;
 //        cout<< B[1][0]<<" " << B[1][1] <<endl;
     }
