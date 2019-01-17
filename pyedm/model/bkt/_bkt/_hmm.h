@@ -20,10 +20,9 @@
 
 //typedef signed char NPAR;
 
-bool issimplexbounded(double * ar, double *lb, double *ub, int size);
+bool issimplexbounded(double *ar, double *lb, double *ub, int size);
 
-void projectsimplexbounded(double* ar, double *lb, double *ub, int size);
-
+void projectsimplexbounded(double *ar, double *lb, double *ub, int size);
 
 
 /*
@@ -147,11 +146,10 @@ private:
 
     void xi(int x_pos, int n, double **fwdlattice, double **backlattice, double **xi_sum);
 
-    virtual double emmit_pdf(int x_pos,int stat, int obs);
+    virtual double emmit_pdf(int x_pos, int stat, int obs);
 
     void bounded();
 };
-
 
 
 #endif //BKT_HMM_H

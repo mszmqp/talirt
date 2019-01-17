@@ -55,6 +55,12 @@ def main(options):
                              'Correct First Attempt': 'answer',
                              }, inplace=True)
 
+    df_test = df_a67_test.join(item_info['item_id'], how='left', on='item_name')
+    df_test.rename(columns={'Anon Student Id': 'user',
+                            'KC(Default)': 'knowledge',
+                            'Correct First Attempt': 'answer',
+                            }, inplace=True)
+
     start_init = np.array([0.1, 0.2, 0.2, 0.2, 0.1, 0.1, 0.1], dtype=np.float64)
     # assert start_init.sum() == 1
     n_stat = 7

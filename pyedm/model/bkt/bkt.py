@@ -92,7 +92,7 @@ class BKTBatch:
 
     def __init__(self,
                  start_init=np.array([0.5, 0.5]),
-                 transition_init=np.array([[1, 0], [0.4, 0.6]]),
+                 transition_init=None,
                  emission_init=np.array([[0.8, 0.2], [0.2, 0.8]]),
                  # random_state=None,
                  n_stats=2,
@@ -101,6 +101,18 @@ class BKTBatch:
 
         self.n_stats = n_stats  # 隐状态的数量
         self.n_obs = n_obs  # 观测状态的数量
+
+        # 0 会 1不会; 0:做对，1:做错
+        # if transition_init is None:
+        #     transition_init = np.array([[1, 0], [0.4, 0.6]])
+        # self.transition_lb = np.array([[1, 0], [0, 0]]).astype(np.float64)
+        # self.transition_ub = np.array([[1, 0], [1, 1]]).astype(np.float64)
+
+        # 0 不会，1会 ；0做错，1做对
+        if transition_init is None:
+            transition_init = np.array([[0.4, 0.6], [0, 1]])
+        self.transition_lb = np.array([[0, 0], [0, 1]]).astype(np.float64)
+        self.transition_ub = np.array([[1, 1], [0, 1]]).astype(np.float64)
 
         self.start_init = start_init
         self.transition_init = transition_init
@@ -112,11 +124,10 @@ class BKTBatch:
         self.train_cost_time = 0
         self.predict_cost_time = 0
 
-        # 约束条 0表示会，1表示不会，0表示做对，1表示做错 件
+        # 约束条件
         self.start_lb = np.array([0, 0]).astype(np.float64)
         self.start_ub = np.array([1, 1]).astype(np.float64)
-        self.transition_lb = np.array([[1, 0], [0, 0]]).astype(np.float64)
-        self.transition_ub = np.array([[1, 0], [1, 1]]).astype(np.float64)
+
         self.emission_lb = np.array([[0.7, 0], [0, 0.7]]).astype(np.float64)
         self.emission_ub = np.array([[1, 0.3], [0.3, 1]]).astype(np.float64)
         self.model = {}
@@ -552,7 +563,7 @@ class BKTBatch:
 
         # 所有序列的长度小于3是不可以的，这样是无法训练的
         if np.all(lengths < 3):
-            print("[error]", trace, 'x_lengths is all 1', file=sys.stderr)
+            print("[error]", trace, 'x_lengths is all less than 3', file=sys.stderr)
             if trace is None:
                 return None
             else:
@@ -568,9 +579,10 @@ class BKTBatch:
         # hmm.set_bounded_start(self.start_lb, self.start_ub)
         # hmm.set_bounded_transition(self.transition_lb, self.transition_ub)
         # hmm.set_bounded_emission(self.emission_lb, self.emission_ub)
-        if trace == "FQ-FACTOR-ALREADY-ENTERED-PARTNER~~FQ-FACTOR":
-            br = "heheh"
-            pass
+        # if trace == "LCD-ROW-3~~LCD-ROW-3-DO-LCD-FIRST":
+        #     print(x_array, lengths, file=sys.stderr)
+        #     br = "heheh"
+        #     pass
         _t = time.time()
         print("[success]", trace, 'count:', x_array.shape[0], end=' ', file=sys.stderr)
         bkt.estimate(x_array, lengths)

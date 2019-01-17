@@ -367,7 +367,9 @@ bool HMM::estimate(int *x, int *lengths, int n_lengths, int max_iter, double tol
     toZero2D(this->gammalattice, max_n_x, this->n_stat);
 
 
-    double *gamma_sum = init1D<double>(this->n_stat);
+    double *gamma_sum_T = init1D<double>(this->n_stat);
+    double *gamma_sum_T_1 = init1D<double>(this->n_stat);
+
     double **xi_sum = init2D<double>(this->n_stat, this->n_stat);
     double **gamma_obs_sum = init2D<double>(this->n_stat, this->n_obs);
 
@@ -394,7 +396,8 @@ bool HMM::estimate(int *x, int *lengths, int n_lengths, int max_iter, double tol
 
         toZero2D<double>(xi_sum, this->n_stat, this->n_stat);
         toZero2D<double>(gamma_obs_sum, this->n_stat, this->n_obs);
-        toZero1D<double>(gamma_sum, this->n_stat);
+        toZero1D<double>(gamma_sum_T, this->n_stat);
+        toZero1D<double>(gamma_sum_T_1, this->n_stat);
 
         pre_log_likelihood = cur_log_likelihood;
         cur_log_likelihood = 0;
@@ -402,6 +405,11 @@ bool HMM::estimate(int *x, int *lengths, int n_lengths, int max_iter, double tol
 //        std::cout << "------" << iter << "-----" << n_lengths << std::endl;
 //        std::cout << "PI" << std::endl;
 //        print1D(this->PI, this->n_stat);
+//        cout << "A" << endl;
+//        print2D(this->A, this->n_stat, this->n_stat);
+//        cout << "B" << endl;
+//        print2D(this->B, this->n_stat, this->n_obs);
+
 
         // 注意gamma_obs_sum gamma_sum xi_sum 是累计了所有观测序列的值
         for (int c = 0; c < n_lengths; ++c) {
@@ -418,7 +426,16 @@ bool HMM::estimate(int *x, int *lengths, int n_lengths, int max_iter, double tol
             // 重制gamma，每个序列独立
 //            toZero2D<double>(this->gammalattice, n_x, this->n_stat);
 
-            this->gamma(x_pos, n_x, this->fwdlattice, this->backlattice, gamma_sum);
+            this->gamma(x_pos, n_x, this->fwdlattice, this->backlattice, gamma_sum_T);
+
+            // 计算n_x-1个gamma的和gamma_sum_T_1
+            for (int t = 0; t < n_x - 1; ++t) {
+                for (int i = 0; i < this->n_stat; ++i) {
+                    gamma_sum_T_1[i] += this->gammalattice[t][i];
+                }
+            }
+
+
             this->xi(x_pos, n_x, this->fwdlattice, this->backlattice, xi_sum);
 
 
@@ -445,7 +462,7 @@ bool HMM::estimate(int *x, int *lengths, int n_lengths, int max_iter, double tol
 //            normalize1D(PI, this->n_stat);
 
             // 发射概率的分子部分
-            for (int t = 0; t < n_x - 1; t++) {
+            for (int t = 0; t < n_x; t++) {
                 for (int i = 0; i < this->n_stat; ++i) {
                     gamma_obs_sum[i][x[x_pos + t]] += this->gammalattice[t][i];
                 }
@@ -458,13 +475,31 @@ bool HMM::estimate(int *x, int *lengths, int n_lengths, int max_iter, double tol
 //        print1D(gamma_sum, this->n_stat);
 
         for (int i = 0; i < this->n_stat; ++i) {
-            // 计算新的转移概率
+            // 计算新的转移概率，注意 转移概率的gamma_sum是T-1个求和，
             for (int j = 0; j < this->n_stat; ++j) {
-                A[i][j] = xi_sum[i][j] / gamma_sum[i];
+                // 当观测序列都是一个观测值的时候 会出现分母为0
+                if (gamma_sum_T_1[i] == 0) {
+                    if (xi_sum[i][j] == gamma_sum_T_1[i]) {
+                        A[i][j] = 1;
+                    }
+                } else {
+
+                    A[i][j] = xi_sum[i][j] / gamma_sum_T_1[i];
+                }
             }
-            // 计算发射概率
+            // 计算发射概率，注意发射概率的gamma_sum是T个求和
             for (int k = 0; k < this->n_obs; ++k) {
-                B[i][k] = gamma_obs_sum[i][k] / gamma_sum[i];
+                // 当观测序列都是一个观测值的时候 会出现分母为0
+                if (gamma_sum_T[i] == 0) {
+                    if (gamma_obs_sum[i][k] == gamma_sum_T[i]) {
+                        B[i][k] = 1;
+                    } else { // todo 这个分支会出现吗？
+                        B[i][k] = 0;
+                    }
+                } else {
+                    B[i][k] = gamma_obs_sum[i][k] / gamma_sum_T[i];
+
+                }
             }
 
         }
@@ -496,7 +531,8 @@ bool HMM::estimate(int *x, int *lengths, int n_lengths, int max_iter, double tol
     free(PI);
     free2D(A, this->n_stat);
     free2D(B, this->n_stat);
-    free(gamma_sum);
+    free(gamma_sum_T_1);
+    free(gamma_sum_T);
     free2D(gamma_obs_sum, this->n_stat);
     free2D(xi_sum, this->n_stat);
 
@@ -526,11 +562,11 @@ double HMM::forward(int x_pos, int n_x, double *PI, double **A) {
     for (int i = 0; i < this->n_stat; i++) {
         this->fwdlattice[0][i] = PI[i] * this->emmit_pdf(x_pos + 0, i, x[0]);
     }
-    if (this->fwdlattice[0][0] == 0) {
-        cout << "--------" << endl;
-        cout << PI[0] << endl;
-        cout << this->emmit_pdf(x_pos + 0, 0, x[0]) << endl;
-    }
+//    if (this->fwdlattice[0][0] == 0) {
+//        cout << "--------" << endl;
+//        cout << PI[0] << endl;
+//        cout << this->emmit_pdf(x_pos + 0, 0, x[0]) << endl;
+//    }
 
     this->cn[0] = normalize1D(this->fwdlattice[0], this->n_stat);
     log_likelihood += log(this->cn[0]);
@@ -542,6 +578,13 @@ double HMM::forward(int x_pos, int n_x, double *PI, double **A) {
                 this->fwdlattice[t][i] += this->fwdlattice[t - 1][j] * A[j][i];
             }
             this->fwdlattice[t][i] *= this->emmit_pdf(x_pos + t, i, x[t]);
+
+//            if (this->fwdlattice[t][i] == 0) {
+//                cout << "--------" << endl;
+//                cout << "PI[i]" << PI[i] << endl;
+//                cout << "prob " << this->emmit_pdf(x_pos + t, i, x[t]) << endl;
+//            }
+
         }
         this->cn[t] = normalize1D(this->fwdlattice[t], this->n_stat);
         log_likelihood += log(this->cn[t]);
@@ -574,8 +617,8 @@ double HMM::backward(int x_pos, int n_x, double *PI, double **A) {
 
 void HMM::gamma(int x_pos, int n, double **fwdlattice, double **backlattice, double *gamma_sum) {
 //    int *x = this->x_ptr + x_pos;
-    // 为了和xi的长度一样，这里少算一个。
-    for (int t = 0; t < n - 1; ++t) {
+
+    for (int t = 0; t < n; ++t) {
         for (int i = 0; i < this->n_stat; ++i) {
             // 注意这里乘上了this->cn[t]
             // 是因为，在论文中，最后算转移概率和发射概率时，都必须要乘以一下。而不影响算初始概率。

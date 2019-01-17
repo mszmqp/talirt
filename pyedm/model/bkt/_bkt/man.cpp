@@ -9,47 +9,6 @@
 
 using namespace std;
 
-
-int main() {
-
-
-
-//    double ar[]={2.97381e-05, 0.0169172, 0.110727, 0.263254, 0.185179, 0.209572, 0.21677};
-//    double lb[]={0, 0, 0, 0, 0, 0, 0};
-//    double ub[7]={1,1,1,1,1,1,1};
-//    print1D(ub,7);
-//    projectsimplexbounded(ar,lb,ub,7);
-
-
-
-
-
-
-    double PI[2] = {0.5, 0.5};
-    double PI_LOW[2] = {0, 0}, PI_UPPER[] = {1, 1};
-
-    double A[] = {1, 0, 0.4, 0.6};
-//    double *A_ptr[2] = {A[0], A[1]};
-
-    double A_LOW[] = {1, 0, 0, 0};
-    double A_UPPER[] = {1, 0, 1, 1};
-
-    double B[] = {0.8, 0.2, 0.2, 0.8};
-
-    double B_LOW[] = {0.7, 0, 0, 0.7};
-    double B_UPPER[] = {1, 0.3, 0.3, 1};
-
-    StandardBKT hmm(2, 2);
-    hmm.init(PI, A, B);
-    hmm.set_bound_pi(PI_LOW, PI_UPPER);
-    hmm.set_bound_a(A_LOW, A_UPPER);
-    hmm.set_bound_b(B_LOW, B_UPPER);
-    int x[] = {0, 1};
-    int lengths[] = {2};
-    hmm.estimate(x, lengths, getArrayLen(lengths));
-    return 0;
-}
-
 int test_data() {
     int n_stat = 2, n_obs = 2;
 
@@ -118,5 +77,56 @@ int test_data() {
     hmm.predict_next(next, response, lengths[0], start, transition, emission);
     print1D(next, 2);
 
+    return 0;
+}
+
+
+int main() {
+
+    test_data();
+
+//    double ar[]={2.97381e-05, 0.0169172, 0.110727, 0.263254, 0.185179, 0.209572, 0.21677};
+//    double lb[]={0, 0, 0, 0, 0, 0, 0};
+//    double ub[7]={1,1,1,1,1,1,1};
+//    print1D(ub,7);
+//    projectsimplexbounded(ar,lb,ub,7);
+
+
+
+
+
+
+    double PI[2] = {0.5, 0.5};
+    double PI_LOW[2] = {0, 0}, PI_UPPER[] = {1, 1};
+// 0 会 1不会
+//    double A[] = {1, 0, 0.4, 0.6};
+//    double A_LOW[] = {1, 0, 0, 0};
+//    double A_UPPER[] = {1, 0, 1, 1};
+//    double B[] = {0.8, 0.2, 0.2, 0.8};
+
+//    double B_LOW[] = {0.7, 0, 0, 0.7};
+//    double B_UPPER[] = {1, 0.3, 0.3, 1};
+
+
+    // 0 不会，1会 ；0做错，1做对
+    double A[] = {0.4, 0.6, 0, 1};
+    double A_LOW[] = {0, 0, 0, 1};
+    double A_UPPER[] = {1, 1, 0, 1};
+
+    double B[] = {0.8, 0.2, 0.2, 0.8};
+
+    double B_LOW[] = {0.7, 0, 0, 0.7};
+    double B_UPPER[] = {1, 0.3, 0.3, 1};
+
+    StandardBKT hmm(2, 2);
+    hmm.init(PI, A, B);
+    hmm.set_bound_pi(PI_LOW, PI_UPPER);
+    hmm.set_bound_a(A_LOW, A_UPPER);
+    hmm.set_bound_b(B_LOW, B_UPPER);
+//    int x[] = {0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1};
+//    int lengths[] = {2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3};
+    int lengths[] = {4};
+    int x[] = {1, 1, 1, 0};
+    hmm.estimate(x, lengths, getArrayLen(lengths));
     return 0;
 }

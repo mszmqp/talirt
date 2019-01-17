@@ -49,8 +49,9 @@ double IRTBKT::emmit_pdf(int x_pos, int stat, int obs) {
     double prob = item->irt(stat);
 //    std::cerr << "x_pos " << x_pos << " item_id " << item_id;
 //    std::cerr << " potential " << stat <<" difficulty:" << item->intercept << " prob:" << prob << std::endl;
-    assert(prob>0);
-    return obs?prob:(1-prob);
+    assert(prob > 0);
+    assert(prob < 1);
+    return obs ? prob : (1 - prob);
 //    return this->B[stat][obs];
 }
 
