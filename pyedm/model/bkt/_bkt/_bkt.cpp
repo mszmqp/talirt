@@ -5,7 +5,7 @@
 #include "_bkt.h"
 
 
-IRTBKT::IRTBKT(int n_stat, int n_obs) : HMM(n_obs, n_stat) {
+IRTBKT::IRTBKT(int n_stat, int n_obs) : HMM(n_stat, 2) {
     this->items = NULL;
 
 }
@@ -45,7 +45,12 @@ double IRTBKT::emmit_pdf(int x_pos, int stat, int obs) {
 
     int item_id = this->items_id[x_pos];
     Item *item = &this->items[item_id];
-    return item->irt(stat);
+
+    double prob = item->irt(stat);
+//    std::cerr << "x_pos " << x_pos << " item_id " << item_id;
+//    std::cerr << " potential " << stat <<" difficulty:" << item->intercept << " prob:" << prob << std::endl;
+    assert(prob>0);
+    return obs?prob:(1-prob);
 //    return this->B[stat][obs];
 }
 

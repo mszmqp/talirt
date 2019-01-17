@@ -26,14 +26,14 @@ include_dirs.append(cython_gsl.get_include())
 NAME = "pyedm"
 PACKAGES = [NAME] + ["%s.%s" % (NAME, i) for i in find_packages(NAME)]
 extensions = [
-    Extension(name="pyedm.model.bkt._bkt_clib",
-              sources=['pyedm/model/bkt/cython/_bkt_clib' + ext],
+    Extension(name="pyedm.model.bkt._bktc",
+              sources=['pyedm/model/bkt/_bktc' + ext],
               include_dirs=include_dirs,
               libraries=cython_gsl.get_libraries()+["m"],
               library_dirs=[cython_gsl.get_library_dir()],
               ),
-    Extension(name="pyedm.model.bkt._bkt_cpp",
-              sources=['pyedm/model/bkt/cython/_bkt_cpp' + '.pyx' if USE_CYTHON else '.cpp'],
+    Extension(name="pyedm.model.bkt._bkt",
+              sources=['pyedm/model/bkt/_bkt' + '.pyx' if USE_CYTHON else '.cpp'],
               include_dirs=include_dirs,
               libraries=cython_gsl.get_libraries()+["m"],
               library_dirs=[cython_gsl.get_library_dir()],

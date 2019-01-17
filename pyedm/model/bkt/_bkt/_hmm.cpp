@@ -4,6 +4,158 @@
 
 #include "_hmm.h"
 //#include <iostream>
+using namespace std;
+
+//typedef signed char int;
+
+bool issimplexbounded(double *ar, double *lb, double *ub, int size) {
+    double sum = 1;
+    for (int i = 0; i < size; i++) {
+        sum -= ar[i];
+        if (ar[i] < lb[i] || ar[i] > ub[i])
+            return false;
+    }
+//    for(int i=0; i<size && fabs(sum)<SAFETY && fabs(sum)>0; i++) {
+//        if( (ar[i]+sum) >=lb[i] ) {
+//            ar[i]+=sum;
+//            break;
+//        }
+//        if( (ar[i]+sum) <=ub[i] ) {
+//            ar[i]+=sum;
+//            break;
+//        }
+//    }
+    return fabs(sum) < SAFETY;
+}
+
+
+void projectsimplexbounded(double *ar, double *lb, double *ub, int size) {
+    int i, num_at_hi, num_at_lo; // double of elements at lower,upper boundary
+    int *at_hi = Calloc(int, (size_t) size);
+    int *at_lo = Calloc(int, (size_t) size);
+    double err, lambda, v;
+    double *ar_copy = Calloc(double, (size_t) size);
+    memcpy(ar_copy, ar, (size_t) size);
+    int iter = 0;
+    for (i = 0; i < size; i++)
+        if (ar[i] != ar[i]) {
+            fprintf(stderr, "WARNING! NaN detected!\n");
+        }
+    bool doexit = false;
+    while (!issimplexbounded(ar, lb, ub, size) && !doexit) { // 不符合约束条件
+        lambda = 0;
+        num_at_hi = 0; // 超过上限的元素数量
+        num_at_lo = 0; // 超过下限的元素数量
+        err = -1;
+        // threshold
+        for (i = 0; i < size; i++) {
+            at_lo[i] = (ar[i] < lb[i]) ? 1 : 0; // 记录是否低于下限 -- 等于也算？？？？
+
+            v = (at_lo[i] == 1) ? lb[i] : ar[i]; // 如果低于下限，v就是下限值，否则v是原值
+            if (v != v) {
+                fprintf(stderr, "WARNING! 1 NaN to be set !\n");
+            }
+            // 如果小于下边界，设置成下边界
+            ar[i] = (at_lo[i] == 1) ? lb[i] : ar[i];
+            num_at_lo = (int) (num_at_lo + at_lo[i]); // 累加计数器
+
+            at_hi[i] = (ar[i] > ub[i]) ? 1 : 0;
+
+            v = (at_hi[i] == 1) ? ub[i] : ar[i];
+            if (v != v) {
+                fprintf(stderr, "WARNING! 2 NaN to be set!\n");
+            }
+            // 如果大于上边界，设置成上边界
+            ar[i] = (at_hi[i] == 1) ? ub[i] : ar[i];
+            num_at_hi = (int) (num_at_hi + at_hi[i]);
+
+            err += ar[i]; // ar的和
+        }
+        // err： 修正后，所有元素的和
+        if (err > 0 && size > num_at_lo) // 元素和超过1，并且超过下边界的元素数量 小于 元素总数。(理论上不可能所有元素都超过下边界)
+            lambda = err / (size - num_at_lo);
+        else if (err < 0 && size > num_at_hi) // 元素和小于1
+            lambda = err / (size - num_at_hi);
+
+        int will_suffer_from_lambda = 0; // those values that, if lessened by lambda, will be below 0 or over 1
+        double err2 = 0.0, lambda2 = 0.0;
+        for (i = 0; i < size; i++) {
+            // 如果一个值没有越界
+            if ((at_lo[i] == 0 && at_hi[i] == 0)) {
+                if (ar[i] < lambda) {
+                    will_suffer_from_lambda++;
+                    err2 += ar[i];
+                }
+            }
+        }
+
+        if (will_suffer_from_lambda == 0) {
+            for (i = 0; i < size; i++) {
+
+                v = ar[i] - ((at_lo[i] == 0 && err > 0) ? lambda : 0);
+                if (v != v) {
+                    fprintf(stderr, "WARNING! 3 NaN to be set! %f \n", v);
+                }
+
+                ar[i] -= (at_lo[i] == 0 && err > 0) ? lambda : 0;
+
+                v = ar[i] - ((at_hi[i] == 0 && err < 0) ? lambda : 0);
+                if (v != v) {
+                    fprintf(stderr, "WARNING! 4 NaN to be set!\n");
+                }
+
+                ar[i] -= (at_hi[i] == 0 && err < 0) ? lambda : 0;
+            }
+        } else {
+            lambda2 = (err - err2) / (size - (num_at_hi + num_at_lo) - will_suffer_from_lambda);
+            for (i = 0; i < size; i++) {
+                if (at_lo[i] == 0 && at_hi[i] == 0) {
+
+                    v = (ar[i] < lambda) ? 0 : (ar[i] - lambda2);
+                    if (v != v) {
+                        fprintf(stderr, "WARNING! 5 NaN to be set!\n");
+                    }
+
+                    ar[i] = (ar[i] < lambda) ? 0 : (ar[i] - lambda2);
+                }
+            }
+        }
+        iter++;
+        if (iter == 100) {
+            fprintf(stderr, "WARNING! Stuck in projectsimplexbounded().\n");
+//            doexit = true;
+            exit(1);
+        }
+    } // until satisfied
+    // force last to be 1 - sum of all but last -- this code, actually breaks things
+//    err = 0;
+//    for(i=0; i<(size); i++) {
+//        err += ar[i];
+//    }
+//    err = 1;
+//    for(i=0; i<(size-1); i++) {
+//        err -= ar[i];
+//    }
+//    ar[size-1] = err;
+//    err = 1;
+//    for(i=1; i<(size-0); i++) {
+//        err -= ar[i];
+//    }
+//    ar[0] = err;
+
+    double sum = 0.0;
+    for (i = 0; i < size; i++) {
+        sum += ar[i];
+        if (ar[i] < 0 || ar[i] > 1)
+            fprintf(stderr, "ERROR! projected value is not within [0, 1] range!\n");
+    }
+//    if( fabs(sum-1)>SAFETY) {
+//        fprintf(stderr, "ERROR! projected simplex does not sum to 1!\n");
+//    }
+
+    free(at_hi);
+    free(at_lo);
+}
 
 
 HMM::HMM(int n_stat, int n_obs) {
@@ -14,6 +166,7 @@ HMM::HMM(int n_stat, int n_obs) {
     this->PI_LOW = init1D<double>(this->n_stat);;
     this->PI_UPPER = init1D<double>(this->n_stat);;
     toZero1D(this->PI, this->n_stat);
+    toZero1D(this->PI_LOW, this->n_stat);
     setConstant1D(this->PI_UPPER, this->n_stat, 1.0);
 
     this->A = init2D<double>(this->n_stat, this->n_stat);
@@ -117,9 +270,26 @@ void HMM::set_bound_b(double lower[], double upper[]) {
 }
 
 void HMM::bounded() {
-    bounded1D<double>(this->PI, this->PI_LOW, this->PI_UPPER, this->n_stat);
-    bounded2D<double>(this->A, this->A_LOW, this->A_UPPER, this->n_stat, this->n_stat);
-    bounded2D<double>(this->B, this->B_LOW, this->B_UPPER, this->n_stat, this->n_obs);
+    if (this->PI && this->PI_LOW && this->PI_UPPER) {
+//        print1D(this->PI, this->n_stat);
+//        print1D(this->PI_LOW, this->n_stat);
+//        print1D(this->PI_UPPER, this->n_stat);
+        projectsimplexbounded(this->PI, this->PI_LOW, this->PI_UPPER, this->n_stat);
+
+    }
+//    bounded1D<double>(this->PI, this->PI_LOW, this->PI_UPPER, this->n_stat);
+    for (int i = 0; i < this->n_stat; ++i) {
+
+        projectsimplexbounded(this->A[i], this->A_LOW[i], this->A_UPPER[i], this->n_stat);
+        if (this->B && this->B_LOW && this->B_UPPER) {
+
+            projectsimplexbounded(this->B[i], this->B_LOW[i], this->B_UPPER[i], this->n_obs);
+        }
+    }
+//    bounded2D<double>(this->A, this->A_LOW, this->A_UPPER, this->n_stat, this->n_stat);
+//    bounded2D<double>(this->B, this->B_LOW, this->B_UPPER, this->n_stat, this->n_obs);
+
+
 }
 
 void HMM::init(double pi[], double a[], double b[]) {
@@ -128,7 +298,10 @@ void HMM::init(double pi[], double a[], double b[]) {
             this->PI[i] = 1 / this->n_stat;
         }
     } else {
+//        print1D(pi,this->n_stat);
+
         cpy1D<double>(pi, this->PI, this->n_stat);
+//        print1D(this->PI,this->n_stat);
     }
     if (a == NULL) {
         if (this->n_stat != 2 || this->n_obs != 2) {
@@ -170,17 +343,17 @@ void HMM::init(double pi[], double a[], double b[]) {
     }
 }
 
-double HMM::estimate(int *x, int *lengths, int n_lengths, int max_iter, double tol) {
+bool HMM::estimate(int *x, int *lengths, int n_lengths, int max_iter, double tol) {
 
     this->max_iter = max_iter;
     // 最长的序列长度
     int max_n_x = max1D(lengths, n_lengths);
 
     // 先释放原来的空间
-    free2D(this->fwdlattice, max_n_x);
-    free2D(this->backlattice, max_n_x);
-    free2D(this->gammalattice, max_n_x);
-    free(this->cn);
+//    free2D(this->fwdlattice, max_n_x);
+//    free2D(this->backlattice, max_n_x);
+//    free2D(this->gammalattice, max_n_x);
+//    free(this->cn);
 
     // 申请新空间
     this->fwdlattice = init2D<double>(max_n_x, this->n_stat);
@@ -226,12 +399,17 @@ double HMM::estimate(int *x, int *lengths, int n_lengths, int max_iter, double t
         pre_log_likelihood = cur_log_likelihood;
         cur_log_likelihood = 0;
 
+//        std::cout << "------" << iter << "-----" << n_lengths << std::endl;
+//        std::cout << "PI" << std::endl;
+//        print1D(this->PI, this->n_stat);
+
         // 注意gamma_obs_sum gamma_sum xi_sum 是累计了所有观测序列的值
         for (int c = 0; c < n_lengths; ++c) {
+
 //            this->x_pos += n_x; // 当前观测序列的位置
             x_pos += n_x; // 当前序列的位置
             n_x = lengths[c]; // 当前序列的长度
-            if (n_x < 2) {
+            if (n_x < 3) { // 序列长度至少要是3
                 continue;
             }
             cur_log_likelihood += this->forward(x_pos, n_x, this->PI, this->A);
@@ -244,7 +422,7 @@ double HMM::estimate(int *x, int *lengths, int n_lengths, int max_iter, double t
             this->xi(x_pos, n_x, this->fwdlattice, this->backlattice, xi_sum);
 
 
-//            cout << "log_likehood " << log_likelihood << endl;
+//            std::cout << "log_likehood " << log_likelihood << std::endl;
 //            cout << "cn" << endl;
 //            print1D(this->cn, n_x);
 //            cout << "alpha" << endl;
@@ -274,6 +452,10 @@ double HMM::estimate(int *x, int *lengths, int n_lengths, int max_iter, double t
             }
         }
 
+//        cout << "xi_sum" << endl;
+//        print2D(xi_sum, this->n_stat, this->n_stat);
+//        cout << "gamma_sum" << endl;
+//        print1D(gamma_sum, this->n_stat);
 
         for (int i = 0; i < this->n_stat; ++i) {
             // 计算新的转移概率
@@ -292,10 +474,8 @@ double HMM::estimate(int *x, int *lengths, int n_lengths, int max_iter, double t
         }
         cpy2D(A, this->A, this->n_stat, this->n_stat);
         cpy2D(B, this->B, this->n_stat, this->n_obs);
-        this->bounded();
 
-//        cout << "------" << iter << "-----" << n_lengths << endl;
-//        cout << "PI" << endl;
+//        std::cout << "PI" << std::endl;
 //        print1D(this->PI, this->n_stat);
 //        cout << "A" << endl;
 //        print2D(this->A, this->n_stat, this->n_stat);
@@ -303,6 +483,7 @@ double HMM::estimate(int *x, int *lengths, int n_lengths, int max_iter, double t
 //        print2D(this->B, this->n_stat, this->n_obs);
 //        cout << "log likelihood " << cur_log_likelihood << endl;
 
+        this->bounded();
         if (abs(cur_log_likelihood - pre_log_likelihood) < tol) {
             break;
         }
@@ -328,7 +509,7 @@ double HMM::estimate(int *x, int *lengths, int n_lengths, int max_iter, double t
 //    cout << iter << endl;
 //    cout << "log likelihood" << endl;
 //    cout << cur_log_likelihood << endl;
-    return cur_log_likelihood;
+    return true;
 
 }
 
@@ -343,8 +524,14 @@ double HMM::forward(int x_pos, int n_x, double *PI, double **A) {
 
     double log_likelihood = 0;
     for (int i = 0; i < this->n_stat; i++) {
-        this->fwdlattice[0][i] = PI[i] * this->emmit_pdf(x_pos, i, x[0]);
+        this->fwdlattice[0][i] = PI[i] * this->emmit_pdf(x_pos + 0, i, x[0]);
     }
+    if (this->fwdlattice[0][0] == 0) {
+        cout << "--------" << endl;
+        cout << PI[0] << endl;
+        cout << this->emmit_pdf(x_pos + 0, 0, x[0]) << endl;
+    }
+
     this->cn[0] = normalize1D(this->fwdlattice[0], this->n_stat);
     log_likelihood += log(this->cn[0]);
     for (int t = 1; t < n_x; t++) {
@@ -354,7 +541,7 @@ double HMM::forward(int x_pos, int n_x, double *PI, double **A) {
             for (int j = 0; j < this->n_stat; ++j) {
                 this->fwdlattice[t][i] += this->fwdlattice[t - 1][j] * A[j][i];
             }
-            this->fwdlattice[t][i] *= this->emmit_pdf(x_pos, i, x[t]);
+            this->fwdlattice[t][i] *= this->emmit_pdf(x_pos + t, i, x[t]);
         }
         this->cn[t] = normalize1D(this->fwdlattice[t], this->n_stat);
         log_likelihood += log(this->cn[t]);
@@ -376,7 +563,8 @@ double HMM::backward(int x_pos, int n_x, double *PI, double **A) {
 
             this->backlattice[t][i] = 0;
             for (int j = 0; j < this->n_stat; ++j) {
-                this->backlattice[t][i] += A[i][j] * this->emmit_pdf(x_pos, j, x[t + 1]) * this->backlattice[t + 1][j];
+                this->backlattice[t][i] +=
+                        A[i][j] * this->emmit_pdf(x_pos + t, j, x[t + 1]) * this->backlattice[t + 1][j];
             }
             this->backlattice[t][i] /= this->cn[t];
         }
@@ -385,7 +573,7 @@ double HMM::backward(int x_pos, int n_x, double *PI, double **A) {
 }
 
 void HMM::gamma(int x_pos, int n, double **fwdlattice, double **backlattice, double *gamma_sum) {
-    int *x = this->x_ptr + x_pos;
+//    int *x = this->x_ptr + x_pos;
     // 为了和xi的长度一样，这里少算一个。
     for (int t = 0; t < n - 1; ++t) {
         for (int i = 0; i < this->n_stat; ++i) {
@@ -407,7 +595,7 @@ void HMM::xi(int x_pos, int n, double **fwdlattice, double **backlattice, double
         for (int i = 0; i < this->n_stat; ++i) {
             for (int j = 0; j < this->n_stat; ++j) {
 
-                xi_sum[i][j] += fwdlattice[t][i] * this->A[i][j] * this->emmit_pdf(x_pos, j, x[t + 1]) *
+                xi_sum[i][j] += fwdlattice[t][i] * this->A[i][j] * this->emmit_pdf(x_pos + t, j, x[t + 1]) *
                                 backlattice[t + 1][j];
             }
         }
@@ -472,6 +660,7 @@ void HMM::predict_next(double *out, int *x, int n_x, double *start, double *tran
     } else {
         PI = start;
     }
+
     if (transition == NULL) {
         double **A = this->A;
     } else {

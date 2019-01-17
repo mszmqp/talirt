@@ -12,7 +12,7 @@
 #define Calloc(type, n) (type *)calloc(n,sizeof(type))
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
-
+#define SAFETY 1e-12 // value to substitute for zero for safe math
 
 template<typename T>
 void print2D(T **ar, int size1, int size2) {

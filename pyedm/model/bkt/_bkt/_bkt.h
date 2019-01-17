@@ -10,13 +10,16 @@
 #include "_hmm.h"
 
 
-
 class StandardBKT : public HMM {
 public:
-    StandardBKT(int n_obs = 2, int n_stat = 2) : HMM(n_obs, n_stat) {};
+    StandardBKT(int n_stat = 2, int n_obs = 2) : HMM(n_stat, n_obs) {};
+
+private:
+    double emmit_pdf(int x_pos, int stat, int obs) override {
+//        std::cout << "x_pos " << x_pos << std::endl;
+        return this->B[stat][obs];
+    };
 };
-
-
 
 
 class Item {
@@ -30,7 +33,7 @@ public:
         return 1.0 / (1 + exp(-z));
     }
 
-    double irt(double theta, int m = 2) {
+    double irt(double theta, int m = 1) {
 
         double z = 0;
         switch (m) {
@@ -57,16 +60,18 @@ class IRTBKT : public HMM {
 
 
 private:
-    Item *items=NULL;
-    int *items_id=NULL;
-    void set_bound_b(double lower[] = NULL, double upper[] = NULL);
-    void get_b(double *out) {};
+    Item *items;
+    int *items_id;
+
+//    void set_bound_b(double lower[] = NULL, double upper[] = NULL);
+//
+//    void get_b(double *out) {};
 
 public:
     ///
     /// \param n_stat 隐状态的数量
     /// \param n_obs  观测状态的数量
-    IRTBKT(int n_stat = 2, int n_obs = 2);
+    IRTBKT(int n_stat, int n_obs);
 
     ~IRTBKT();
 
@@ -76,7 +81,7 @@ public:
 
 
 private:
-    double emmit_pdf(int x_pos, int stat, int obs);
+    double emmit_pdf(int x_pos, int stat, int obs) override;
 
 };
 

@@ -12,20 +12,21 @@ Date:    2018/4/24 14:18
 import numpy as np
 import pandas as pd
 import time
+import sys
 # from scipy.special import logsumexp
 
 # from sklearn.base import BaseEstimator, _pprint
 from sklearn.utils import check_array, check_random_state
 from sklearn.utils.validation import check_is_fitted
-from pyedm.model.bkt import _bkt_clib as bktc
-from pyedm.model.bkt._bkt_cpp import SBKT as StandardBKT
+import pyedm.model.bkt._bktc as bktc
+from pyedm.model.bkt._bkt import _StandardBKT as StandardBKT, _IRTBKT as IRTBKT
 
 from pyedm.utils import normalize, log_mask_zero, log_normalize, iter_from_X_lengths, logsumexp
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
-class BKT:
+class BKTBatch:
     """Base class for Hidden Markov Models.
 
     This class allows for easy evaluation of, sampling from, and
@@ -93,22 +94,21 @@ class BKT:
                  start_init=np.array([0.5, 0.5]),
                  transition_init=np.array([[1, 0], [0.4, 0.6]]),
                  emission_init=np.array([[0.8, 0.2], [0.2, 0.8]]),
-
                  # random_state=None,
-                 max_iter=10, tol=1e-2, njobs=0, **kwargs):
+                 n_stats=2,
+                 n_obs=2,
+                 max_iter=10, tol=1e-2, n_jobs=0, bkt_model="standard", **kwargs):
 
-        self.n_stats = 2  # 隐状态的数量
-        self.n_obs = 2  # 观测状态的数量
-        # self.start = np.array([0.5, 0.5])
+        self.n_stats = n_stats  # 隐状态的数量
+        self.n_obs = n_obs  # 观测状态的数量
+
         self.start_init = start_init
-        # self.transition = np.array([[0.6, 0.4], [0, 1]])
-        # self.transition = np.array([[1, 0], [0.4, 0.6]])
         self.transition_init = transition_init
-        # self.emission = np.array([[0.8, 0.2], [0.2, 0.8]])
         self.emission_init = emission_init
+
         self.max_iter = max_iter
         self.tol = tol
-        self.njobs = njobs
+        self.njobs = n_jobs
         self.train_cost_time = 0
         self.predict_cost_time = 0
 
@@ -120,6 +120,8 @@ class BKT:
         self.emission_lb = np.array([[0.7, 0], [0, 0.7]]).astype(np.float64)
         self.emission_ub = np.array([[1, 0.3], [0.3, 1]]).astype(np.float64)
         self.model = {}
+        self.bkt_model = bkt_model.upper()
+        self.items_info = None
         self._init_param(**kwargs)
 
     def _init_param(self, **kwargs):
@@ -144,7 +146,7 @@ class BKT:
         if tol is not None:
             self.tol = tol
 
-        njobs = kwargs.get("njobs", None)
+        njobs = kwargs.get("n_jobs", None)
         if njobs is not None:
             self.njobs = njobs
 
@@ -170,6 +172,21 @@ class BKT:
         emission_ub = kwargs.get("emission_ub", None)
         if emission_ub is not None and isinstance(emission_ub, np.ndarray):
             self.emission_ub = emission_ub
+
+    def set_bound_start(self, lb, up):
+        self.start_lb = lb.astype(np.float64)
+        self.start_ub = up.astype(np.float64)
+
+    def set_bound_transition(self, lb, up):
+        self.transition_lb = lb.astype(np.float64)
+        self.transition_ub = up.astype(np.float64)
+
+    def set_bound_emission(self, lb, up):
+        self.emission_lb = lb.astype(np.float64)
+        self.emission_ub = up.astype(np.float64)
+
+    def set_item_info(self, items: pd.DataFrame):
+        self.items_info = items
 
     def score_samples(self, X, lengths=None):
         """Compute the log probability under the model and compute posteriors.
@@ -386,49 +403,6 @@ class BKT:
         _, posteriors = self.score_samples(X, lengths)
         return posteriors
 
-    def sample(self, n_samples=1, random_state=None):
-        """Generate random samples from the model.
-
-        Parameters
-        ----------
-        n_samples : int
-            Number of samples to generate.
-
-        random_state : RandomState or an int seed
-            A random number generator instance. If ``None``, the object's
-            ``random_state`` is used.
-
-        Returns
-        -------
-        X : array, shape (n_samples, n_obs)
-            Feature matrix.
-
-        state_sequence : array, shape (n_samples, )
-            State sequence produced by the model.
-        """
-        check_is_fitted(self, "start")
-
-        if random_state is None:
-            random_state = self.random_state
-        random_state = check_random_state(random_state)
-
-        startcdf = np.cumsum(self.start)
-        transitioncdf = np.cumsum(self.transition, axis=1)
-
-        currstate = (startcdf > random_state.rand()).argmax()
-        state_sequence = [currstate]
-        X = [self._generate_sample_from_state(
-            currstate, random_state=random_state)]
-
-        for t in range(n_samples - 1):
-            currstate = (transitioncdf[currstate] > random_state.rand()) \
-                .argmax()
-            state_sequence.append(currstate)
-            X.append(self._generate_sample_from_state(
-                currstate, random_state=random_state))
-
-        return np.atleast_2d(X), np.array(state_sequence, dtype=int)
-
     @staticmethod
     def _split_data(response: pd.DataFrame, trace_by=('knowledge',), group_by=('user',), sorted_by=None):
         if isinstance(trace_by, tuple):
@@ -443,26 +417,29 @@ class BKT:
             group_keys = []
             for group_key, df_x in df_data.groupby(group_by):
                 if sorted_by is not None:
-                    x = df_x.sort_values(sorted_by)['answer'].values.flatten().astype(np.int32)
+                    # x = df_x.sort_values(sorted_by)['answer'].values.flatten().astype(np.int32)
+                    x = df_x.sort_values(sorted_by)  # ['answer'].values.flatten().astype(np.int32)
                 else:
-                    x = df_x['answer'].values.flatten().astype(np.int32)
+                    # x = df_x['answer'].values.flatten().astype(np.int32)
+                    x = df_x  # ['answer'].values.flatten().astype(np.int32)
                 train_x.append(x)
                 # lengths.append((pos, x.shape[0] + pos))
                 lengths.append(x.shape[0])
                 pos += x.shape[0]
                 group_keys.append(group_key)
-            train_x = np.concatenate(train_x)
+            # train_x = np.concatenate(train_x)
+            train_x = pd.concat(train_x)
             lengths = np.asarray(lengths).astype(np.int32)
             yield trace_key, group_keys, train_x, lengths
 
-    def fit(self, response: pd.DataFrame, trace_by=('knowledge',), group_by=('user',), sorted_by=None,
-            **kwargs):
+    def fit_batch(self, response: pd.DataFrame, trace_by=('knowledge',), group_by=('user',), sorted_by=None,
+                  **kwargs):
         """
 
         Parameters
         ----------
         response :  panda.DataFrame
-            作答数据,每行是一条作答数据。需要包含trace_by和group_by参数指定的列。
+            作答数据,每行是一条作答数据。必有列:['answer',]，可选列['user','knowledge',]。需要包含trace_by和group_by参数指定的列。
         trace_by : tuple or string
             数据按照trace_by进行分组，每一组训练一个独立的bkt模型。
             例如,每个知识点训练一个bkt，trace_by=('knowledge',);每个知识点+学生训练一个bkt，trace_by=('knowledge','user').
@@ -482,23 +459,30 @@ class BKT:
         # self._check()
         self.model = {}
         _start_time = time.time()
+        # 不并行
         if self.njobs is None or self.njobs <= 0:
             for trace_key, group_keys, train_x, lengths in self._split_data(response=response, trace_by=trace_by,
                                                                             group_by=group_by, sorted_by=sorted_by):
                 # train_x = check_array(train_x)
+                if train_x.shape[0] <= 1:
+                    self.model[trace_key] = None
+                    continue
 
                 _, start, transition, emission, log_likelihood = self.fit_one(train_x=train_x, lengths=lengths,
-                                                                              trace=None)
+                                                                              trace=trace_key)
                 self.model[trace_key] = {'start': start, "transition": transition, "emission": emission,
                                          'log_likelihood': log_likelihood}
 
-        else:
+        else:  # 并行处理
             if self.njobs == 1:
                 self.njobs = os.cpu_count()
             with ThreadPoolExecutor(max_workers=self.njobs) as tp:
                 futures = []
                 for trace_key, group_keys, train_x, lengths in self._split_data(response=response, trace_by=trace_by,
                                                                                 group_by=group_by, sorted_by=sorted_by):
+                    if train_x.shape[0] <= 1:
+                        self.model[trace_key] = None
+                        continue
                     futures.append(tp.submit(self.fit_one, train_x=train_x, lengths=lengths, trace=trace_key))
 
                 for future in as_completed(futures):
@@ -546,7 +530,7 @@ class BKT:
         # print("iter", iter)
         return trace, start, transition, emission, log_likelihood
 
-    def fit_one(self, train_x: np.ndarray, lengths: np.ndarray, trace=None):
+    def fit_one(self, train_x: pd.DataFrame, lengths: np.ndarray, trace=None):
         """
         这个函数在测试集下0.3秒
         Parameters
@@ -559,20 +543,131 @@ class BKT:
         -------
 
         """
+
         start = self.start_init
         transition = self.transition_init
         emission = self.emission_init
+        bkt = self._get_bkt_object()
+        x_array = train_x['answer'].values.flatten().astype(np.int32)
 
-        hmm = StandardBKT(self.n_stats, self.n_obs)
-        hmm.init(start, transition, emission)
+        # 所有序列的长度小于3是不可以的，这样是无法训练的
+        if np.all(lengths < 3):
+            print("[error]", trace, 'x_lengths is all 1', file=sys.stderr)
+            if trace is None:
+                return None
+            else:
+                return None, None, None, None, None
+
+        if isinstance(bkt, IRTBKT):
+            item_array = train_x['item_id'].values.flatten().astype(np.int32)
+            bkt.set_items(item_array)
+
+        # hmm = self.bkt_class(self.n_stats, self.n_obs)
+        # hmm.init(start, transition, emission)
         # hmm.set_bounded_start()
-        hmm.set_bounded_start(self.start_lb, self.start_ub)
-        hmm.set_bounded_transition(self.transition_lb, self.transition_ub)
-        hmm.set_bounded_emission(self.emission_lb, self.emission_ub)
-        # _t = time.time()
-        hmm.estimate(train_x, lengths)
-        # print('train cost', time.time() - _t)
-        return trace, hmm.start, hmm.transition, hmm.emission, hmm.log_likelihood
+        # hmm.set_bounded_start(self.start_lb, self.start_ub)
+        # hmm.set_bounded_transition(self.transition_lb, self.transition_ub)
+        # hmm.set_bounded_emission(self.emission_lb, self.emission_ub)
+        if trace == "FQ-FACTOR-ALREADY-ENTERED-PARTNER~~FQ-FACTOR":
+            br = "heheh"
+            pass
+        _t = time.time()
+        print("[success]", trace, 'count:', x_array.shape[0], end=' ', file=sys.stderr)
+        bkt.estimate(x_array, lengths)
+        print('cost:', time.time() - _t, file=sys.stderr)
+        if trace is None:
+            return bkt
+        return trace, bkt.start, bkt.transition, bkt.emission, bkt.log_likelihood
+
+    def _get_bkt_object(self):
+
+        start = self.start_init
+        transition = self.transition_init
+        emission = self.emission_init
+        if self.bkt_model == "IRT":
+            bkt = IRTBKT(self.n_stats, self.n_obs)
+            bkt.init(start, transition)
+            items_array = self.items_info[['slop', 'difficulty', 'guess']].values.astype(np.float64)
+            bkt.set_items_param(items_array)
+        else:
+            bkt = StandardBKT(self.n_stats, self.n_obs)
+            bkt.init(start, transition, emission)
+            bkt.set_bounded_emission(self.emission_lb, self.emission_ub)
+
+        # hmm.set_bounded_start()
+        bkt.set_bounded_start(self.start_lb, self.start_ub)
+        bkt.set_bounded_transition(self.transition_lb, self.transition_ub)
+        return bkt
+
+
+def test_irtbkt():
+    print("read data...", file=sys.stderr)
+
+    file_name = "/Users/zhangzhenhu/Documents/projects/talirt/train_sample.txt"
+    df_data = pd.read_csv(file_name, sep='\t', header=None, names=['answer', 'user', 'item', 'knowledge'])
+    df_data.loc[:, 'answer'] -= 1
+    item_difficulty = df_data.groupby(['item'])[['answer']].mean()
+    item_difficulty.rename(columns={'answer': 'difficulty'}, inplace=True)
+    item_difficulty.loc[:, 'difficulty'] = (1 - item_difficulty['difficulty']) * 5
+    item_difficulty['slop'] = 1.0
+    item_difficulty['guess'] = 0
+    item_difficulty['item_id'] = np.arange(item_difficulty.shape[0], dtype=np.int32)
+
+    df_data = df_data.join(item_difficulty['item_id'], how='left', on='item')
+    # np.ran
+    n_stat = 7
+
+    start_init = np.array([0.1, 0.2, 0.2, 0.2, 0.1, 0.1, 0.1], dtype=np.float64)
+    # assert start_init.sum() == 1
+
+    start_lb = np.array([0] * n_stat, dtype=np.float64)
+    start_ub = np.array([1] * n_stat, dtype=np.float64)
+    transition_init = np.array([
+        [0.5, 0.5, 0, 0, 0, 0, 0],
+        [0, 0.5, 0.5, 0, 0, 0, 0],
+        [0, 0, 0.5, 0.5, 0, 0, 0],
+        [0, 0, 0, 0.5, 0.5, 0, 0],
+        [0, 0, 0, 0, 0.5, 0.5, 0],
+        [0, 0, 0, 0, 0, 0.5, 0.5],
+        [0, 0, 0, 0, 0, 0, 1],
+    ], dtype=np.float64)
+
+    transition_lb = np.array([
+        [0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0],
+    ], dtype=np.float64)
+
+    transition_ub = np.array([
+        [1, .5, .5, .5, .5, .5, .5],
+        [0, 1, .5, .5, .5, .5, .5],
+        [0, 0, 1, .5, .5, .5, .5],
+        [0, 0, 0, 1, .5, .5, .5],
+        [0, 0, 0, 0, 1, .5, .5],
+        [0, 0, 0, 0, 0, 1, .5],
+        [0, 0, 0, 0, 0, 0, 1],
+    ], dtype=np.float64)
+
+    for _, df_user in df_data.groupby(['knowledge', 'user']):
+        train_x = df_user['answer'].values
+        items_id = df_user['item_id'].values
+        lengths = np.array([train_x.shape[0]], dtype=np.int32)
+        bkt = IRTBKT(n_stat=7)
+        bkt.init(start_init, transition_init)
+        # hmm.set_bounded_start()
+        bkt.set_bounded_start(start_lb, start_ub)
+        bkt.set_bounded_transition(transition_lb, transition_ub)
+        bkt.set_items_param(item_difficulty[['slop', 'difficulty', 'guess']].values)
+        print(items_id)
+        bkt.set_items(items_id)
+        print(train_x, lengths)
+        bkt.estimate(train_x.astype(np.int32), lengths.astype(np.int32))
+        bkt.show()
+        break
 
 
 if __name__ == "__main__":
@@ -585,6 +680,10 @@ if __name__ == "__main__":
     import sys
     from tqdm import tqdm
     from joblib import Parallel, delayed
+
+    test_irtbkt()
+
+    quit(0)
 
     skip_rows = 0
     SolverId = "1.2"
@@ -603,7 +702,7 @@ if __name__ == "__main__":
     df_data.loc[:, 'answer'] -= 1
 
     bkt = BKT()
-    bkt.fit(df_data, njobs=1)
+    bkt.fit_batch(df_data, njobs=1)
     print('cost time', bkt.train_cost_time)
     for key, value in bkt.model.items():
         print("--------", key, "-----------------")

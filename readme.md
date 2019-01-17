@@ -1,4 +1,14 @@
 
+# 数据集
+
+kdd cup
+
+http://pslcdatashop.web.cmu.edu/KDDCup/downloads.jsp
+
+http://neuron.csie.ntust.edu.tw/homework/98/NN/KDDCUP2010/Dataset/
+
+
+
 # pymc3的问题
 ## 内存问题
 

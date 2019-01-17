@@ -18,6 +18,13 @@
 
 #include "utils.h"
 
+//typedef signed char NPAR;
+
+bool issimplexbounded(double * ar, double *lb, double *ub, int size);
+
+void projectsimplexbounded(double* ar, double *lb, double *ub, int size);
+
+
 
 /*
  * HMM的估计算法中涉及到缩放因子和多序列问题，
@@ -86,7 +93,7 @@ public:
     /// \param max_iter 最大迭代次数
     /// \param tol 收敛的精度，当两轮迭代似然值的差值小于tol时，结束迭代。
     /// \return
-    double estimate(int x[], int lengths[], int n_lengths, int max_iter = 20, double tol = 1e-2);
+    bool estimate(int x[], int lengths[], int n_lengths, int max_iter = 20, double tol = 1e-2);
 
     /// 获取初始概率的值
     /// \param out 用于保存输出值。一维数组的指针。
@@ -140,7 +147,7 @@ private:
 
     void xi(int x_pos, int n, double **fwdlattice, double **backlattice, double **xi_sum);
 
-    double emmit_pdf(int x_pos,int stat, int obs);
+    virtual double emmit_pdf(int x_pos,int stat, int obs);
 
     void bounded();
 };
