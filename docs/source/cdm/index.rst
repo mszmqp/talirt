@@ -8,6 +8,9 @@
     :maxdepth: 2
     :numbered:
 
-    cdm.rst
-    LFA/index.rst
+    引言.rst
+    define.rst
+    history.rst
+    ./theoryRelated/index.rst
+    algorithmRelated.rst
 

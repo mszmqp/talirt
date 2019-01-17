@@ -1,9 +1,9 @@
-========================
+
 学习因子分析(LFA)
 ========================
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 1
 
     background.rst
     AFM.rst
