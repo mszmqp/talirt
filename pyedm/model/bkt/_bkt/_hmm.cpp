@@ -49,7 +49,7 @@ void projectsimplexbounded(double *ar, double *lb, double *ub, int size) {
         err = -1;
         // threshold
         for (i = 0; i < size; i++) {
-            at_lo[i] = (ar[i] < lb[i]) ? 1 : 0; // 记录是否低于下限 -- 等于也算？？？？
+            at_lo[i] = (ar[i] <= lb[i]) ? 1 : 0; // 记录是否低于下限 -- 等于也算？？？？
 
             v = (at_lo[i] == 1) ? lb[i] : ar[i]; // 如果低于下限，v就是下限值，否则v是原值
             if (v != v) {
@@ -59,7 +59,7 @@ void projectsimplexbounded(double *ar, double *lb, double *ub, int size) {
             ar[i] = (at_lo[i] == 1) ? lb[i] : ar[i];
             num_at_lo = (int) (num_at_lo + at_lo[i]); // 累加计数器
 
-            at_hi[i] = (ar[i] > ub[i]) ? 1 : 0;
+            at_hi[i] = (ar[i] >= ub[i]) ? 1 : 0;
 
             v = (at_hi[i] == 1) ? ub[i] : ar[i];
             if (v != v) {
@@ -122,6 +122,9 @@ void projectsimplexbounded(double *ar, double *lb, double *ub, int size) {
         }
         iter++;
         if (iter == 100) {
+            print1D(ar,size);
+            print1D(lb,size);
+            print1D(ub,size);
             fprintf(stderr, "WARNING! Stuck in projectsimplexbounded().\n");
 //            doexit = true;
             exit(1);
@@ -172,13 +175,14 @@ HMM::HMM(int n_stat, int n_obs) {
     this->A = init2D<double>(this->n_stat, this->n_stat);
     this->A_LOW = init2D<double>(this->n_stat, this->n_stat);;
     this->A_UPPER = init2D<double>(this->n_stat, this->n_stat);;
+    toZero2D(this->A, this->n_stat, this->n_stat);
     toZero2D(this->A_LOW, this->n_stat, this->n_stat);
     setConstant2D(this->A_UPPER, this->n_stat, this->n_stat, 1.0);
 
     this->B = init2D<double>(this->n_stat, this->n_obs);
     this->B_LOW = init2D<double>(this->n_stat, this->n_obs);
     this->B_UPPER = init2D<double>(this->n_stat, this->n_obs);
-
+    toZero2D(this->B, this->n_stat, this->n_obs);
     toZero2D(this->B_LOW, this->n_stat, this->n_obs);
     setConstant2D(this->B_UPPER, this->n_stat, this->n_obs, 1.0);
 
@@ -540,6 +544,7 @@ bool HMM::estimate(int *x, int *lengths, int n_lengths, int max_iter, double tol
     free2D(this->fwdlattice, max_n_x);
     free2D(this->backlattice, max_n_x);
     free2D(this->gammalattice, max_n_x);
+    this->x_ptr = NULL;
 //    cout << "=================" << endl;
 //    cout << "iter" << endl;
 //    cout << iter << endl;
@@ -679,7 +684,7 @@ void HMM::get_b(double *out) {
     }
     for (int i = 0; i < this->n_stat; ++i) {
         for (int j = 0; j < this->n_obs; ++j) {
-            out[i * this->n_stat + j] = this->B[i][j];
+            out[i * this->n_obs + j] = this->B[i][j];
         }
     }
 }

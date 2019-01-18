@@ -96,14 +96,15 @@ def main(options):
         [0, 0, 0, 0, 0, 0, 1],
     ], dtype=np.float64)
 
-    # bkt = BKTBatch(bkt_model='IRT', n_stats=7, start_init=start_init, transition_init=transition_init)
-    # bkt.set_bound_start(start_lb, start_ub)
-    # bkt.set_bound_transition(transition_lb, transition_ub)
-    # bkt.set_item_info(item_info)
-    # bkt.fit_batch(df_train, trace_by=['knowledge', 'user'])
+    bkt = BKTBatch(bkt_model='IRT', n_stats=7, n_jobs=6,
+                   start_init=start_init, transition_init=transition_init)
+    bkt.set_bound_start(start_lb, start_ub)
+    bkt.set_bound_transition(transition_lb, transition_ub)
+    bkt.set_item_info(item_info)
+    bkt.fit_batch(df_train.loc[:200000, ], trace_by=['knowledge', 'user'])
 
-    bkt = BKTBatch(bkt_model='standard')
-    bkt.fit_batch(df_train)
+    # bkt = BKTBatch(bkt_model='standard')
+    # bkt.fit_batch(df_train)
 
 
 if __name__ == "__main__":

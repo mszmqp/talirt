@@ -15,14 +15,14 @@ cdef extern from "_bkt/_bkt.cpp":
 cdef extern from "_bkt/_bkt.h":
     cdef cppclass StandardBKT:
         StandardBKT(int, int) except +
-        void init(double *pi, double *a, double *b);
-        void set_bound_pi(double *lower, double *upper);
-        void set_bound_a(double *lower, double *upper);
-        void set_bound_b(double *lower, double *upper);
-        double estimate(int *x, int *lengths, int n_lengths, int max_iter, double tol);
-        double get_pi(double *out);
-        double get_a(double *out);
-        double get_b(double *out);
+        void init(double *pi, double *a, double *b) nogil;
+        void set_bound_pi(double *lower, double *upper) nogil;
+        void set_bound_a(double *lower, double *upper) nogil;
+        void set_bound_b(double *lower, double *upper) nogil;
+        int estimate(int *x, int *lengths, int n_lengths, int max_iter, double tol) nogil;
+        void get_pi(double *out);
+        void get_a(double *out);
+        void get_b(double *out);
         void predict_next(double *out, int *x, int n_x, double *pi, double *a, double *b, int n_stat, int n_obs);
         int iter;
         double log_likelihood;
@@ -32,17 +32,17 @@ cdef extern from "_bkt/_bkt.h":
 
     cdef cppclass IRTBKT:
         IRTBKT(int, int) except +
-        void set_items_param(double *items, int item_size);
-        void set_items(int *items_id);
+        void set_items_param(double *items, int length) nogil;
+        void set_items(int *items_id,int length) nogil;
         void init(double *pi, double *a, double *b);
-        void set_bound_pi(double *lower, double *upper);
-        void set_bound_a(double *lower, double *upper);
-        void set_bound_b(double *lower, double *upper);
-        double estimate(int *x, int *lengths, int n_lengths, int max_iter, double tol);
-        double get_pi(double *out);
-        double get_a(double *out);
-        double get_b(double *out);
-        void predict_next(double *out, int *x, int n_x, double *pi, double *a, double *b, int n_stat, int n_obs);
+        void set_bound_pi(double *lower, double *upper) nogil;
+        void set_bound_a(double *lower, double *upper) nogil;
+        void set_bound_b(double *lower, double *upper) nogil;
+        int estimate(int *x, int *lengths, int n_lengths, int max_iter, double tol) nogil;
+        void get_pi(double *out) nogil;
+        void get_a(double *out) nogil;
+        void get_b(double *out) nogil;
+        void predict_next(double *out, int *x, int n_x, double *pi, double *a, double *b, int n_stat, int n_obs) nogil;
         int iter;
         double log_likelihood;
         int n_obs;
@@ -68,7 +68,8 @@ cdef class _StandardBKT:
         self.c_object = new StandardBKT(n_stat, n_obs)
         self.n_stat = n_stat
         self.n_obs = n_obs
-
+    def __init__(self,int n_stat=2, int n_obs=2):
+        pass
     def init(self, np.ndarray[double,ndim=1] start=None, np.ndarray[double,ndim=2] transition=None, np.ndarray[double,ndim=2] emission=None):
         """
         初始化设置参数
@@ -104,7 +105,7 @@ cdef class _StandardBKT:
         self.c_object.set_bound_b(<double *> get_pointer(lower), <double *> get_pointer(upper))
         # self.c_object.setBoundedB(<double *> &lower[0][0], <double *> &lower[0][0])
 
-    def estimate(self, np.ndarray[int, ndim=1] x, np.ndarray[int, ndim=1] lengths, int max_iter = 20,
+    cpdef int estimate(self, np.ndarray[int, ndim=1] x, np.ndarray[int, ndim=1] lengths, int max_iter = 20,
                  double tol = 1e-2):
         """
 
@@ -119,8 +120,15 @@ cdef class _StandardBKT:
         -------
 
         """
-        return self.c_object.estimate(<int*> get_pointer(x), <int*> get_pointer(lengths), lengths.shape[0], max_iter,
-                                      tol)
+        cdef int * x_ptr = <int*> get_pointer(x)
+        cdef int * l_ptr = <int*> get_pointer(lengths)
+        cdef int ll = lengths.shape[0]
+        cdef int ret = 0
+        with nogil:
+            ret= self.c_object.estimate(x_ptr,l_ptr, ll, max_iter,tol)
+
+        return ret
+
     def predict_next(self, int[::1] x, int n_x,
                      np.ndarray[double,ndim=1] start=None,
                      np.ndarray[double,ndim=2] transition=None,
@@ -235,7 +243,8 @@ cdef class _IRTBKT:
 
     def set_items(self,np.ndarray[int,ndim=1] items):
 
-        self.c_object.set_items(<int *> get_pointer(items))
+        self.c_object.set_items(<int *> get_pointer(items),items.shape[0])
+
     def init(self, np.ndarray[double,ndim=1] start=None, np.ndarray[double,ndim=2] transition=None):
         """
         初始化设置参数
@@ -346,7 +355,10 @@ cdef class _IRTBKT:
         """
         arr = np.zeros(shape=(self.n_stat, self.n_obs), dtype=np.float64)
         self.c_object.get_b(<double*> get_pointer(arr))
+
+        # print(self.n_stat, self.n_obs,arr.shape)
         return arr
+
     @property
     def n_stat(self):
         return self.c_object.n_stat

@@ -61,7 +61,9 @@ class IRTBKT : public HMM {
 
 private:
     Item *items;
+    int items_length;
     int *items_id;
+    int items_id_length;
 
 //    void set_bound_b(double lower[] = NULL, double upper[] = NULL);
 //
@@ -75,9 +77,9 @@ public:
 
     ~IRTBKT();
 
-    void set_items_param(double items[], int item_size);
+    void set_items_param(double items[], int length);
 
-    void set_items(int items_id[]);
+    void set_items(int items_id[],int length);
 
 
 private:

@@ -315,7 +315,11 @@ public:
     int rows;
     int cols;
 
-    MatrixView(int rows, int cols, C *ptr) : rows(rows), cols(cols), data(ptr) {};
+    MatrixView(int rows, int cols, C *ptr)  {
+        this->rows=rows;
+        this->cols = cols;
+        this->data=ptr;
+    };
 
     C *operator[](int k) { return &(this->data[k * this->cols]); }
 };

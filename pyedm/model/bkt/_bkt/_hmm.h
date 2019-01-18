@@ -62,8 +62,8 @@ public:
     /// \param n_obs  观测状态的数量
     HMM(int n_stat = 2, int n_obs = 2);
 
-    ~HMM();
-
+//    ~HMM();
+    virtual ~HMM() = 0;
     /// 初始化设置参数
     /// \param pi 初始概率
     /// \param a 转移概率

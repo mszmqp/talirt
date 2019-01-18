@@ -29,18 +29,18 @@ extensions = [
     Extension(name="pyedm.model.bkt._bktc",
               sources=['pyedm/model/bkt/_bktc' + ext],
               include_dirs=include_dirs,
-              libraries=cython_gsl.get_libraries()+["m"],
+              libraries=cython_gsl.get_libraries() + ["m"],
               library_dirs=[cython_gsl.get_library_dir()],
               ),
     Extension(name="pyedm.model.bkt._bkt",
               sources=['pyedm/model/bkt/_bkt' + '.pyx' if USE_CYTHON else '.cpp'],
               include_dirs=include_dirs,
-              libraries=cython_gsl.get_libraries()+["m"],
+              libraries=cython_gsl.get_libraries() + ["m"],
               library_dirs=[cython_gsl.get_library_dir()],
               ),
     Extension(name="pyedm.model.irt._uirt_clib",
               sources=['pyedm/model/irt/_uirt_clib' + ext],
-              libraries=cython_gsl.get_libraries()+["m"],
+              libraries=cython_gsl.get_libraries() + ["m"],
               library_dirs=[cython_gsl.get_library_dir()],
               include_dirs=include_dirs,
               ),
@@ -49,7 +49,7 @@ extensions = [
 if USE_CYTHON:
     from Cython.Build import cythonize
 
-    extensions = cythonize(extensions)
+    extensions = cythonize(extensions, annotate=True)
 
 setup(
     name=NAME,

@@ -24,6 +24,7 @@ from pyedm.model.bkt._bkt import _StandardBKT as StandardBKT, _IRTBKT as IRTBKT
 from pyedm.utils import normalize, log_mask_zero, log_normalize, iter_from_X_lengths, logsumexp
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from tqdm import tqdm
 
 
 class BKTBatch:
@@ -37,13 +38,13 @@ class BKTBatch:
 
     Parameters
     ----------
-    n_stats : int
+    n_stat : int
         Number of states in the model.
 
-    startprior : array, shape (n_stats, )
+    startprior : array, shape (n_stat, )
         Initial state occupation prior distribution.
 
-    transitionprior : array, shape (n_stats, n_stats)
+    transitionprior : array, shape (n_stat, n_stat)
         Matrix of prior transition probabilities between states.
 
     algorithm : string
@@ -83,10 +84,10 @@ class BKTBatch:
     monitor\_ : ConvergenceMonitor
         Monitor object used to check the convergence of EM.
 
-    startprob\_ : array, shape (n_stats, )
+    startprob\_ : array, shape (n_stat, )
         Initial state occupation distribution.
 
-    transmat\_ : array, shape (n_stats, n_stats)
+    transmat\_ : array, shape (n_stat, n_stat)
         Matrix of transition probabilities between states.
     """
 
@@ -95,11 +96,11 @@ class BKTBatch:
                  transition_init=None,
                  emission_init=np.array([[0.8, 0.2], [0.2, 0.8]]),
                  # random_state=None,
-                 n_stats=2,
+                 n_stat=2,
                  n_obs=2,
                  max_iter=10, tol=1e-2, n_jobs=0, bkt_model="standard", **kwargs):
 
-        self.n_stats = n_stats  # 隐状态的数量
+        self.n_stat = n_stat  # 隐状态的数量
         self.n_obs = n_obs  # 观测状态的数量
 
         # 0 会 1不会; 0:做对，1:做错
@@ -216,7 +217,7 @@ class BKTBatch:
         logprob : float
             Log likelihood of ``X``.
 
-        posteriors : array, shape (n_samples, n_stats)
+        posteriors : array, shape (n_samples, n_stat)
             State-membership probabilities for each sample in ``X``.
 
         See Also
@@ -230,7 +231,7 @@ class BKTBatch:
         X = check_array(X)
         n_samples = X.shape[0]
         logprob = 0
-        posteriors = np.zeros((n_samples, self.n_stats))
+        posteriors = np.zeros((n_samples, self.n_stat))
         for i, j in iter_from_X_lengths(X, lengths):
             framelogprob = self._compute_(X[i:j])
             logprobij, fwdlattice = self._do_forward_pass(framelogprob)
@@ -276,10 +277,10 @@ class BKTBatch:
         return logprob
 
     def _decode_viterbi(self, start: np.ndarray, transition: np.ndarray, emission: np.ndarray, obs: np.ndarray):
-        # n_samples, n_stats = framelogprob.shape
+        # n_samples, n_stat = framelogprob.shape
 
         return bktc._viterbi(
-            obs.shape[0], self.n_stats, start,
+            obs.shape[0], self.n_stat, start,
             transition, emission, obs)
 
     def _decode_map(self, X):
@@ -381,8 +382,8 @@ class BKTBatch:
 
         else:
             if njobs == 1:
-                njobs = os.cpu_count()
-            with ThreadPoolExecutor(max_workers=self.njobs) as tp:
+                njobs = os.cpu_count() - 1
+            with ThreadPoolExecutor(max_workers=njobs) as tp:
                 futures = []
                 for trace_key, group_keys, train_x, lengths in self._split_data(response=response, trace_by=trace_by,
                                                                                 group_by=group_by, sorted_by=sorted_by):
@@ -390,7 +391,7 @@ class BKTBatch:
                         obs = train_x[lengths[i, 0]: lengths[i, 1]]
                         futures.append(tp.submit(self.predict_one, obs=obs, trace=trace_key, group_key=group_key))
 
-                for future in as_completed(futures):
+                for future in tqdm(as_completed(futures), total=len(futures)):
                     next_prob, trace_key, group_key = future.result()
                     yield next_prob, trace_key, group_key
 
@@ -408,7 +409,7 @@ class BKTBatch:
 
         Returns
         -------
-        posteriors : array, shape (n_samples, n_stats)
+        posteriors : array, shape (n_samples, n_stat)
             State-membership probabilities for each sample from ``X``.
         """
         _, posteriors = self.score_samples(X, lengths)
@@ -441,7 +442,13 @@ class BKTBatch:
             # train_x = np.concatenate(train_x)
             train_x = pd.concat(train_x)
             lengths = np.asarray(lengths).astype(np.int32)
-            yield trace_key, group_keys, train_x, lengths
+            # yield trace_key, group_keys, train_x, lengths
+            yield {
+                'trace': trace_key,
+                'group_keys': group_keys,
+                'train_x': train_x,
+                'lengths': lengths,
+            }
 
     def fit_batch(self, response: pd.DataFrame, trace_by=('knowledge',), group_by=('user',), sorted_by=None,
                   **kwargs):
@@ -488,21 +495,31 @@ class BKTBatch:
             if self.njobs == 1:
                 self.njobs = os.cpu_count()
             with ThreadPoolExecutor(max_workers=self.njobs) as tp:
-                futures = []
-                for trace_key, group_keys, train_x, lengths in self._split_data(response=response, trace_by=trace_by,
-                                                                                group_by=group_by, sorted_by=sorted_by):
-                    if train_x.shape[0] <= 1:
-                        self.model[trace_key] = None
-                        continue
-                    futures.append(tp.submit(self.fit_one, train_x=train_x, lengths=lengths, trace=trace_key))
+                # futures = []
+                # records = []
+                records = self._split_data(response=response, trace_by=trace_by, group_by=group_by, sorted_by=sorted_by)
+                futures = [tp.submit(self.fit_one, **record) for record in records]
+                #     if train_x.shape[0] <= 3:
+                #         self.model[trace_key] = None
+                #         continue
+                # for result in tqdm(tp.map(self._fit, records)):
+                for future in tqdm(as_completed(futures), total=len(futures)):
+                    # print('xxxxxxx')
+                    result = future.result()
+                    if result is not None:
+                        self.model[result['trace']] = result
 
-                for future in as_completed(futures):
-                    trace_key, start, transition, emission, log_likelihood = future.result()
-                    self.model[trace_key] = {'start': start, "transition": transition, "emission": emission,
-                                             'log_likelihood': log_likelihood}
+                # for future in tqdm(as_completed(futures), total=len(futures)):
+                #     trace_key, start, transition, emission, log_likelihood = future.result()
+                #     self.model[trace_key] = {'start': start, "transition": transition, "emission": emission,
+                #                              'log_likelihood': log_likelihood}
 
         self.train_cost_time = time.time() - _start_time
         return self
+
+    def _fit(self, kwargs):
+
+        return self.fit_one(**kwargs)
 
     def fit_one_bak(self, train_x: np.ndarray, lengths: np.ndarray, trace=None):
         """
@@ -541,7 +558,7 @@ class BKTBatch:
         # print("iter", iter)
         return trace, start, transition, emission, log_likelihood
 
-    def fit_one(self, train_x: pd.DataFrame, lengths: np.ndarray, trace=None):
+    def fit_one(self, train_x: pd.DataFrame, lengths: np.ndarray, trace=None, **kwargs):
         """
         这个函数在测试集下0.3秒
         Parameters
@@ -555,41 +572,38 @@ class BKTBatch:
 
         """
 
-        start = self.start_init
-        transition = self.transition_init
-        emission = self.emission_init
+        # start = self.start_init
+        # transition = self.transition_init
+        # emission = self.emission_init
         bkt = self._get_bkt_object()
         x_array = train_x['answer'].values.flatten().astype(np.int32)
 
         # 所有序列的长度小于3是不可以的，这样是无法训练的
         if np.all(lengths < 3):
-            print("[error]", trace, 'x_lengths is all less than 3', file=sys.stderr)
-            if trace is None:
-                return None
-            else:
-                return None, None, None, None, None
+            # print("[error]", trace, 'x_lengths is all less than 3', file=sys.stderr)
+            # if trace is None:
+            return None
 
         if isinstance(bkt, IRTBKT):
             item_array = train_x['item_id'].values.flatten().astype(np.int32)
             bkt.set_items(item_array)
 
-        # hmm = self.bkt_class(self.n_stats, self.n_obs)
-        # hmm.init(start, transition, emission)
-        # hmm.set_bounded_start()
-        # hmm.set_bounded_start(self.start_lb, self.start_ub)
-        # hmm.set_bounded_transition(self.transition_lb, self.transition_ub)
-        # hmm.set_bounded_emission(self.emission_lb, self.emission_ub)
-        # if trace == "LCD-ROW-3~~LCD-ROW-3-DO-LCD-FIRST":
+        # if trace == ('CLT-ROW-1', '2487h7xz8'):
         #     print(x_array, lengths, file=sys.stderr)
         #     br = "heheh"
         #     pass
         _t = time.time()
-        print("[success]", trace, 'count:', x_array.shape[0], end=' ', file=sys.stderr)
+        # print("[success]", trace, 'count:', x_array.shape[0], end=' ', file=sys.stderr)
         bkt.estimate(x_array, lengths)
-        print('cost:', time.time() - _t, file=sys.stderr)
+        # print('cost:', time.time() - _t, file=sys.stderr)
         if trace is None:
             return bkt
-        return trace, bkt.start, bkt.transition, bkt.emission, bkt.log_likelihood
+        return {'trace': trace,
+                'start': bkt.start,
+                'transition': bkt.transition,
+                'emission': bkt.emission, 'log_likelihood': bkt.log_likelihood}
+        # print(bkt.emission)
+        # return trace, bkt.start, bkt.transition, None, bkt.log_likelihood
 
     def _get_bkt_object(self):
 
@@ -597,16 +611,15 @@ class BKTBatch:
         transition = self.transition_init
         emission = self.emission_init
         if self.bkt_model == "IRT":
-            bkt = IRTBKT(self.n_stats, self.n_obs)
+            bkt = IRTBKT(self.n_stat, self.n_obs)
             bkt.init(start, transition)
             items_array = self.items_info[['slop', 'difficulty', 'guess']].values.astype(np.float64)
             bkt.set_items_param(items_array)
         else:
-            bkt = StandardBKT(self.n_stats, self.n_obs)
+            bkt = StandardBKT(self.n_stat, self.n_obs)
             bkt.init(start, transition, emission)
             bkt.set_bounded_emission(self.emission_lb, self.emission_ub)
 
-        # hmm.set_bounded_start()
         bkt.set_bounded_start(self.start_lb, self.start_ub)
         bkt.set_bounded_transition(self.transition_lb, self.transition_ub)
         return bkt
@@ -690,7 +703,7 @@ if __name__ == "__main__":
     """
     import pandas as pd
     import sys
-    from tqdm import tqdm
+    # from tqdm import tqdm
     from joblib import Parallel, delayed
 
     test_irtbkt()
