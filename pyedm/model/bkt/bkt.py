@@ -19,11 +19,11 @@ import sys
 from sklearn.utils import check_array, check_random_state
 from sklearn.utils.validation import check_is_fitted
 import pyedm.model.bkt._bktc as bktc
-from pyedm.model.bkt._bkt import _StandardBKT as StandardBKT, _IRTBKT as IRTBKT
+from pyedm.model.bkt._bkt import _StandardBKT as StandardBKT, _IRTBKT as IRTBKT, batch
 
 from pyedm.utils import normalize, log_mask_zero, log_normalize, iter_from_X_lengths, logsumexp
 import os
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
 from tqdm import tqdm
 
 
@@ -448,7 +448,57 @@ class BKTBatch:
                 'group_keys': group_keys,
                 'train_x': train_x,
                 'lengths': lengths,
+                # '':train_x['item_id'].values.flatten().astype(np.int32),
             }
+
+    def fit_batch_bak(self, response: pd.DataFrame, trace_by=('knowledge',), group_by=('user',), sorted_by=None,
+                      **kwargs):
+        """
+
+        Parameters
+        ----------
+        response :  panda.DataFrame
+            作答数据,每行是一条作答数据。必有列:['answer',]，可选列['user','knowledge',]。需要包含trace_by和group_by参数指定的列。
+        trace_by : tuple or string
+            数据按照trace_by进行分组，每一组训练一个独立的bkt模型。
+            例如,每个知识点训练一个bkt，trace_by=('knowledge',);每个知识点+学生训练一个bkt，trace_by=('knowledge','user').
+
+        group_by : tuple or string
+            每个bkt模型的数据按照group_by切分序列。例如，当trace_by=('knowledge',)时，每个学生是一个序列group_by=('user')。
+        lengths
+        kwargs : optional
+            其它可选参数，支持start_init transition_init emission_init max_iter tol start_lb
+
+        Returns
+        -------
+
+        """
+
+        self._init_param(**kwargs)
+        # self._check()
+        self.model = {}
+        _start_time = time.time()
+        records = list(self._split_data(response=response, trace_by=trace_by, group_by=group_by, sorted_by=sorted_by))
+
+        # 不并行
+        if self.njobs is None or self.njobs <= 0:
+            for record in tqdm(records, total=len(records)):
+                result = self.fit_one(**record)
+                if result is not None:
+                    self.model[result['trace']] = result
+
+        else:  # 并行处理
+            if self.njobs == 1:
+                self.njobs = os.cpu_count()
+            with ThreadPoolExecutor(max_workers=self.njobs) as tp:
+                futures = [tp.submit(self.fit_one, **record) for record in records]
+                for future in tqdm(as_completed(futures), total=len(futures)):
+                    # print('xxxxxxx')
+                    result = future.result()
+                    if result is not None:
+                        self.model[result['trace']] = result
+        self.train_cost_time = time.time() - _start_time
+        return self
 
     def fit_batch(self, response: pd.DataFrame, trace_by=('knowledge',), group_by=('user',), sorted_by=None,
                   **kwargs):
@@ -477,43 +527,44 @@ class BKTBatch:
         # self._check()
         self.model = {}
         _start_time = time.time()
+        records = []
+        for record in self._split_data(response=response, trace_by=trace_by, group_by=group_by, sorted_by=sorted_by):
+            record['x'] = record['train_x']['answer'].values.flatten().astype(np.int32)
+            record['items_id'] = record['train_x']['item_id'].values.flatten().astype(np.int32)
+            records.append(record)
         # 不并行
         if self.njobs is None or self.njobs <= 0:
-            for trace_key, group_keys, train_x, lengths in self._split_data(response=response, trace_by=trace_by,
-                                                                            group_by=group_by, sorted_by=sorted_by):
-                # train_x = check_array(train_x)
-                if train_x.shape[0] <= 1:
-                    self.model[trace_key] = None
-                    continue
-
-                _, start, transition, emission, log_likelihood = self.fit_one(train_x=train_x, lengths=lengths,
-                                                                              trace=trace_key)
-                self.model[trace_key] = {'start': start, "transition": transition, "emission": emission,
-                                         'log_likelihood': log_likelihood}
+            for record in tqdm(records, total=len(records)):
+                result = self.fit_one(**record)
+                if result is not None:
+                    self.model[result['trace']] = result
 
         else:  # 并行处理
             if self.njobs == 1:
                 self.njobs = os.cpu_count()
-            with ThreadPoolExecutor(max_workers=self.njobs) as tp:
-                # futures = []
-                # records = []
-                records = self._split_data(response=response, trace_by=trace_by, group_by=group_by, sorted_by=sorted_by)
-                futures = [tp.submit(self.fit_one, **record) for record in records]
-                #     if train_x.shape[0] <= 3:
-                #         self.model[trace_key] = None
-                #         continue
-                # for result in tqdm(tp.map(self._fit, records)):
-                for future in tqdm(as_completed(futures), total=len(futures)):
-                    # print('xxxxxxx')
-                    result = future.result()
-                    if result is not None:
-                        self.model[result['trace']] = result
+            batch(
+                data=records,
+                n_stat=self.n_stat,
+                n_obs=self.n_obs,
+                start=self.start_init,
+                transition=self.transition_init,
+                emission=self.emission_init,
+                bound={
+                    'start_lb': self.start_lb,
+                    'start_ub': self.start_ub,
+                    'transition_lb': self.transition_lb,
+                    'transition_ub': self.transition_ub,
 
-                # for future in tqdm(as_completed(futures), total=len(futures)):
-                #     trace_key, start, transition, emission, log_likelihood = future.result()
-                #     self.model[trace_key] = {'start': start, "transition": transition, "emission": emission,
-                #                              'log_likelihood': log_likelihood}
-
+                },
+                items_info=self.items_info[['slop', 'difficulty', 'guess']].values.astype(np.float64),
+            )
+            # with ThreadPoolExecutor(max_workers=self.njobs) as tp:
+            #     futures = [tp.submit(self.fit_one, **record) for record in records]
+            #     for future in tqdm(as_completed(futures), total=len(futures)):
+            #         print('xxxxxxx')
+            #         result = future.result()
+            #         if result is not None:
+            #             self.model[result['trace']] = result
         self.train_cost_time = time.time() - _start_time
         return self
 

@@ -96,7 +96,7 @@ def main(options):
         [0, 0, 0, 0, 0, 0, 1],
     ], dtype=np.float64)
 
-    bkt = BKTBatch(bkt_model='IRT', n_stats=7, n_jobs=6,
+    bkt = BKTBatch(bkt_model='IRT', n_stats=7, n_jobs=3,
                    start_init=start_init, transition_init=transition_init)
     bkt.set_bound_start(start_lb, start_ub)
     bkt.set_bound_transition(transition_lb, transition_ub)

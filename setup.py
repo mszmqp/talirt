@@ -37,6 +37,8 @@ extensions = [
               include_dirs=include_dirs,
               libraries=cython_gsl.get_libraries() + ["m"],
               library_dirs=[cython_gsl.get_library_dir()],
+              extra_compile_args=['-fopenmp','-Wc++11-extensions','-Wunused-variable'],
+              extra_link_args=['-fopenmp'],
               ),
     Extension(name="pyedm.model.irt._uirt_clib",
               sources=['pyedm/model/irt/_uirt_clib' + ext],

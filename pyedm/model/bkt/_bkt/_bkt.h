@@ -21,39 +21,18 @@ private:
     };
 };
 
-
-class Item {
-public:
-
+#pragma pack(8)
+typedef struct _Item {
     double slop;// discrimination;
     double intercept; // difficulty;
     double guess;
+}Item;
 
-    double sigmoid(double z) {
-        return 1.0 / (1 + exp(-z));
-    }
+double sigmoid(double z) ;
 
-    double irt(double theta, int m = 1) {
+double irt(double theta, Item *item,int m);
 
-        double z = 0;
-        switch (m) {
-            case 1:
-                z = theta - intercept;
-                break;
-            default:
-                z = this->slop * theta - intercept;
-                break;
-        }
 
-        if (m == 3) {
-            return sigmoid(z) + guess;
-
-        } else {
-            return sigmoid(z);
-        }
-
-    }
-};
 
 
 class IRTBKT : public HMM {
@@ -76,8 +55,8 @@ public:
     IRTBKT(int n_stat, int n_obs);
 
     ~IRTBKT();
-
-    void set_items_param(double items[], int length);
+    void set_items_data(double * items, int length);
+    void set_items_info(double items[], int length);
 
     void set_items(int items_id[],int length);
 

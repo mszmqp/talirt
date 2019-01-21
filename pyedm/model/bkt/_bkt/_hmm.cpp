@@ -34,8 +34,8 @@ void projectsimplexbounded(double *ar, double *lb, double *ub, int size) {
     int *at_hi = Calloc(int, (size_t) size);
     int *at_lo = Calloc(int, (size_t) size);
     double err, lambda, v;
-    double *ar_copy = Calloc(double, (size_t) size);
-    memcpy(ar_copy, ar, (size_t) size);
+//    double *ar_copy = Calloc(double, (size_t) size);
+//    memcpy(ar_copy, ar, (size_t) size);
     int iter = 0;
     for (i = 0; i < size; i++)
         if (ar[i] != ar[i]) {
