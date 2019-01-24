@@ -13,9 +13,10 @@
 class StandardBKT : public HMM {
 public:
     StandardBKT(int n_stat = 2, int n_obs = 2) : HMM(n_stat, n_obs) {};
+    void predict_next(double *out, int *x, int n_x) override;
 
 private:
-    double emmit_pdf(int x_pos, int stat, int obs) override {
+    double emmit_pdf(int stat, int obs,int item_pos) override {
 //        std::cout << "x_pos " << x_pos << std::endl;
         return this->B[stat][obs];
     };
@@ -55,14 +56,17 @@ public:
     IRTBKT(int n_stat, int n_obs);
 
     ~IRTBKT();
-    void set_items_data(double * items, int length);
-    void set_items_info(double items[], int length);
+    void set_items_info(double * items, int length);
+//    void set_items_info(double items[], int length);
 
     void set_items(int items_id[],int length);
 
+    void predict_next(double *out, int *x, int n_x,int item_id);
 
 private:
-    double emmit_pdf(int x_pos, int stat, int obs) override;
+    double emmit_pdf(int stat, int obs,int item_pos) override;
+    double emmit_pdf_ex(int stat, int obs,int item_id);
+    void predict_next(double *out, int *x, int n_x) override{};
 
 };
 

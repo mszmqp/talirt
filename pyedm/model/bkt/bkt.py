@@ -19,7 +19,7 @@ import sys
 from sklearn.utils import check_array, check_random_state
 from sklearn.utils.validation import check_is_fitted
 import pyedm.model.bkt._bktc as bktc
-from pyedm.model.bkt._bkt import _StandardBKT as StandardBKT, _IRTBKT as IRTBKT, batch
+from pyedm.model.bkt.bkt_lib import StandardBKT, IRTBKT, parallel_fit, TrainHelper
 
 from pyedm.utils import normalize, log_mask_zero, log_normalize, iter_from_X_lengths, logsumexp
 import os
@@ -123,6 +123,7 @@ class BKTBatch:
         self.tol = tol
         self.njobs = n_jobs
         self.train_cost_time = 0
+        self.preprocess_cost_time = 0
         self.predict_cost_time = 0
 
         # 约束条件
@@ -133,6 +134,9 @@ class BKTBatch:
         self.emission_ub = np.array([[1, 0.3], [0.3, 1]]).astype(np.float64)
         self.model = {}
         self.bkt_model = bkt_model.upper()
+        if self.bkt_model not in ['IRT', 'STANDARD']:
+            raise ValueError("bkt_model must one of ['IRT', 'STANDARD']")
+
         self.items_info = None
         self._init_param(**kwargs)
 
@@ -415,8 +419,8 @@ class BKTBatch:
         _, posteriors = self.score_samples(X, lengths)
         return posteriors
 
-    @staticmethod
-    def _split_data(response: pd.DataFrame, trace_by=('knowledge',), group_by=('user',), sorted_by=None):
+    # @staticmethod
+    def _split_data(self, response: pd.DataFrame, trace_by=('knowledge',), group_by=('user',), sorted_by=None):
         if isinstance(trace_by, tuple):
             trace_by = list(trace_by)
         if isinstance(group_by, tuple):
@@ -425,7 +429,7 @@ class BKTBatch:
         for trace_key, df_data in g:
             train_x = []
             lengths = []
-            pos = 0
+            # pos = 0
             group_keys = []
             for group_key, df_x in df_data.groupby(group_by):
                 if sorted_by is not None:
@@ -434,20 +438,34 @@ class BKTBatch:
                 else:
                     # x = df_x['answer'].values.flatten().astype(np.int32)
                     x = df_x  # ['answer'].values.flatten().astype(np.int32)
+
                 train_x.append(x)
                 # lengths.append((pos, x.shape[0] + pos))
                 lengths.append(x.shape[0])
-                pos += x.shape[0]
+                # pos += x.shape[0]
                 group_keys.append(group_key)
             # train_x = np.concatenate(train_x)
-            train_x = pd.concat(train_x)
             lengths = np.asarray(lengths).astype(np.int32)
+            # 观测序列的长度最小是3，不足这个长度无法训练
+            if lengths.max() <= 3:
+                continue
+
+            train_x = pd.concat(train_x)
+            x = train_x['answer'].values.flatten().astype(np.int32)
+            if self.bkt_model == "IRT":
+
+                items_id = train_x['item_id'].values.flatten().astype(np.int32)
+            else:
+                items_id = None
+
             # yield trace_key, group_keys, train_x, lengths
             yield {
                 'trace': trace_key,
                 'group_keys': group_keys,
-                'train_x': train_x,
+                # 'train_x': train_x,
                 'lengths': lengths,
+                'items_id': items_id,
+                'x': x,
                 # '':train_x['item_id'].values.flatten().astype(np.int32),
             }
 
@@ -522,42 +540,32 @@ class BKTBatch:
         -------
 
         """
-
+        _start_time = time.time()
         self._init_param(**kwargs)
         # self._check()
         self.model = {}
+
+        records = list(self._split_data(response=response, trace_by=trace_by, group_by=group_by, sorted_by=sorted_by))
+
+        # for record in self._split_data(response=response, trace_by=trace_by, group_by=group_by, sorted_by=sorted_by):
+        #     观测序列的长度最小是3，不足这个长度无法训练
+        #   if record['lengths'].max() <= 3:
+        #     continue
+
+        #   record['x'] = record['train_x']['answer'].values.flatten().astype(np.int32)
+        #   record['items_id'] = record['train_x']['item_id'].values.flatten().astype(np.int32)
+
+        #   records.append(record)
+        self.preprocess_cost_time = time.time() - _start_time
         _start_time = time.time()
-        records = []
-        for record in self._split_data(response=response, trace_by=trace_by, group_by=group_by, sorted_by=sorted_by):
-            record['x'] = record['train_x']['answer'].values.flatten().astype(np.int32)
-            record['items_id'] = record['train_x']['item_id'].values.flatten().astype(np.int32)
-            records.append(record)
         # 不并行
         if self.njobs is None or self.njobs <= 0:
-            for record in tqdm(records, total=len(records)):
-                result = self.fit_one(**record)
-                if result is not None:
-                    self.model[result['trace']] = result
+            self._fit_sequence(records)
 
         else:  # 并行处理
             if self.njobs == 1:
                 self.njobs = os.cpu_count()
-            batch(
-                data=records,
-                n_stat=self.n_stat,
-                n_obs=self.n_obs,
-                start=self.start_init,
-                transition=self.transition_init,
-                emission=self.emission_init,
-                bound={
-                    'start_lb': self.start_lb,
-                    'start_ub': self.start_ub,
-                    'transition_lb': self.transition_lb,
-                    'transition_ub': self.transition_ub,
-
-                },
-                items_info=self.items_info[['slop', 'difficulty', 'guess']].values.astype(np.float64),
-            )
+            self._fit_parallel(records, self.njobs)
             # with ThreadPoolExecutor(max_workers=self.njobs) as tp:
             #     futures = [tp.submit(self.fit_one, **record) for record in records]
             #     for future in tqdm(as_completed(futures), total=len(futures)):
@@ -567,6 +575,33 @@ class BKTBatch:
             #             self.model[result['trace']] = result
         self.train_cost_time = time.time() - _start_time
         return self
+
+    def _fit_sequence(self, records):
+        for record in tqdm(records, total=len(records)):
+            result = self.fit_one(**record)
+            if result is not None:
+                self.model[result['trace']] = result
+
+    def _fit_parallel(self, records, n_jobs):
+        results = parallel_fit(
+            data=records,
+            n_stat=self.n_stat,
+            n_obs=self.n_obs,
+            start=self.start_init,
+            transition=self.transition_init,
+            emission=self.emission_init,
+            bound={
+                'start_lb': self.start_lb,
+                'start_ub': self.start_ub,
+                'transition_lb': self.transition_lb,
+                'transition_ub': self.transition_ub,
+
+            },
+            items_info=self.items_info[['slop', 'difficulty', 'guess']].values.astype(np.float64),
+            n_jobs=n_jobs
+        )
+        for result in results:
+            self.model[result['trace']] = result
 
     def _fit(self, kwargs):
 
@@ -609,7 +644,7 @@ class BKTBatch:
         # print("iter", iter)
         return trace, start, transition, emission, log_likelihood
 
-    def fit_one(self, train_x: pd.DataFrame, lengths: np.ndarray, trace=None, **kwargs):
+    def fit_one(self, x: np.ndarray, lengths: np.ndarray, items_id: np.ndarray=None, trace=None, **kwargs):
         """
         这个函数在测试集下0.3秒
         Parameters
@@ -623,36 +658,24 @@ class BKTBatch:
 
         """
 
-        # start = self.start_init
-        # transition = self.transition_init
-        # emission = self.emission_init
         bkt = self._get_bkt_object()
-        x_array = train_x['answer'].values.flatten().astype(np.int32)
-
-        # 所有序列的长度小于3是不可以的，这样是无法训练的
-        if np.all(lengths < 3):
-            # print("[error]", trace, 'x_lengths is all less than 3', file=sys.stderr)
-            # if trace is None:
-            return None
-
+        # x_array = train_x['answer'].values.flatten().astype(np.int32)
         if isinstance(bkt, IRTBKT):
-            item_array = train_x['item_id'].values.flatten().astype(np.int32)
-            bkt.set_items(item_array)
-
-        # if trace == ('CLT-ROW-1', '2487h7xz8'):
-        #     print(x_array, lengths, file=sys.stderr)
-        #     br = "heheh"
-        #     pass
-        _t = time.time()
-        # print("[success]", trace, 'count:', x_array.shape[0], end=' ', file=sys.stderr)
-        bkt.estimate(x_array, lengths)
+            # item_array = train_x['item_id'].values.flatten().astype(np.int32)
+            # bkt.set_items(item_array)
+            bkt.estimate(x, lengths, items_id)
+        else:
+            bkt.estimate(x, lengths)
         # print('cost:', time.time() - _t, file=sys.stderr)
-        if trace is None:
-            return bkt
-        return {'trace': trace,
-                'start': bkt.start,
-                'transition': bkt.transition,
-                'emission': bkt.emission, 'log_likelihood': bkt.log_likelihood}
+        # if trace is None:
+        #     return bkt
+        return {
+            'success': bkt.success,
+            'trace': trace,
+            'start': bkt.start,
+            'transition': bkt.transition,
+            'emission': bkt.emission,
+            'log_likelihood': bkt.log_likelihood}
         # print(bkt.emission)
         # return trace, bkt.start, bkt.transition, None, bkt.log_likelihood
 
@@ -664,6 +687,8 @@ class BKTBatch:
         if self.bkt_model == "IRT":
             bkt = IRTBKT(self.n_stat, self.n_obs)
             bkt.init(start, transition)
+            if self.items_info is None:
+                raise ValueError("items_info must set")
             items_array = self.items_info[['slop', 'difficulty', 'guess']].values.astype(np.float64)
             bkt.set_items_param(items_array)
         else:
@@ -674,6 +699,14 @@ class BKTBatch:
         bkt.set_bounded_start(self.start_lb, self.start_ub)
         bkt.set_bounded_transition(self.transition_lb, self.transition_ub)
         return bkt
+
+    def show(self):
+        for key, m in self.model.items():
+            print('=' * 10, key, "=" * 10)
+            print(m['success'])
+            print(m['start'])
+            print(m['transition'])
+            print(m['emission'])
 
 
 def test_irtbkt():

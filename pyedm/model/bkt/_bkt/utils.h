@@ -315,17 +315,24 @@ public:
     int rows;
     int cols;
 
-    MatrixView(int rows, int cols, C *ptr)  {
-        this->rows=rows;
+    MatrixView(int rows, int cols, C *ptr) {
+        this->rows = rows;
         this->cols = cols;
-        this->data=ptr;
+        this->data = ptr;
     };
 
     C *operator[](int k) { return &(this->data[k * this->cols]); }
 };
 
-template<class T>
+
+// 注意，这个函数不支持传入指针，因为sizeof对于指针和数组名得到不一样的结果，具体可百度
+template<typename T>
 int getArrayLen(T &array) {
+    if (array == NULL) {
+        return 0;
+    }
+//    std::cout <<"sizeof(array) " << sizeof(array)<<std::endl;
+//    std::cout <<"sizeof(array[0])) " << sizeof(array[0])<<std::endl;
     return (sizeof(array) / sizeof(array[0]));
 }
 
@@ -353,5 +360,41 @@ int getArrayLen(T &array) {
 //        std::cout << std::endl;
 //    }
 //}
+
+template<class T>
+int *unique_counts(T data[], int length, int &out_length) {
+
+    if (length < 1 || data == NULL) {
+        return NULL;
+    }
+
+    int total_count = 1;
+//    int pre = data[0];
+    int i, j;
+    for (i = 1; i < length; ++i) {
+        if (data[i] != data[i - 1]) {
+            total_count++;
+        }
+    }
+//    std::cout<<"total-"<<total_count<<std::endl;
+    out_length = total_count;
+
+    int *values = (int *) calloc((size_t) total_count, sizeof(int));
+    int cc = 1;
+    i = 0;
+    for (j = 1; j < length; ++j) {
+
+        if (data[j] != data[j - 1]) {
+            values[i] = cc;
+            cc = 0;
+            i++;
+        }
+        cc++;
+
+    }
+//    count = total_count;
+    return values;
+//    return total_count;
+}
 
 #endif //HMM_UTILS_H

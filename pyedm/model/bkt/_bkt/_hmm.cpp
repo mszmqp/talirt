@@ -122,9 +122,9 @@ void projectsimplexbounded(double *ar, double *lb, double *ub, int size) {
         }
         iter++;
         if (iter == 100) {
-            print1D(ar,size);
-            print1D(lb,size);
-            print1D(ub,size);
+            print1D(ar, size);
+            print1D(lb, size);
+            print1D(ub, size);
             fprintf(stderr, "WARNING! Stuck in projectsimplexbounded().\n");
 //            doexit = true;
             exit(1);
@@ -162,6 +162,7 @@ void projectsimplexbounded(double *ar, double *lb, double *ub, int size) {
 
 
 HMM::HMM(int n_stat, int n_obs) {
+    this->success = false;
     this->n_obs = n_obs;
     this->n_stat = n_stat;
 
@@ -192,7 +193,7 @@ HMM::HMM(int n_stat, int n_obs) {
     this->x_pos = 0;
     this->gammalattice = NULL;
     this->cn = NULL;
-
+    this->msg = "Not estimate";
 }
 
 HMM::~HMM() {
@@ -348,24 +349,31 @@ void HMM::init(double pi[], double a[], double b[]) {
 }
 
 bool HMM::estimate(int *x, int *lengths, int n_lengths, int max_iter, double tol) {
-
+    this->success = false;
     this->max_iter = max_iter;
     // 最长的序列长度
     int max_n_x = max1D(lengths, n_lengths);
-
+    if (max_n_x <= 3) {
+//        this->success = false;
+        this->msg = "There is no sequence that length more than 3";
+        return this->success;
+    }
+//    return true;
     // 先释放原来的空间
 //    free2D(this->fwdlattice, max_n_x);
 //    free2D(this->backlattice, max_n_x);
 //    free2D(this->gammalattice, max_n_x);
 //    free(this->cn);
-
+//        print1D<int>(lengths,n_lengths);
+//        std::cout<<"--"<<n_lengths<<" "<<max_n_x<<std::endl;
+//    return true;
     // 申请新空间
     this->fwdlattice = init2D<double>(max_n_x, this->n_stat);
     this->backlattice = init2D<double>(max_n_x, this->n_stat);
     this->gammalattice = init2D<double>(max_n_x, this->n_stat);
     this->cn = init1D<double>(max_n_x);
 
-    toZero1D(cn, max_n_x);
+    toZero1D(this->cn, max_n_x);
     toZero2D(this->fwdlattice, max_n_x, this->n_stat);
     toZero2D(this->backlattice, max_n_x, this->n_stat);
     toZero2D(this->gammalattice, max_n_x, this->n_stat);
@@ -550,6 +558,8 @@ bool HMM::estimate(int *x, int *lengths, int n_lengths, int max_iter, double tol
 //    cout << iter << endl;
 //    cout << "log likelihood" << endl;
 //    cout << cur_log_likelihood << endl;
+    this->success = true;
+    this->msg = "OK";
     return true;
 
 }
@@ -565,7 +575,7 @@ double HMM::forward(int x_pos, int n_x, double *PI, double **A) {
 
     double log_likelihood = 0;
     for (int i = 0; i < this->n_stat; i++) {
-        this->fwdlattice[0][i] = PI[i] * this->emmit_pdf(x_pos + 0, i, x[0]);
+        this->fwdlattice[0][i] = PI[i] * this->emmit_pdf(i, x[0], x_pos + 0);
     }
 //    if (this->fwdlattice[0][0] == 0) {
 //        cout << "--------" << endl;
@@ -582,7 +592,7 @@ double HMM::forward(int x_pos, int n_x, double *PI, double **A) {
             for (int j = 0; j < this->n_stat; ++j) {
                 this->fwdlattice[t][i] += this->fwdlattice[t - 1][j] * A[j][i];
             }
-            this->fwdlattice[t][i] *= this->emmit_pdf(x_pos + t, i, x[t]);
+            this->fwdlattice[t][i] *= this->emmit_pdf(i, x[t], x_pos + t);
 
 //            if (this->fwdlattice[t][i] == 0) {
 //                cout << "--------" << endl;
@@ -612,7 +622,7 @@ double HMM::backward(int x_pos, int n_x, double *PI, double **A) {
             this->backlattice[t][i] = 0;
             for (int j = 0; j < this->n_stat; ++j) {
                 this->backlattice[t][i] +=
-                        A[i][j] * this->emmit_pdf(x_pos + t, j, x[t + 1]) * this->backlattice[t + 1][j];
+                        A[i][j] * this->emmit_pdf(j, x[t + 1], x_pos + t) * this->backlattice[t + 1][j];
             }
             this->backlattice[t][i] /= this->cn[t];
         }
@@ -643,7 +653,7 @@ void HMM::xi(int x_pos, int n, double **fwdlattice, double **backlattice, double
         for (int i = 0; i < this->n_stat; ++i) {
             for (int j = 0; j < this->n_stat; ++j) {
 
-                xi_sum[i][j] += fwdlattice[t][i] * this->A[i][j] * this->emmit_pdf(x_pos + t, j, x[t + 1]) *
+                xi_sum[i][j] += fwdlattice[t][i] * this->A[i][j] * this->emmit_pdf(j, x[t + 1], x_pos + t) *
                                 backlattice[t + 1][j];
             }
         }
@@ -652,7 +662,7 @@ void HMM::xi(int x_pos, int n, double **fwdlattice, double **backlattice, double
 
 }
 
-double HMM::emmit_pdf(int x_pos, int stat, int obs) {
+double HMM::emmit_pdf(int stat, int obs, int item_pos) {
     return this->B[stat][obs];
 }
 
@@ -689,46 +699,24 @@ void HMM::get_b(double *out) {
     }
 }
 
-void HMM::predict_next(double *out, int *x, int n_x, double *start, double *transition, double *emission, int n_stat,
-                       int n_obs) {
+double HMM::stat_distributed(double *out,int *x, int n_x){
     if (x == NULL) {
-        return;
-    }
-    if (n_stat == 0) {
-        n_stat = this->n_stat;
-    }
-    if (n_obs == 0) {
-        n_obs = this->n_obs;
-    }
-    double *PI;
-    bool free_A = false, free_B = false;
-
-    if (start == NULL) {
-        PI = this->PI;
-    } else {
-        PI = start;
+        return 0;
     }
 
-    if (transition == NULL) {
-        double **A = this->A;
-    } else {
-        MatrixView<double> A(n_stat, n_stat, transition);
-    }
-
-    if (emission == NULL) {
-        double **B = this->B;
-    } else {
-        MatrixView<double> B(n_stat, n_obs, emission);
-//        cout << "4r4rer "<<B[0][0] <<" "<<B[0][1]<<endl;
-//        cout<< B[1][0]<<" " << B[1][1] <<endl;
-    }
-    // 前向算法推进时，只需要保留两个状态即可，所以申请长度2的序列就行
-    double **fwdlattice = init2D<double>(2, n_stat);
+    // 前向算法推进时，只需要保留最近的两个状态分布即可，所以申请长度2的序列就行
+//    double **fwdlattice = init2D<double>(n_x, this->n_stat);
+//    MatrixView
+    MatrixView<double> fwdlattice(n_x, this->n_stat, out);
     double cn;
     double log_likelihood = 0;
 
-    for (int i = 0; i < n_stat; i++) {
-        fwdlattice[0][i] = PI[i] * B[i][x[0]];
+
+    for (int i = 0; i < this->n_stat; i++) {
+//        fwdlattice[0][i] = PI[i] * B[i][x[0]];
+//        std::cerr << "x_pos:" << item_pos << " stat:" << i << " obs:" << x[0] << std::endl;
+
+        fwdlattice[0][i] = this->PI[i] * this->emmit_pdf(i, x[0], 0);
     }
     cn = normalize1D(fwdlattice[0], n_stat);
     log_likelihood += log(cn);
@@ -737,36 +725,20 @@ void HMM::predict_next(double *out, int *x, int n_x, double *start, double *tran
 
         for (int i = 0; i < n_stat; i++) {
             // 用t%2 找到 fwdlattice 的位置
-            fwdlattice[t % 2][i] = 0;
+            fwdlattice[t][i] = 0;
 
             for (int j = 0; j < n_stat; ++j) {
-                fwdlattice[t % 2][i] += fwdlattice[(t - 1) % 2][j] * A[j][i];
+                fwdlattice[t][i] += fwdlattice[t - 1][j] * this->A[j][i];
             }
-            fwdlattice[t % 2][i] *= B[i][x[t]];
+            fwdlattice[t][i] *= this->emmit_pdf(i, x[t], t);
+//            fwdlattice[t % 2][i] *= B[i][x[t]];
+
+
         }
-        cn = normalize1D(fwdlattice[t % 2], n_stat);
+        cn = normalize1D(fwdlattice[t], n_stat);
         log_likelihood += log(cn);
     }
-    // fwdlattice[-1]是最后时刻，隐状态的概率分布
-    for (int k = 0; k < n_obs; ++k) {
-        out[k] = 0;
-        for (int i = 0; i < n_stat; ++i) {
-            // 预测下一时刻隐状态分布
-            fwdlattice[n_x % 2][i] = 0;
-            for (int j = 0; j < n_stat; ++j) {
-                fwdlattice[n_x % 2][i] += fwdlattice[(n_x - 1) % 2][j] * A[j][i];
-            }
-
-            out[k] += fwdlattice[n_x % 2][i] * B[i][k];
-        }
-
-    }
-
-//    print1D(fwdlattice[n_x % 2], n_obs);
-
-//    if (free_A)free2D(A, n_stat);
-//    if (free_B)free2D(B, n_stat);
-    free2D(fwdlattice, 2);
-//    return log_likelihood;
-
+    return log_likelihood;
 }
+
+

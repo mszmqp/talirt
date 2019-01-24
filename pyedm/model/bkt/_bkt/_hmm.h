@@ -39,6 +39,8 @@ public:
     double *PI;
     double **A;
     double **B;
+    bool success;
+    std::string msg;
 
 private:
     double *PI_LOW, *PI_UPPER;
@@ -54,6 +56,7 @@ private:
     int x_pos;
     int *x_ptr;
 
+
 //    EmissionDistribution *ed;
 
 public:
@@ -64,6 +67,7 @@ public:
 
 //    ~HMM();
     virtual ~HMM() = 0;
+
     /// 初始化设置参数
     /// \param pi 初始概率
     /// \param a 转移概率
@@ -110,16 +114,22 @@ public:
     /// \param out [输出] 预测的每个观测状态的概率值
     /// \param x [输入] 已知的观测序列
     /// \param n_x [输入] 已知观测序列的长度
+    /// \param item_pos [输入] 下一个预测的题目ID，若有的话。
     /// \param pi [输入，可选] 初始概率值。如果为空指针，就使用类对象已有值。
     /// \param a [输入，可选] 转移概率矩阵。如果为空指针，就使用类对象已有值。用一维连续空间表示二维数组。
     /// \param b [输入，可选] 发射概率矩阵。如果为空指针，就使用类对象已有值。用一维连续空间表示二维数组。
     /// \param n_stat [输入，可选] 隐状态的数量
     /// \param n_obs [输入，可选] 观测状态的数量
-    void
-    predict_next(double *out, int *x, int n_x, double *pi = NULL, double *a = NULL, double *b = NULL, int n_stat = 0,
-                 int n_obs = 0);
+    virtual void predict_next(double *out, int *x, int n_x){};
 
-private:
+    /// 给定观测序列，输出隐状态的分布。实际就是前向算法的结果。
+    /// \param out
+    /// \param x
+    /// \param n_x
+    /// \return
+    double stat_distributed(double *out,int *x, int n_x);
+
+protected:
     /// 前向算法
     /// \param x
     /// \param n_x
@@ -146,10 +156,13 @@ private:
 
     void xi(int x_pos, int n, double **fwdlattice, double **backlattice, double **xi_sum);
 
-    virtual double emmit_pdf(int x_pos, int stat, int obs);
+    virtual double emmit_pdf(int stat, int obs,int item_pos=-1);
 
     void bounded();
+
 };
+
+
 
 
 #endif //BKT_HMM_H
