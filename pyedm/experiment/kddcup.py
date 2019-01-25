@@ -44,16 +44,6 @@ def value2id(s: pd.Series):
     return df_left.join(df_right, how='left', on='value')['index'].values
 
 
-def main(options):
-    kdd = KddCup2010()
-    df_a67_train = kdd.a67_train
-    df_a67_test = kdd.a67_test
-    df_train, df_test, item_info = preprocess(df_a67_train, df_a67_test)
-    irt_models = train_irt(df_train, item_info)
-
-    test(irt_models, df_train, df_test, item_info)
-
-
 def preprocess(df_train, df_test):
     # 计算题目难度，当前仅通过正确率，作答次数少的题目不准确，todo 优化题目难度计算方法
     item_info = df_train[['item_name', 'Correct First Attempt']].groupby('item_name').agg(
@@ -69,14 +59,16 @@ def preprocess(df_train, df_test):
 
     df_train = df_train.join(item_info['item_id'], how='left', on='item_name')
     df_train.rename(columns={'Anon Student Id': 'user',
-                             'KC(Default)': 'knowledge',
+                             'KC(Default)': 'knowledge',  # algebra data
+                             'KC(SubSkills)': 'knowledge',  # bridge_to_algebra data
                              'Correct First Attempt': 'answer',
                              }, inplace=True)
 
-    df_test = df_test.join(item_info['item_id'], how='left', on='item_name')
+    df_test = df_test.join(item_info, how='left', on='item_name')
 
     df_test.rename(columns={'Anon Student Id': 'user',
                             'KC(Default)': 'knowledge',
+                            'KC(SubSkills)': 'knowledge',  # bridge_to_algebra data
                             'Correct First Attempt': 'answer',
                             }, inplace=True)
 
@@ -91,8 +83,7 @@ def preprocess(df_train, df_test):
     return df_train, df_test, item_info
 
 
-def test(models, df_train, df_test, item_info):
-
+def test_irt_bkt(models, df_train, df_test, item_info):
     item_info_arr = item_info[['slop', 'difficulty', 'guess']].values.astype(np.float64)
     df_train_g = df_train.groupby(['knowledge', 'user'])
     df_eva = []
@@ -154,23 +145,36 @@ def test(models, df_train, df_test, item_info):
     y_true = df_eva['answer'].values
     y_prob = df_eva['prob'].values
     metric(y_true, y_prob)
+    return df_eva
+
+
+def write_badcase(df_eva, filepath="irt_bkt_badcase.xlsx"):
+    writer = pd.ExcelWriter(filepath)
+    df_eva.to_excel(writer, 'Sheet1')
+    # df2.to_excel(writer,
 
 
 def metric(y_true, y_prob):
     y_pred = y_prob.copy()
     y_pred[y_pred > 0.5] = 1
     y_pred[y_pred <= 0.5] = 0
-    print("原始数据正确率:", y_true.mean())
+
     mae = metrics.mean_absolute_error(y_true, y_prob)
     mse = metrics.mean_squared_error(y_true, y_prob)
     acc = metrics.accuracy_score(y_true, y_pred)
-    print('mae:', mae, "mse:", mse, 'acc:', acc)
-    print(metrics.confusion_matrix(y_true, y_pred))
 
+    print("origin data acc:%4f" % y_true.mean())
+    print('-' * 50)
+    print('mae:%4f' % mae, "mse:%4f" % mse, 'acc:%4f' % acc)
+    print('-' * 50)
+    print("confusion_matrix")
+    print(metrics.confusion_matrix(y_true, y_pred))
+    print('-' * 50)
+    print('classification_report')
     print(metrics.classification_report(y_true, y_pred))
 
 
-def train_irt(df_train, item_info):
+def train_irt_bkt(df_train, item_info):
     start_init = np.array([0.1, 0.2, 0.2, 0.2, 0.1, 0.1, 0.1], dtype=np.float64)
     # assert start_init.sum() == 1
     n_stat = 7
@@ -226,22 +230,41 @@ def train_irt(df_train, item_info):
     #     print()
     #     print('=' * 50)
     #     m.show()
-    print(th.model_count)
+    print(th.model_count, file=sys.stderr)
     return models
 
-    bkt = BKTBatch(bkt_model='IRT', n_stat=7, n_jobs=5,
-                   start_init=start_init, transition_init=transition_init)
-    bkt.set_bound_start(start_lb, start_ub)
-    bkt.set_bound_transition(transition_lb, transition_ub)
-    bkt.set_item_info(item_info)
-    bkt.fit_batch(df_train, trace_by=['knowledge', 'user'])
 
-    # bkt.show()
+def run_irt_bkt(train_data, test_data):
+    df_train, df_test, item_info = preprocess(train_data, test_data)
+    irt_models = train_irt_bkt(df_train, item_info)
+    df_eva = test_irt_bkt(irt_models, df_train, df_test, item_info)
+    write_badcase(df_eva)
 
-    print('preprocess time', bkt.preprocess_cost_time)
-    print('train time', bkt.train_cost_time)
-    # bkt = BKTBatch(bkt_model='standard')
-    # bkt.fit_batch(df_train)
+
+def run_standard_bkt(train_data, test_data):
+    df_train, df_test, item_info = preprocess(train_data, test_data)
+    irt_models = train_irt_bkt(df_train, item_info)
+    test_irt_bkt(irt_models, df_train, df_test, item_info)
+
+
+def main(options):
+    kdd = KddCup2010('/Users/zhangzhenhu/Documents/开源数据/kddcup2010/')
+    # test bridge_to_algebra_2006_2007
+    print('=' * 50)
+    print("bridge_to_algebra_2006_2007")
+    print('=' * 50)
+    run_irt_bkt(kdd.ba67_train, kdd.ba67_test)
+    return
+    # algebra_2006_2007_new_20100409
+    print('=' * 50)
+    print("algebra_2006_2007_new_20100409")
+    print('=' * 50)
+    run_irt_bkt(kdd.a67_train, kdd.a67_test)
+    # algebra_2005_2006
+    print('=' * 50)
+    print("algebra_2005_2006")
+    print('=' * 50)
+    run_irt_bkt(kdd.a56_train, kdd.a56_test)
 
 
 if __name__ == "__main__":

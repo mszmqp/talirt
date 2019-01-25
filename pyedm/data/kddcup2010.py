@@ -4,10 +4,19 @@
 # 
 #
 """
-模块用途描述
-
 Authors: zhangzhenhu(acmtiger@gmail.com)
 Date:    2019/1/17 10:36
+
+KDD Cup 2010 Educational Data Mining Challenge
+
+Description: http://pslcdatashop.web.cmu.edu/KDDCup/
+
+Data Download:
+    Download site 1: http://pslcdatashop.web.cmu.edu/KDDCup/downloads.jsp
+    Download site 2: http://neuron.csie.ntust.edu.tw/homework/98/NN/KDDCUP2010/Dataset/
+
+
+
 """
 import sys
 import argparse
@@ -20,6 +29,10 @@ import os
 
 
 class KddCup2010:
+    """
+    read the data of Kdd cup 2010,and return pandas.DataFrame
+    """
+
     def __init__(self, data_dir='/Users/zhangzhenhu/Documents/开源数据/kddcup2010/'):
         self.data_dir = data_dir
 
@@ -71,9 +84,40 @@ class KddCup2010:
             raise ValueError("file not exists %s" % file_path)
         return self.read(file_path)
 
+    @property
+    def ba67_train(self, file_path=None):
+        if file_path is None:
+            file_path = os.path.join(self.data_dir, 'bridge_to_algebra_2006_2007',
+                                     'bridge_to_algebra_2006_2007_train.txt')
+        if not os.path.exists(file_path):
+            raise ValueError("file not exists %s" % file_path)
+        return self.read(file_path)
+
+    @property
+    def ba67_test(self, file_path=None):
+        if file_path is None:
+            file_path = os.path.join(self.data_dir, 'bridge_to_algebra_2006_2007',
+                                     'bridge_to_algebra_2006_2007_master.txt')
+        if not os.path.exists(file_path):
+            raise ValueError("file not exists %s" % file_path)
+        return self.read(file_path)
+
     @staticmethod
     def read(file_path):
-        df_data = pd.read_csv(file_path, sep='\t')
+        df_data = pd.read_csv(file_path, sep='\t', dtype={'Row': np.int32,
+                                                          # "Anon Student Id": str,
+                                                          # "Problem Hierarchy": str,
+                                                          "Problem View": np.int32,
+                                                          "Step Duration (sec)": np.float64,
+                                                          "Correct Step Duration (sec)": np.float64,
+                                                          "Error Step Duration (sec)": np.float64,
+                                                          "Correct First Attempt": np.int32,
+                                                          "Incorrects": np.int32,
+                                                          "Hints": np.int32,
+                                                          "Corrects": np.int32,
+                                                          # "KC(SubSkills)": str,
+                                                          # "Opportunity(SubSkills)": str,
+                                                          })
         df_data['item_name'] = df_data['Problem Name'] + ',' + df_data['Step Name']
         return df_data
 

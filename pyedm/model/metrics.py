@@ -10,9 +10,7 @@ Authors: zhangzhenhu(zhangzhenhu1@100tal.com)
 Date:    2018/4/12 10:21
 """
 import sys
-import argparse
 from sklearn import metrics
-
 
 
 class Metric(object):
