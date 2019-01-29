@@ -5,20 +5,31 @@
 #include "_bkt.h"
 
 
-
-void StandardBKT::predict_next(double *out, int *x, int n_x) {
-    if (x == NULL) {
+void StandardBKT::predict_by_posterior(double *out, int *x, int n_x) {
+    if (out == NULL) {
         return;
     }
+    // 没有历史观测序列，相当于预测首次结果
+    if (x == NULL) {
+        for (int i = 0; i < this->n_obs; ++i) {
+            out[i] = 0;
+            for (int j = 0; j < this->n_stat; ++j) {
+                out[i] += this->PI[j] * this->emmit_pdf(j, i, 0);
+            }
+
+        }
+
+        return;
+    }
+
     // fwdlattice[-1]是最后时刻，隐状态的概率分布
-//    double ** fwdlattice = this->forward_simple(x,n_x);
 
-    double *buffer = init1D<double>(n_x*this->n_stat);
-    MatrixView<double> fwdlattice(n_x, this->n_stat, buffer);
+    double *buffer = init1D<double>(n_x * this->n_stat);
+    MatrixView<double> posterior(n_x, this->n_stat, buffer);
 
-    double ll = this->stat_distributed(buffer,x,n_x);
+    double ll = this->posterior_distributed(buffer, x, n_x);
 
-    double * predict_stat = init1D<double>(this->n_stat);
+    double *predict_stat = init1D<double>(this->n_stat);
 
     for (int k = 0; k < n_obs; ++k) {
         out[k] = 0;
@@ -26,33 +37,26 @@ void StandardBKT::predict_next(double *out, int *x, int n_x) {
             // 预测下一时刻隐状态分布
             predict_stat[i] = 0;
             for (int j = 0; j < n_stat; ++j) {
-                predict_stat[i] += fwdlattice[n_x - 1][j] * this->A[j][i];
+                predict_stat[i] += posterior[n_x - 1][j] * this->A[j][i];
             }
 
-//            out[k] += fwdlattice[n_x % 2][i] * B[i][k];
             out[k] += predict_stat[i] * this->emmit_pdf(i, k, 0);
         }
 
     }
 
-//    print1D(fwdlattice[n_x % 2], n_obs);
-
-//    if (free_A)free2D(A, n_stat);
-//    if (free_B)free2D(B, n_stat);
     free(buffer);
     free(predict_stat);
 
-//    return log_likelihood;
 
 }
-
 
 
 double sigmoid(double z) {
     return 1.0 / (1 + exp(-z));
 }
 
-double irt(double theta, Item *item,int m = 1) {
+double irt(double theta, Item *item, int m = 1) {
 
     double z = 0;
     switch (m) {
@@ -100,6 +104,7 @@ void IRTBKT::set_items_info(double *items, int length) {
     this->items = (Item *) items;
     this->items_length = length;
 }
+
 /*
 void IRTBKT::set_items_info(double items_ptr[], int length) {
     if (length <= 0) {
@@ -136,48 +141,76 @@ void IRTBKT::set_items(int items_id[], int length) {
 
 }
 
-double IRTBKT::emmit_pdf( int stat, int obs,int x_pos) {
+double IRTBKT::emmit_pdf(int stat, int obs, int t) {
 //    std::cerr << "x_pos:" << x_pos <<" stat:"<<stat<<" obs:"<<obs <<std::endl;
 
-    assert(x_pos < this->items_id_length);
-    int item_id = this->items_id[x_pos];
+    assert(t < this->items_id_length);
+    int item_id = this->items_id[t];
     assert(item_id < this->items_length);
-    Item *item = this->items+item_id;
+    Item *item = this->items + item_id;
 
 //    std::cerr << "item_id:" << item_id<<std::endl;
 //    std::cerr << "slop:" << item->slop <<" difficulty:" << item->intercept << " guess:" << item->guess << std::endl;
 
 //    double prob = item->irt(stat);
-    double prob = irt(stat,item);
+    double prob = irt(stat, item);
     assert(prob > 0);
     assert(prob < 1);
     return obs ? prob : (1 - prob);
 //    return this->B[stat][obs];
 }
-double IRTBKT::emmit_pdf_ex( int stat, int obs,int item_id) {
+
+double IRTBKT::emmit_pdf_ex(int stat, int obs, int item_id) {
 //    std::cerr << "x_pos:" << x_pos <<" stat:"<<stat<<" obs:"<<obs <<std::endl;
     assert(item_id < this->items_length);
-    Item *item = this->items+item_id;
+    Item *item = this->items + item_id;
 
-    double prob = irt(stat,item);
+    double prob = irt(stat, item);
     assert(prob > 0);
     assert(prob < 1);
     return obs ? prob : (1 - prob);
 //    return this->B[stat][obs];
 }
 
+void IRTBKT::predict_first(double *out, int item_id) {
+    // 没有历史观测序列，相当于预测首次结果
 
-void IRTBKT::predict_next(double *out, int *x, int n_x,int item_id) {
+    for (int i = 0; i < this->n_obs; ++i) {
+        out[i] = 0;
+        for (int j = 0; j < this->n_stat; ++j) {
+            out[i] += this->PI[j] * this->emmit_pdf_ex(j, i, item_id);
+        }
+
+    }
+
+
+}
+
+void IRTBKT::predict_by_posterior(double *out, int *x, int n_x, int item_id) {
+
+    if (out == NULL) {
+        return;
+    }
+
+    // 没有历史观测序列，相当于预测首次结果
     if (x == NULL) {
+        for (int i = 0; i < this->n_obs; ++i) {
+            out[i] = 0;
+            for (int j = 0; j < this->n_stat; ++j) {
+                out[i] += this->PI[j] * this->emmit_pdf_ex(j, i, item_id);
+            }
+
+        }
+
         return;
     }
     // fwdlattice[-1]是最后时刻，隐状态的概率分布
-    double *buffer = init1D<double>(n_x*this->n_stat);
-    MatrixView<double> fwdlattice(n_x, this->n_stat, buffer);
+    double *buffer = init1D<double>(n_x * this->n_stat);
+    MatrixView<double> posterior(n_x, this->n_stat, buffer);
 
-    double ll = this->stat_distributed(buffer,x,n_x);
+    double ll = this->posterior_distributed(buffer, x, n_x);
 
-    double * predict_stat = init1D<double>(this->n_stat);
+    double *predict_stat = init1D<double>(this->n_stat);
 
     for (int k = 0; k < n_obs; ++k) {
         out[k] = 0;
@@ -185,7 +218,7 @@ void IRTBKT::predict_next(double *out, int *x, int n_x,int item_id) {
             // 预测下一时刻隐状态分布
             predict_stat[i] = 0;
             for (int j = 0; j < n_stat; ++j) {
-                predict_stat[i] += fwdlattice[n_x - 1][j] * this->A[j][i];
+                predict_stat[i] += posterior[n_x - 1][j] * this->A[j][i];
             }
             out[k] += predict_stat[i] * this->emmit_pdf_ex(i, k, item_id);
         }
@@ -199,3 +232,17 @@ void IRTBKT::predict_next(double *out, int *x, int n_x,int item_id) {
 
 }
 
+void IRTBKT::predict_by_viterbi(double *out, int *x, int n_x, int item_id) {
+    if (out == NULL || x == NULL) {
+        return;
+    }
+    int *stat = init1D<int>(n_x);
+
+    this->viterbi(stat, x, n_x);
+    for (int i = 0; i < this->n_obs; ++i) {
+
+        out[i] = this->emmit_pdf_ex(stat[n_x - 1], i, item_id);
+    }
+
+    free(stat);
+}

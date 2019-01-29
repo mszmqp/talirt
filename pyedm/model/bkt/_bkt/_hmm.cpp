@@ -194,6 +194,7 @@ HMM::HMM(int n_stat, int n_obs) {
     this->gammalattice = NULL;
     this->cn = NULL;
     this->msg = "Not estimate";
+    this->minimum_obs = 3;
 }
 
 HMM::~HMM() {
@@ -348,14 +349,16 @@ void HMM::init(double pi[], double a[], double b[]) {
     }
 }
 
+
 bool HMM::estimate(int *x, int *lengths, int n_lengths, int max_iter, double tol) {
     this->success = false;
     this->max_iter = max_iter;
     // 最长的序列长度
     int max_n_x = max1D(lengths, n_lengths);
-    if (max_n_x <= 3) {
+    if (max_n_x < this->minimum_obs) {
 //        this->success = false;
-        this->msg = "There is no sequence that length more than 3";
+        this->msg = "The obs length is less than minimum_obs";
+//        std::cerr <<"n_lengths:"<<n_lengths<< " max_n_x:" << max_n_x << std::endl;
         return this->success;
     }
 //    return true;
@@ -429,7 +432,7 @@ bool HMM::estimate(int *x, int *lengths, int n_lengths, int max_iter, double tol
 //            this->x_pos += n_x; // 当前观测序列的位置
             x_pos += n_x; // 当前序列的位置
             n_x = lengths[c]; // 当前序列的长度
-            if (n_x < 3) { // 序列长度至少要是3
+            if (n_x < this->minimum_obs) { // 序列长度至少要是3
                 continue;
             }
             cur_log_likelihood += this->forward(x_pos, n_x, this->PI, this->A);
@@ -662,7 +665,7 @@ void HMM::xi(int x_pos, int n, double **fwdlattice, double **backlattice, double
 
 }
 
-double HMM::emmit_pdf(int stat, int obs, int item_pos) {
+double HMM::emmit_pdf(int stat, int obs, int t) {
     return this->B[stat][obs];
 }
 
@@ -699,46 +702,218 @@ void HMM::get_b(double *out) {
     }
 }
 
-double HMM::stat_distributed(double *out,int *x, int n_x){
+double HMM::posterior_distributed(double *out, int *x, int n_x) {
+
+
     if (x == NULL) {
         return 0;
     }
 
-    // 前向算法推进时，只需要保留最近的两个状态分布即可，所以申请长度2的序列就行
-//    double **fwdlattice = init2D<double>(n_x, this->n_stat);
-//    MatrixView
-    MatrixView<double> fwdlattice(n_x, this->n_stat, out);
-    double cn;
+    MatrixView<double> posterior(n_x, this->n_stat, out);
+//    double cn;
     double log_likelihood = 0;
 
+    // 前向算法
+    double **fwdlattice = init2D<double>(n_x, this->n_stat);
+    double *cn = init1D<double>(n_x);
 
     for (int i = 0; i < this->n_stat; i++) {
-//        fwdlattice[0][i] = PI[i] * B[i][x[0]];
-//        std::cerr << "x_pos:" << item_pos << " stat:" << i << " obs:" << x[0] << std::endl;
-
         fwdlattice[0][i] = this->PI[i] * this->emmit_pdf(i, x[0], 0);
     }
-    cn = normalize1D(fwdlattice[0], n_stat);
-    log_likelihood += log(cn);
+    cn[0] = normalize1D<double>(fwdlattice[0], n_stat);
+    log_likelihood += log(cn[0]);
 
     for (int t = 1; t < n_x; t++) {
-
         for (int i = 0; i < n_stat; i++) {
-            // 用t%2 找到 fwdlattice 的位置
             fwdlattice[t][i] = 0;
-
             for (int j = 0; j < n_stat; ++j) {
                 fwdlattice[t][i] += fwdlattice[t - 1][j] * this->A[j][i];
             }
             fwdlattice[t][i] *= this->emmit_pdf(i, x[t], t);
-//            fwdlattice[t % 2][i] *= B[i][x[t]];
-
-
         }
-        cn = normalize1D(fwdlattice[t], n_stat);
-        log_likelihood += log(cn);
+        cn[t] = normalize1D<double>(fwdlattice[t], n_stat);
+        log_likelihood += log(cn[t]);
     }
+
+    // 后向算法
+    double **backlattice = init2D<double>(n_x, this->n_stat);
+
+    for (int i = 0; i < this->n_stat; ++i) {
+        backlattice[n_x - 1][i] = 1 / cn[n_x - 1];
+//        backlattice[n_x - 1][i] = 1 ;
+    }
+
+    for (int t = n_x - 2; t >= 0; --t) {
+        for (int i = 0; i < this->n_stat; ++i) {
+            backlattice[t][i] = 0;
+            for (int j = 0; j < this->n_stat; ++j) {
+                backlattice[t][i] +=
+                        this->A[i][j] * this->emmit_pdf(j, x[t + 1], t) * backlattice[t + 1][j];
+            }
+            backlattice[t][i] /= cn[t];
+        }
+    }
+    double nor = 0;
+
+    // 后验概率分布,其实就是gamma
+    for (int t = 0; t < n_x; ++t) {
+        nor = 0;
+        for (int i = 0; i < this->n_stat; ++i) {
+//            posterior[t][i] = fwdlattice[t][i] * backlattice[t][i] * cn[t] ;
+            posterior[t][i] = fwdlattice[t][i] * backlattice[t][i]  ;
+            nor += posterior[t][i];
+        }
+
+        for (int i = 0; i < this->n_stat; ++i) {
+            posterior[t][i] /= nor;
+        }
+//        cout<<"--t:"<<t <<" ll:"<< nor <<endl;
+
+//        print1D(posterior[t],n_stat);
+
+    }
+//    print2D(posterior)
+    free(cn);
+    free2D(fwdlattice, n_x);
+    free2D(backlattice, n_x);
+//    cout << "ll:" << log_likelihood<<endl;
     return log_likelihood;
 }
 
 
+double HMM::viterbi(int *out, int *x, int n_x) {
+
+
+    double **delta = init2D<double>(n_x, this->n_stat);
+    int **psi = init2D<int>(n_x, this->n_stat);
+
+    int t = 0;
+    for (int i = 0; i < this->n_stat; ++i) {
+
+        delta[0][i] = this->PI[i] * this->emmit_pdf(i, x[0], 0);
+        psi[0][i] = 0;
+    }
+    // todo 添加对数操作，将乘法改成加法，避免溢出
+    double max_prob = -1, tmp = 0;
+    int max_stat;
+    for (int t = 1; t < n_x; ++t) {
+
+        for (int i = 0; i < this->n_stat; ++i) {
+            max_prob = -1;
+            for (int j = 0; j < this->n_stat; ++j) {
+                tmp = delta[t - 1][j] * this->A[j][i];
+                if (tmp > max_prob) {
+                    max_prob = tmp;
+                    max_stat = j;
+                }
+            };
+
+            delta[t][i] = max_prob * this->emmit_pdf(max_stat, x[t], t);
+            psi[t][i] = max_stat;
+        }
+    }
+
+    max_prob = -1;
+    max_stat = -1;
+    for (int i = 0; i < this->n_stat; ++i) {
+
+        if (delta[n_x - 1][i] > max_prob) {
+            max_prob = delta[n_x - 1][i];
+            max_stat = i;
+        }
+    }
+    out[n_x - 1] = max_stat;
+    double max_tmp;
+
+    for (int t = n_x - 2; t >= 0; --t) {
+        max_tmp = -1;
+        for (int i = 0; i < this->n_stat; ++i) {
+            tmp = delta[t][i] * this->A[i][out[t + 1]];
+            if (tmp > max_tmp) {
+                max_tmp = tmp;
+                out[t] = i;
+            }
+
+        }
+    }
+
+
+    free2D(delta, n_x);
+    free2D(psi, n_x);
+
+    return max_prob;
+}
+
+void HMM::predict_by_viterbi(double *out, int *x, int n_x) {
+
+    int *stat = init1D<int>(n_x);
+//    double *predict_obs=init1D(this->n_obs);
+
+    this->viterbi(stat, x, n_x);
+    for (int i = 0; i < this->n_obs; ++i) {
+
+        out[i] = this->emmit_pdf(stat[n_x - 1], i, n_x);
+    }
+
+    free(stat);
+}
+
+void HMM::predict_first(double *out) {
+    // 没有历史观测序列，相当于预测首次结果
+
+    for (int i = 0; i < this->n_obs; ++i) {
+        out[i] = 0;
+        for (int j = 0; j < this->n_stat; ++j) {
+            out[i] += this->PI[j] * this->emmit_pdf(j, i);
+        }
+
+    }
+
+
+}
+
+void HMM::predict_by_posterior(double *out, int *x, int n_x) {
+    if (out == NULL) {
+        return;
+    }
+    // 没有历史观测序列，相当于预测首次结果
+    if (x == NULL) {
+        for (int i = 0; i < this->n_obs; ++i) {
+            out[i] = 0;
+            for (int j = 0; j < this->n_stat; ++j) {
+                out[i] += this->PI[j] * this->emmit_pdf(j, i, 0);
+            }
+
+        }
+
+        return;
+    }
+
+    // fwdlattice[-1]是最后时刻，隐状态的概率分布
+
+    double *buffer = init1D<double>(n_x * this->n_stat);
+    MatrixView<double> posterior(n_x, this->n_stat, buffer);
+
+    double ll = this->posterior_distributed(buffer, x, n_x);
+
+    double *predict_stat = init1D<double>(this->n_stat);
+
+    for (int k = 0; k < n_obs; ++k) {
+        out[k] = 0;
+        for (int i = 0; i < n_stat; ++i) {
+            // 预测下一时刻隐状态分布
+            predict_stat[i] = 0;
+            for (int j = 0; j < n_stat; ++j) {
+                predict_stat[i] += posterior[n_x - 1][j] * this->A[j][i];
+            }
+
+            out[k] += predict_stat[i] * this->emmit_pdf(i, k, 0);
+        }
+
+    }
+
+    free(buffer);
+    free(predict_stat);
+
+
+}

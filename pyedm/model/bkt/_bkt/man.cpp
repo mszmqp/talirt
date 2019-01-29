@@ -74,21 +74,55 @@ int test_data() {
     double start[] = {0.955115, 0.0444221};
     double transition[] = {1, 0, 0.0715796, 0.92842};
     double emission[] = {0.872745, 0.127255, 0.3, 0.7};
-    hmm.predict_next(next, response, lengths[0]);
+    hmm.predict_by_posterior(next, response, lengths[0]);
     print1D(next, 2);
 
     return 0;
 }
 
 
-int main() {
+void test_viterbi() {
 
+    double A[] = {0.5, 0.2, 0.3,
+                  0.3, 0.5, 0.2,
+                  0.2, 0.3, 0.5};
+    double B[] = {0.5, 0.5,
+                  0.4, 0.6,
+                  0.7, 0.3};
+    double PI[] = {0.2, 0.4, 0.4};
+    int obs[3]={0,1,0};
+    int out[3]={0,0,0};
+    StandardBKT sbkt(3, 2);
+    sbkt.init(PI, A, B);
+    sbkt.viterbi(out,obs,3);
+
+    print1D<int>(out,3);
+
+    double post[9]={0,0,0,0,0,0,0,0,0};
+    sbkt.posterior_distributed(post,obs,3);
+
+//    print1D<int>(out,3);
+    cout << endl;
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            cout << post[i*3+j] << " ";
+        }
+        cout << endl;
+    }
+
+
+
+}
+
+int main() {
+    test_viterbi();
+    return 0;
     test_data();
 
-    double ar[]={1,0,1,0,0,1,0,0,0,1,0,1,0,0,0,1,1,0,1,1,1,1,1,1,1,1,1,0,1,1,0,1,1,1,0,0,1
-,1,1,1,1,1,1,1,1,0,1,1,1,1,1,0,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1
-,1,0,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,0,1,0,1,1,1,1,1,1,1,1,1,1,1
-,1,1,1,1,1,1,1,1,1,1,1,1,1};
+    double ar[] = {1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1,
+                   0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+                   1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1,
+                   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 //    double lb[]={0, 0, 0, 0, 0, 0, 0};
 //    double ub[7]={1,1,1,1,1,1,1};
 //    print1D(ub,7);

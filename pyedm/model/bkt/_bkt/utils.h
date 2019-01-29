@@ -262,7 +262,7 @@ T sum2D(T **ar, int size1, int size2) {
 
 template<typename T>
 double normalize1D(T *ar, int size1) {
-    T sum = sum1D(ar, size1);
+    T sum = sum1D<T>(ar, size1);
     for (int i = 0; i < size1; ++i) {
         ar[i] /= sum;
     }
@@ -271,7 +271,7 @@ double normalize1D(T *ar, int size1) {
 
 template<typename T>
 double normalize2D(T **ar, int size1, int size2) {
-    T sum = sum2D(ar, size1, size2);
+    T sum = sum2D<T>(ar, size1, size2);
     for (int i = 0; i < size1; ++i) {
         for (int j = 0; j < size2; ++j) {
             ar[i][j] /= sum;
@@ -392,6 +392,9 @@ int *unique_counts(T data[], int length, int &out_length) {
         cc++;
 
     }
+
+    values[i] = cc;
+
 //    count = total_count;
     return values;
 //    return total_count;

@@ -59,9 +59,10 @@ void TrainHelper::set_items_info(double items[], int length) {
 void TrainHelper::run(int trace[], int group[], int x[], int length, int item[], int max_iter, double tol) {
 
 
-    int i, j, k;
-//    int trace_cout = 0;//unique_count<int>(trace, (size_t)length);
-    int trace_num;
+    int i, j;
+
+    int trace_num; // 一共多少个不同的trace，也就是需要训练多少个模型
+    // 统计每个trace id 的数量
     int *trace_ncount = unique_counts<int>(trace, length,trace_num);
 //    int trace_count = getArrayLen<int>(trace_ncounts);
     this->model_count = trace_num;
@@ -72,6 +73,7 @@ void TrainHelper::run(int trace[], int group[], int x[], int length, int item[],
         this->models = (HMM **) calloc((size_t) length, sizeof(StandardBKT *));
         for (i = 0; i < trace_num; ++i) {
             this->models[i] = new StandardBKT(this->n_stat, this->n_obs);
+
         }
     } else if (this->model_type == 2) {
 //        assert(getArrayLen(train_data) == length * 4);
@@ -103,10 +105,15 @@ void TrainHelper::run(int trace[], int group[], int x[], int length, int item[],
     for (i = 0; i < trace_num; ++i) {
 
         //trace_ncount[i]; // 当前trace的训练数据长度
-        group_num = 0;
+        group_num = 0; // 当前trace 包含多少个观测序列
         cur_x = x + trace_pos; // 当前训练数据的位置
         cur_x_length = trace_ncount[i]; // 当前训练数据的长度
-        group_ncount = unique_counts(group + trace_pos, trace_ncount[i],group_num); //当前训练数据的分组
+        group_ncount = unique_counts(group + trace_pos, cur_x_length,group_num); //当前训练数据的分组
+//        std::cerr <<
+//        if(group_num>1){
+//            print1D<int>(group_ncount,group_num);
+//
+//        }
         if (this->model_type == 2) {
 
             ((IRTBKT *) this->models[i])->set_items(item + trace_pos, cur_x_length);

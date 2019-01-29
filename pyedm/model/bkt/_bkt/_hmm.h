@@ -42,6 +42,7 @@ public:
     bool success;
     std::string msg;
 
+
 private:
     double *PI_LOW, *PI_UPPER;
     double **A_LOW, **A_UPPER;
@@ -55,6 +56,7 @@ private:
 
     int x_pos;
     int *x_ptr;
+    int minimum_obs;
 
 
 //    EmissionDistribution *ed;
@@ -110,6 +112,16 @@ public:
     /// \param out 用于保存输出值。用一维连续空间表示二维数组。
     void get_b(double *out);
 
+
+    /// 给定观测序列，输出隐状态的分布。实际就是前向算法的结果。
+    /// \param out
+    /// \param x
+    /// \param n_x
+    /// \return
+    double posterior_distributed(double *out, int *x, int n_x);
+
+    double viterbi(int *out, int *x, int n_x);
+
     /// 预测下一个观测值
     /// \param out [输出] 预测的每个观测状态的概率值
     /// \param x [输入] 已知的观测序列
@@ -120,15 +132,15 @@ public:
     /// \param b [输入，可选] 发射概率矩阵。如果为空指针，就使用类对象已有值。用一维连续空间表示二维数组。
     /// \param n_stat [输入，可选] 隐状态的数量
     /// \param n_obs [输入，可选] 观测状态的数量
-    virtual void predict_next(double *out, int *x, int n_x){};
+    virtual void predict_by_posterior(double *out, int *x, int n_x);
 
-    /// 给定观测序列，输出隐状态的分布。实际就是前向算法的结果。
-    /// \param out
-    /// \param x
-    /// \param n_x
-    /// \return
-    double stat_distributed(double *out,int *x, int n_x);
+    virtual void predict_by_viterbi(double *out, int *x, int n_x);
 
+    virtual void predict_first(double *out);
+
+    void set_minimum_obs(int value) { this->minimum_obs = MIN(3, value); };
+
+    int get_minimum_obs() { return this->minimum_obs; };
 protected:
     /// 前向算法
     /// \param x
@@ -156,13 +168,11 @@ protected:
 
     void xi(int x_pos, int n, double **fwdlattice, double **backlattice, double **xi_sum);
 
-    virtual double emmit_pdf(int stat, int obs,int item_pos=-1);
+    virtual double emmit_pdf(int stat, int obs, int t = -1);
 
     void bounded();
 
 };
-
-
 
 
 #endif //BKT_HMM_H

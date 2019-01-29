@@ -105,8 +105,8 @@ class KddCup2010:
     @staticmethod
     def read(file_path):
         df_data = pd.read_csv(file_path, sep='\t', dtype={'Row': np.int32,
-                                                          # "Anon Student Id": str,
-                                                          # "Problem Hierarchy": str,
+                                                          "Anon Student Id": np.string_,
+                                                          "Problem Hierarchy": np.string_,
                                                           "Problem View": np.int32,
                                                           "Step Duration (sec)": np.float64,
                                                           "Correct Step Duration (sec)": np.float64,
@@ -115,8 +115,8 @@ class KddCup2010:
                                                           "Incorrects": np.int32,
                                                           "Hints": np.int32,
                                                           "Corrects": np.int32,
-                                                          # "KC(SubSkills)": str,
-                                                          # "Opportunity(SubSkills)": str,
+                                                          "KC(SubSkills)": np.string_,
+                                                          "Opportunity(SubSkills)": np.string_,
                                                           })
         df_data['item_name'] = df_data['Problem Name'] + ',' + df_data['Step Name']
         return df_data

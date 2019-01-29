@@ -25,8 +25,13 @@ cdef extern from "_bkt/_hmm.h" nogil:
         void get_pi(double *out) nogil;
         void get_a(double *out) nogil;
         void get_b(double *out) nogil;
-        void predict_next(double *out, int *x, int n_x) nogil;
-        double stat_distributed(double *out, int *x, int n_x) nogil;
+        void predict_by_posterior(double *out, int *x, int n_x) nogil;
+        double posterior_distributed(double *out, int *x, int n_x) nogil;
+        double viterbi(int *out,int *x,int n_x);
+        void predict_by_viterbi(double *out,int *x,int n_x);
+        void predict_first(double *out);
+        void set_minimum_obs(int value);
+        int get_minimum_obs();
         int iter;
         double log_likelihood;
         int n_obs;
@@ -49,8 +54,14 @@ cdef extern from "_bkt/_bkt.h" nogil:
         void get_pi(double *out) nogil;
         void get_a(double *out) nogil;
         void get_b(double *out) nogil;
-        void predict_next(double *out, int *x, int n_x) nogil;
-        double stat_distributed(double *out, int *x, int n_x) nogil;
+        # void predict_next(double *out, int *x, int n_x) nogil;
+        double posterior_distributed(double *out, int *x, int n_x) nogil;
+        double viterbi(int *out,int *x,int n_x);
+        void predict_by_posterior(double *out,int *x,int n_x);
+        void predict_by_viterbi(double *out,int *x,int n_x);
+        void predict_first(double *out);
+        void set_minimum_obs(int value);
+        int get_minimum_obs();
         int iter;
         double log_likelihood;
         int n_obs;
@@ -71,8 +82,13 @@ cdef extern from "_bkt/_bkt.h" nogil:
         void get_pi(double *out) nogil;
         void get_a(double *out) nogil;
         void get_b(double *out) nogil;
-        void predict_next(double *out, int *x, int n_x, int item_id) nogil;
-        double stat_distributed(double *out, int *x, int n_x) nogil;
+        void predict_by_posterior(double *out, int *x, int n_x, int item_id) nogil;
+        double posterior_distributed(double *out, int *x, int n_x) nogil;
+        double viterbi(int *out,int *x,int n_x);
+        void predict_by_viterbi(double *out,int *x,int n_x,int item_id);
+        void predict_first(double *out);
+        void set_minimum_obs(int value);
+        int get_minimum_obs();
         int iter;
         double log_likelihood;
         int n_obs;
@@ -115,15 +131,35 @@ cdef class StandardBKT:
     cdef _HMM *c_object
     cdef int n_stat
     cdef int n_obs
-    def __cinit__(self, int n_stat=2, int n_obs=2,int  no_object=0):
+    def __cinit__(self, int  no_object=0,*argv):
         if no_object==0:
-            self.c_object =<_HMM*> new _StandardBKT(n_stat, n_obs)
+            self.c_object =<_HMM*> new _StandardBKT(2, 2)
         else:
             self.c_object = NULL
-        self.n_stat = n_stat
-        self.n_obs = n_obs
-    def __init__(self,int n_stat=2, int n_obs=2,int no_object=0):
-        pass
+
+    def __init__(self,int no_object=0):
+        self.n_stat = 2
+        self.n_obs = 2
+
+        if self.c_object==NULL:
+            return
+        start_init = np.array([1.0 / self.n_stat] * self.n_stat, dtype=np.float64)
+        # assert start_init.sum() == 1
+        start_lb = np.array([0] * self.n_stat, dtype=np.float64)
+        start_ub = np.array([1] * self.n_stat, dtype=np.float64)
+
+        transition_init = np.array([[0.4, 0.6], [0, 1]])
+        transition_lb = np.array([[0, 0], [0, 1]]).astype(np.float64)
+        transition_ub = np.array([[1, 1], [0, 1]]).astype(np.float64)
+        emission_init = np.array([[0.8, 0.2], [0.2, 0.8]])
+
+        emission_lb = np.array([[0.7, 0], [0, 0.7]]).astype(np.float64)
+        emission_ub = np.array([[1, 0.3], [0.3, 1]]).astype(np.float64)
+        self.init(start_init,transition_init,emission_init)
+        self.set_bounded_start(start_lb,start_ub)
+        self.set_bounded_transition(transition_lb,transition_ub)
+        self.set_bounded_emission(emission_lb,emission_ub)
+
 
     def init(self, np.ndarray[double,ndim=1] start=None,
              np.ndarray[double,ndim=2] transition=None,
@@ -146,20 +182,23 @@ cdef class StandardBKT:
             assert np.all(abs(1.0-transition.sum(1)) <1e-12)
         if emission is not None:
             assert np.all(abs(1.0-emission.sum(1)) <1e-12)
-
-        self.c_object.init(<double*> get_pointer(start), <double*> get_pointer(transition),
+        if self.c_object!=NULL:
+            self.c_object.init(<double*> get_pointer(start), <double*> get_pointer(transition),
                            <double*> get_pointer(emission))
 
     def set_bounded_start(self, np.ndarray[double,ndim=1] lower=None, np.ndarray[double,ndim=1] upper=None):
-        self.c_object.set_bound_pi(<double *> get_pointer(lower), <double *> get_pointer(upper))
+        if self.c_object!=NULL:
+            self.c_object.set_bound_pi(<double *> get_pointer(lower), <double *> get_pointer(upper))
         # self.c_object.setBoundedPI(<double *> &lower[0], <double *> &upper[0])
 
     def set_bounded_transition(self, np.ndarray[double,ndim=2] lower=None, np.ndarray[double,ndim=2] upper=None):
-        self.c_object.set_bound_a(<double *> get_pointer(lower), <double *> get_pointer(upper))
+        if self.c_object!=NULL:
+            self.c_object.set_bound_a(<double *> get_pointer(lower), <double *> get_pointer(upper))
         # self.c_object.setBoundedA(<double *> &lower[0][0], <double *> &upper[0][0])
 
     def set_bounded_emission(self, np.ndarray[double,ndim=2] lower=None, np.ndarray[double,ndim=2] upper=None):
-        self.c_object.set_bound_b(<double *> get_pointer(lower), <double *> get_pointer(upper))
+        if self.c_object!=NULL:
+            self.c_object.set_bound_b(<double *> get_pointer(lower), <double *> get_pointer(upper))
         # self.c_object.setBoundedB(<double *> &lower[0][0], <double *> &lower[0][0])
 
     def  estimate(self, np.ndarray[int, ndim=1] x, np.ndarray[int, ndim=1] lengths, int max_iter = 20,
@@ -177,6 +216,8 @@ cdef class StandardBKT:
         -------
 
         """
+        if self.c_object==NULL:
+            return None
         cdef int * x_ptr = <int*> get_pointer(x)
         cdef int * l_ptr = <int*> get_pointer(lengths)
         cdef int ll = lengths.shape[0]
@@ -186,39 +227,35 @@ cdef class StandardBKT:
 
         return ret
 
-    def predict_next(self, int[::1] x):
-        """
-        预测下一个观测值
-        Parameters
-        ----------
-        x  已知的观测序列
-        n_x  已知观测序列的长度
-        start  初始概率值
-        transition  转移概率矩阵
-        emission  发射概率矩阵
-        n_stat  隐状态的数量
-        n_obs  观测状态的数量
+    def predict_next(self,int[::1] x,str algorithm="viterbi"):
 
-        Returns
-        -------
-
-        """
         cdef int n_x = x.shape[0]
         out = np.zeros(self.n_obs, dtype=np.float64)
-        (<_StandardBKT*>self.c_object).predict_next(<double*> get_pointer(out), <int*> &x[0], n_x)
-                                   # <double*> get_pointer(start),
-                                   # <double*> get_pointer(transition),
-                                   # <double*> get_pointer(emission),
-                                   # n_stat,n_obs)
+        if algorithm=='viterbi':
+            (<_StandardBKT*>self.c_object).predict_by_viterbi(<double*> get_pointer(out), <int*> &x[0], n_x)
+        elif algorithm == "map":
+            (<_StandardBKT*>self.c_object).predict_by_posterior(<double*> get_pointer(out), <int*> &x[0], n_x)
+        else:
+            raise ValueError("Unknown algorithm:%"%algorithm)
         return out
 
-    def stat_distributed(self,int[::1] x):
+    def posterior_distributed(self,int[::1] x):
 
         cdef double ll;
         cdef int n_x = x.shape[0]
         out = np.zeros((n_x,self.n_stat,), dtype=np.float64)
 
-        (<_StandardBKT*>self.c_object).stat_distributed(<double*> get_pointer(out), <int*> &x[0],n_x)
+        (<_StandardBKT*>self.c_object).posterior_distributed(<double*> get_pointer(out), <int*> &x[0],n_x)
+        return out
+
+    def viterbi(self,int[::1] x):
+
+        cdef double prob;
+        cdef int n_x = x.shape[0]
+        out = np.zeros(n_x, dtype=np.int32)
+
+        prob = (<_StandardBKT*>self.c_object).viterbi(<int*> get_pointer(out), <int*> &x[0],n_x)
+
         return out
 
     @property
@@ -272,6 +309,12 @@ cdef class StandardBKT:
 
     def __dealloc__(self):
         del self.c_object
+    @property
+    def minimum_obs(self):
+        return self.c_object.get_minimum_obs()
+
+    def set_minimum_obs(self,int value):
+        self.c_object.set_minimum_obs(value)
 
     def show(self):
 
@@ -291,23 +334,26 @@ cdef class IRTBKT(StandardBKT):
 
     def __cinit__(self, int n_stat=2, int n_obs=2, int no_object=0):
     #     # print(n_stat)
+        if self.c_object !=NULL:
+            del self.c_object
         if no_object == 0:
             self.c_object = <_HMM*> new _IRTBKT(n_stat, n_obs)
         else:
             self.c_object = NULL
-        self.n_stat = n_stat
-        self.n_obs = n_obs
+
 
     def __init__(self, int n_stat=2, int n_obs=2,int no_object=0):
-        super(IRTBKT,self).__init__(n_stat,n_obs)
+        # super(IRTBKT,self).__init__(n_stat,n_obs)
         self.items_info = NULL
+        self.n_stat = n_stat
+        self.n_obs = n_obs
 
 
 
 
     def set_item_info(self,np.ndarray[double,ndim=2] items):
         """
-
+        设置题目的参数信息，
         Parameters
         ----------
         items  shape=(n,3) 三列分别是题目的slop(区分度)、difficulty(难度)、guess(猜测)
@@ -340,30 +386,16 @@ cdef class IRTBKT(StandardBKT):
                                       tol)
 
 
-    def predict_next(self, int[::1] x,int item_id):
-        """
-        预测下一个观测值
-        Parameters
-        ----------
-        x  已知的观测序列
-        n_x  已知观测序列的长度
-        start  初始概率值
-        transition  转移概率矩阵
-        emission  发射概率矩阵
-        n_stat  隐状态的数量
-        n_obs  观测状态的数量
+    def predict_next(self,int[::1] x,int item_id,str algorithm="viterbi"):
 
-        Returns
-        -------
-
-        """
         cdef int n_x = x.shape[0]
         out = np.zeros(self.n_obs, dtype=np.float64)
-        (<_IRTBKT*>self.c_object).predict_next(<double*> get_pointer(out), <int*> &x[0], n_x,item_id)
-                                   # <double*> get_pointer(start),
-                                   # <double*> get_pointer(transition),
-                                   # <double*> get_pointer(emission),
-                                   # n_stat,n_obs)
+        if algorithm=='viterbi':
+            (<_IRTBKT*>self.c_object).predict_by_viterbi(<double*> get_pointer(out), <int*> &x[0], n_x,item_id)
+        elif algorithm == "map":
+            (<_IRTBKT*>self.c_object).predict_by_posterior(<double*> get_pointer(out), <int*> &x[0], n_x,item_id)
+        else:
+            raise ValueError("Unkonwn algorithm:%" % algorithm)
         return out
 
     def show(self):
@@ -376,8 +408,8 @@ cdef class IRTBKT(StandardBKT):
         # print("-"*10,"emission","-"*10)
         # print(self.emission)
 
-cdef StandardBKT create_standard(int n_stat, int n_obs, _StandardBKT* model):
-    cdef StandardBKT result = StandardBKT(n_stat,n_obs,1)
+cdef StandardBKT create_standard(_StandardBKT* model):
+    cdef StandardBKT result = StandardBKT(1)
     result.c_object = <_HMM*>model
     return result
 
@@ -488,7 +520,7 @@ cdef class TrainHelper:
         self._results.clear()
         for i in range(self.c_object.model_count):
             if self.model_type==1:
-                self._results.append(create_standard(self.n_stat,self.n_obs, <_StandardBKT*>self.c_object.models[i]))
+                self._results.append(create_standard(<_StandardBKT*>self.c_object.models[i]))
             elif  self.model_type ==2:
 
                 self._results.append(create_irt(self.n_stat,self.n_obs,<_IRTBKT*>self.c_object.models[i]))

@@ -13,10 +13,11 @@
 class StandardBKT : public HMM {
 public:
     StandardBKT(int n_stat = 2, int n_obs = 2) : HMM(n_stat, n_obs) {};
-    void predict_next(double *out, int *x, int n_x) override;
+
+    void predict_by_posterior(double *out, int *x, int n_x) override;
 
 private:
-    double emmit_pdf(int stat, int obs,int item_pos) override {
+    double emmit_pdf(int stat, int obs, int item_pos) override {
 //        std::cout << "x_pos " << x_pos << std::endl;
         return this->B[stat][obs];
     };
@@ -27,13 +28,11 @@ typedef struct _Item {
     double slop;// discrimination;
     double intercept; // difficulty;
     double guess;
-}Item;
+} Item;
 
-double sigmoid(double z) ;
+double sigmoid(double z);
 
-double irt(double theta, Item *item,int m);
-
-
+double irt(double theta, Item *item, int m);
 
 
 class IRTBKT : public HMM {
@@ -56,18 +55,28 @@ public:
     IRTBKT(int n_stat, int n_obs);
 
     ~IRTBKT();
-    void set_items_info(double * items, int length);
+
+    void set_items_info(double *items, int length);
 //    void set_items_info(double items[], int length);
 
-    void set_items(int items_id[],int length);
+    void set_items(int items_id[], int length);
 
-    void predict_next(double *out, int *x, int n_x,int item_id);
+    void predict_by_posterior(double *out, int *x, int n_x, int item_id);
+
+    void predict_by_viterbi(double *out, int *x, int n_x, int item_id);
+
+    void predict_first(double *out, int item_id);
 
 private:
-    double emmit_pdf(int stat, int obs,int item_pos) override;
-    double emmit_pdf_ex(int stat, int obs,int item_id);
-    void predict_next(double *out, int *x, int n_x) override{};
+    double emmit_pdf(int stat, int obs, int t) override;
 
+    double emmit_pdf_ex(int stat, int obs, int item_id);
+
+    void predict_by_posterior(double *out, int *x, int n_x) override {};
+
+    void predict_by_viterbi(int *out, int *x, int n_x) {};
+
+    void predict_first(double *out){};
 };
 
 
