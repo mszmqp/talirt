@@ -153,22 +153,38 @@ double IRTBKT::emmit_pdf(int stat, int obs, int t) {
 //    std::cerr << "slop:" << item->slop <<" difficulty:" << item->intercept << " guess:" << item->guess << std::endl;
 
 //    double prob = item->irt(stat);
-    double prob = irt(stat, item);
+    double prob = irt((double)stat+0.2, item);
     assert(prob > 0);
     assert(prob < 1);
-    return obs ? prob : (1 - prob);
+    prob = obs ? prob : (1 - prob);
+
+
+//    std::cerr << "emmit_pdf " << " stat:" << stat << " obs:" << obs;
+//    std::cerr << " item_id:" << item_id << " slop:" << item->slop << " difficulty:" << item->intercept << " guess:"
+//              << item->guess;
+//    std::cerr << " prob:" << prob << std::endl;
+
+
+    return prob;
 //    return this->B[stat][obs];
 }
 
 double IRTBKT::emmit_pdf_ex(int stat, int obs, int item_id) {
-//    std::cerr << "x_pos:" << x_pos <<" stat:"<<stat<<" obs:"<<obs <<std::endl;
     assert(item_id < this->items_length);
     Item *item = this->items + item_id;
 
-    double prob = irt(stat, item);
+
+    double prob = irt((double)stat+0.5, item);
     assert(prob > 0);
     assert(prob < 1);
-    return obs ? prob : (1 - prob);
+    prob = obs ? prob : (1 - prob);
+//    std::cerr << "emmit_pdf_ex " << " stat:" << stat << " obs:" << obs;
+//    std::cerr << " item_id:" << item_id << " slop:" << item->slop << " difficulty:" << item->intercept << " guess:"
+//              << item->guess;
+//    std::cerr << " prob:" << prob << std::endl;
+
+
+    return prob;
 //    return this->B[stat][obs];
 }
 
@@ -233,6 +249,11 @@ void IRTBKT::predict_by_posterior(double *out, int *x, int n_x, int item_id) {
 }
 
 void IRTBKT::predict_by_viterbi(double *out, int *x, int n_x, int item_id) {
+
+//    if (DEBUG) {
+//        std::cout << "predict_by_viterbi " << "n_x:" << n_x << " item_id:" << item_id << std::endl;
+//    }
+
     if (out == NULL || x == NULL) {
         return;
     }

@@ -20,6 +20,8 @@
 
 //typedef signed char NPAR;
 
+
+
 bool issimplexbounded(double *ar, double *lb, double *ub, int size);
 
 void projectsimplexbounded(double *ar, double *lb, double *ub, int size);

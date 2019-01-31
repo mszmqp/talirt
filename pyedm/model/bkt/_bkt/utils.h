@@ -14,6 +14,9 @@
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 #define SAFETY 1e-12 // value to substitute for zero for safe math
 
+
+#define DEBUG true
+
 template<typename T>
 void print2D(T **ar, int size1, int size2) {
     for (int i = 0; i < size1; i++) {

@@ -111,6 +111,7 @@ def test_irt_bkt(models, df_train, df_test, item_info):
             # cur_train = df_train.loc[key]
             cur_train = df_train_g.get_group(key)
             x = cur_train['answer'].values.astype(np.int32)  # 对应的 x
+
             train_items_id = cur_train['item_id'].values.astype(np.int32)  # 对应的 item_id
             # 获取 trace 编号，用于找到对应的模型
             trace = cur_train['trace']  # 对应的trace
@@ -139,23 +140,26 @@ def test_irt_bkt(models, df_train, df_test, item_info):
 
         # print("能力分布")
         # sd = model.posterior_distributed(x)
-        # print(sd[-1,].round(4))
 
-        # result = model.predict_next(x, predict_item_id)
         result = model.predict_next(x, predict_item_id, 'map')
-        # print("下一题预测")
-        # print(result)
-        # print("=" * 50)
         row['pred_prob'] = result[1]
+        row['作答序列'] = ','.join([str(a) for a in x])
+        row['难度序列'] = ','.join([str(a) for a in item_info_arr[train_items_id, 1].round(2)])
+        row['viterbi'] = ','.join([str(a) for a in model.viterbi(x)])
+
         df_eva.append(row)
+        # if predict_item_id == 71327 and row['user'] == '250ygnuvf':
+        #     print('nimei', row)
+        #     pass
+
         # break
         # if len(df_eva) > 100:
         #     break
     df_eva = pd.DataFrame(df_eva)
 
     df_eva['pred_label'] = df_eva['pred_prob']
-    df_eva.loc[df_eva['pred_label'] > 0.5, 'pred_label'] = 1
-    df_eva.loc[df_eva['pred_label'] <= 0.5, 'pred_label'] = 0
+    df_eva.loc[df_eva['pred_label'] >= 0.5, 'pred_label'] = 1
+    df_eva.loc[df_eva['pred_label'] < 0.5, 'pred_label'] = 0
     df_eva['pred_result'] = df_eva['pred_label'] == df_eva['answer']
     y_true = df_eva['answer'].values
     y_prob = df_eva['pred_prob'].values
@@ -237,8 +241,8 @@ def write_badcase(df_eva, df_train, df_test, item_info, filepath="irt_bkt_badcas
 
 def metric(y_true, y_prob):
     y_pred = y_prob.copy()
-    y_pred[y_pred > 0.5] = 1
-    y_pred[y_pred <= 0.5] = 0
+    y_pred[y_pred >= 0.5] = 1
+    y_pred[y_pred < 0.5] = 0
 
     mae = metrics.mean_absolute_error(y_true, y_prob)
     mse = metrics.mean_squared_error(y_true, y_prob)
@@ -258,9 +262,9 @@ def metric(y_true, y_prob):
 
 def train_irt_bkt(df_train, item_info):
     # start_init = np.array([0.1, 0.2, 0.2, 0.2, 0.1, 0.1, 0.1], dtype=np.float64)
+    n_stat = 7
     start_init = np.array([1.0 / 7] * 7, dtype=np.float64)
     # assert start_init.sum() == 1
-    n_stat = 7
     start_lb = np.array([0] * n_stat, dtype=np.float64)
     start_ub = np.array([1] * n_stat, dtype=np.float64)
     transition_init = np.array([
@@ -293,7 +297,7 @@ def train_irt_bkt(df_train, item_info):
         [0, 0, 0, 0, 0, 0, 1],
     ], dtype=np.float64)
 
-    th = TrainHelper(n_stat=7, n_obs=2, model_type=2)
+    th = TrainHelper(n_stat=7, model_type=2)
     th.init(start=start_init, transition=transition_init)
     th.set_bound_start(start_lb, start_ub)
     th.set_bound_transition(transition_lb, transition_ub)
@@ -334,7 +338,7 @@ def train_standard_bkt(df_train, item_info):
     emission_lb = np.array([[0.7, 0], [0, 0.7]]).astype(np.float64)
     emission_ub = np.array([[1, 0.3], [0.3, 1]]).astype(np.float64)
 
-    th = TrainHelper(n_stat=n_stat, n_obs=2, model_type=1)
+    th = TrainHelper(n_stat=n_stat, model_type=1)
 
     th.init(start=start_init, transition=transition_init, emission=emission_init)
     th.set_bound_start(start_lb, start_ub)
@@ -404,7 +408,7 @@ def main(options):
     run_irt_bkt(kdd.ba67_train, kdd.ba67_test)
 
     print("=" * 20, 'standard bkt', '=' * 20)
-    run_standard_bkt(kdd.ba67_train, kdd.ba67_test)
+    # run_standard_bkt(kdd.ba67_train, kdd.ba67_test)
 
     return
     # algebra_2006_2007_new_20100409

@@ -131,7 +131,7 @@ cdef class StandardBKT:
     cdef _HMM *c_object
     cdef int n_stat
     cdef int n_obs
-    def __cinit__(self, int  no_object=0,*argv):
+    def __cinit__(self, int no_object=0,*argv,**kwargs):
         if no_object==0:
             self.c_object =<_HMM*> new _StandardBKT(2, 2)
         else:
@@ -143,6 +143,7 @@ cdef class StandardBKT:
 
         if self.c_object==NULL:
             return
+
         start_init = np.array([1.0 / self.n_stat] * self.n_stat, dtype=np.float64)
         # assert start_init.sum() == 1
         start_lb = np.array([0] * self.n_stat, dtype=np.float64)
@@ -227,12 +228,19 @@ cdef class StandardBKT:
 
         return ret
 
-    def predict_next(self,int[::1] x,str algorithm="viterbi"):
+    def predict_next(self,int[::1] x=None,str algorithm="viterbi"):
+
+        out = np.zeros(self.n_obs, dtype=np.float64)
+        if x is None or x.shape[0] ==0:
+            (<_StandardBKT*>self.c_object).predict_first(<double*> get_pointer(out))
+            return out
 
         cdef int n_x = x.shape[0]
-        out = np.zeros(self.n_obs, dtype=np.float64)
         if algorithm=='viterbi':
-            (<_StandardBKT*>self.c_object).predict_by_viterbi(<double*> get_pointer(out), <int*> &x[0], n_x)
+            if n_x >0:
+                (<_StandardBKT*>self.c_object).predict_by_viterbi(<double*> get_pointer(out), <int*> &x[0], n_x)
+
+
         elif algorithm == "map":
             (<_StandardBKT*>self.c_object).predict_by_posterior(<double*> get_pointer(out), <int*> &x[0], n_x)
         else:
@@ -332,22 +340,63 @@ cdef class IRTBKT(StandardBKT):
 
     cdef double *items_info
 
-    def __cinit__(self, int n_stat=2, int n_obs=2, int no_object=0):
+    def __cinit__(self, int n_stat=7, int no_object=0):
     #     # print(n_stat)
         if self.c_object !=NULL:
             del self.c_object
         if no_object == 0:
-            self.c_object = <_HMM*> new _IRTBKT(n_stat, n_obs)
+            self.c_object = <_HMM*> new _IRTBKT(n_stat, 2)
         else:
             self.c_object = NULL
 
 
-    def __init__(self, int n_stat=2, int n_obs=2,int no_object=0):
+    def __init__(self, int n_stat=7,int no_object=0):
         # super(IRTBKT,self).__init__(n_stat,n_obs)
         self.items_info = NULL
         self.n_stat = n_stat
-        self.n_obs = n_obs
+        self.n_obs = 2
 
+        if self.c_object==NULL:
+            return
+        start_init = np.array([1.0 / n_stat] * n_stat, dtype=np.float64)
+        # assert start_init.sum() == 1
+        start_lb = np.array([0] * n_stat, dtype=np.float64)
+        start_ub = np.array([1] * n_stat, dtype=np.float64)
+        start_ub = np.asarray([0.5,1,1,1,0.5,0.3,0.1])
+        if n_stat == 7:
+            transition_init = np.array([
+                [0.5, 0.5, 0, 0, 0, 0, 0],
+                [0, 0.5, 0.5, 0, 0, 0, 0],
+                [0, 0, 0.5, 0.5, 0, 0, 0],
+                [0, 0, 0, 0.5, 0.5, 0, 0],
+                [0, 0, 0, 0, 0.5, 0.5, 0],
+                [0, 0, 0, 0, 0, 0.5, 0.5],
+                [0, 0, 0, 0, 0, 0, 1],
+            ], dtype=np.float64)
+
+            transition_lb = np.array([
+                [0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0],
+            ], dtype=np.float64)
+
+            transition_ub = np.array([
+                [1, .2, 0, 0, 0, 0, 0],
+                [0.1, 1, .2, 0, 0, 0, 0],
+                [0, 0.1, 1, .2, 0, 0, 0],
+                [0, 0, 0.1, 1, .2, 0, 0],
+                [0, 0, 0, 0.1, 1, .2, 0],
+                [0, 0, 0, 0, 0.1, 1, .2],
+                [0, 0, 0, 0, 0, 0.1, 1],
+            ], dtype=np.float64)
+            # print("hahahahahhaha")
+            self.init(start_init,transition_init)
+            self.set_bounded_start(start_lb,start_ub)
+            self.set_bounded_transition(transition_lb,transition_ub)
 
 
 
@@ -362,6 +411,9 @@ cdef class IRTBKT(StandardBKT):
         -------
 
         """
+        assert items.shape[1] == 3
+        items=items.astype(np.float64)
+
         self.items_info = <double *> get_pointer(items)
         (<_IRTBKT*>self.c_object).set_items_info(self.items_info, items.shape[0])
 
@@ -414,7 +466,7 @@ cdef StandardBKT create_standard(_StandardBKT* model):
     return result
 
 cdef IRTBKT create_irt(int n_stat, int n_obs, _IRTBKT* model):
-    cdef IRTBKT result = IRTBKT(n_stat,n_obs,1)
+    cdef IRTBKT result = IRTBKT(n_stat,1)
     result.c_object = <_HMM*>model
     return result
 
@@ -428,18 +480,18 @@ cdef class TrainHelper:
     cdef int n_obs
     _results = []
 
-    def __cinit__(self, int n_stat=2, int n_obs=2,int model_type=1):
+    def __cinit__(self, int n_stat=2,int model_type=1):
         # print(n_stat)
-        self.c_object = new _TrainHelper(n_stat, n_obs,model_type)
+        self.c_object = new _TrainHelper(n_stat, 2,model_type)
         # self.n_stat = n_stat
         # self.n_obs = n_obs
         self.items_info = NULL
 
-    def __init__(self, int n_stat=2, int n_obs=2,int model_type=1):
+    def __init__(self, int n_stat=2,int model_type=1):
         self.items_info = NULL
         self.model_type=model_type
         self.n_stat = n_stat
-        self.n_obs = n_obs
+        self.n_obs = 2
         # self._results = []
 
 

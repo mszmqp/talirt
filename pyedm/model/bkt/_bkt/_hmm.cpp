@@ -351,6 +351,8 @@ void HMM::init(double pi[], double a[], double b[]) {
 
 
 bool HMM::estimate(int *x, int *lengths, int n_lengths, int max_iter, double tol) {
+
+//    std::cout << "n_stat:" << this->n_stat << " n_obs:"<<this->n_obs<<std::endl;
     this->success = false;
     this->max_iter = max_iter;
     // 最长的序列长度
@@ -454,15 +456,15 @@ bool HMM::estimate(int *x, int *lengths, int n_lengths, int max_iter, double tol
             this->xi(x_pos, n_x, this->fwdlattice, this->backlattice, xi_sum);
 
 
-//            std::cout << "log_likehood " << log_likelihood << std::endl;
+//            std::cout << "log_likehood " << cur_log_likelihood << std::endl;
 //            cout << "cn" << endl;
 //            print1D(this->cn, n_x);
 //            cout << "alpha" << endl;
 //            print2D(this->fwdlattice, n_x, this->n_stat);
-//            printAlpha(this->fwdlattice, this->cn, n_x, this->n_stat);
+//          //  --printAlpha(this->fwdlattice, this->cn, n_x, this->n_stat);
 //            cout << "beta" << endl;
 //            print2D(this->backlattice, n_x, this->n_stat);
-//            printBeta(this->backlattice, this->cn, n_x, this->n_stat);
+//            //--printBeta(this->backlattice, this->cn, n_x, this->n_stat);
 //            cout << "gamma" << endl;
 //            print2D(this->gammalattice, n_x, this->n_stat);
 //            cout << "xi_sum" << endl;
@@ -502,6 +504,7 @@ bool HMM::estimate(int *x, int *lengths, int n_lengths, int max_iter, double tol
                     A[i][j] = xi_sum[i][j] / gamma_sum_T_1[i];
                 }
             }
+
             // 计算发射概率，注意发射概率的gamma_sum是T个求和
             for (int k = 0; k < this->n_obs; ++k) {
                 // 当观测序列都是一个观测值的时候 会出现分母为0
@@ -524,6 +527,7 @@ bool HMM::estimate(int *x, int *lengths, int n_lengths, int max_iter, double tol
         }
         cpy2D(A, this->A, this->n_stat, this->n_stat);
         cpy2D(B, this->B, this->n_stat, this->n_obs);
+        this->bounded();
 
 //        std::cout << "PI" << std::endl;
 //        print1D(this->PI, this->n_stat);
@@ -533,7 +537,7 @@ bool HMM::estimate(int *x, int *lengths, int n_lengths, int max_iter, double tol
 //        print2D(this->B, this->n_stat, this->n_obs);
 //        cout << "log likelihood " << cur_log_likelihood << endl;
 
-        this->bounded();
+
         if (abs(cur_log_likelihood - pre_log_likelihood) < tol) {
             break;
         }
@@ -846,10 +850,16 @@ double HMM::viterbi(int *out, int *x, int n_x) {
 
 void HMM::predict_by_viterbi(double *out, int *x, int n_x) {
 
+//    if(DEBUG){
+//        std::cout << "predict_by_viterbi " << std::endl;
+//    }
     int *stat = init1D<int>(n_x);
 //    double *predict_obs=init1D(this->n_obs);
 
     this->viterbi(stat, x, n_x);
+
+
+
     for (int i = 0; i < this->n_obs; ++i) {
 
         out[i] = this->emmit_pdf(stat[n_x - 1], i, n_x);

@@ -23,7 +23,7 @@ private:
     };
 };
 
-#pragma pack(8)
+//#pragma pack(8)
 typedef struct _Item {
     double slop;// discrimination;
     double intercept; // difficulty;
