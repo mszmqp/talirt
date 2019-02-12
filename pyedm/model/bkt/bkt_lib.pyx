@@ -8,7 +8,7 @@ cimport numpy as np
 # from cython.parallel import prange,parallel
 # cimport openmp
 # from libc.stdlib cimport malloc, free
-# from libc.stdio cimport printf
+from libc.stdio cimport printf
 from libcpp cimport bool
 
 
@@ -90,6 +90,7 @@ cdef extern from "_bkt/_bkt.h" nogil:
         void predict_first(double *out);
         void set_minimum_obs(int value);
         int get_minimum_obs();
+        void debug();
         int iter;
         double log_likelihood;
         int n_obs;
@@ -118,7 +119,10 @@ ctypedef double dtype_t
 cdef void *get_pointer(np.ndarray arr):
     if arr is None:
         return NULL
+
     if not arr.flags['C_CONTIGUOUS']:
+        # 注意如果触发了这步，重新生成了一个局部变量，返回的指针会被python自动回收，不安全。！！！
+        # raise ValueError("np.ndarray must be contiguousarray. you can arr = np.ascontiguousarray(arr) ")
         arr = np.ascontiguousarray(arr)
     # cdef double[::1] lower_view = arr
     return arr.data
@@ -190,7 +194,14 @@ cdef class StandardBKT:
             assert np.all(abs(1.0-transition.sum(1)) <1e-12)
         if emission is not None:
             assert np.all(abs(1.0-emission.sum(1)) <1e-12)
+
+
+
         if self.c_object!=NULL:
+            start =  np.ascontiguousarray(start)
+            transition =  np.ascontiguousarray(transition)
+            emission =  np.ascontiguousarray(emission)
+
             self.c_object.init(<double*> get_pointer(start), <double*> get_pointer(transition),
                            <double*> get_pointer(emission))
 
@@ -207,6 +218,9 @@ cdef class StandardBKT:
         -------
 
         """
+        lower =  np.ascontiguousarray(lower)
+        upper =  np.ascontiguousarray(upper)
+
         if self.c_object!=NULL:
             self.c_object.set_bound_pi(<double *> get_pointer(lower), <double *> get_pointer(upper))
         # self.c_object.setBoundedPI(<double *> &lower[0], <double *> &upper[0])
@@ -225,6 +239,8 @@ cdef class StandardBKT:
         -------
 
         """
+        lower =  np.ascontiguousarray(lower)
+        upper =  np.ascontiguousarray(upper)
         if self.c_object!=NULL:
             self.c_object.set_bound_a(<double *> get_pointer(lower), <double *> get_pointer(upper))
         # self.c_object.setBoundedA(<double *> &lower[0][0], <double *> &upper[0][0])
@@ -243,6 +259,8 @@ cdef class StandardBKT:
         -------
 
         """
+        lower =  np.ascontiguousarray(lower)
+        upper =  np.ascontiguousarray(upper)
         if self.c_object!=NULL:
             self.c_object.set_bound_b(<double *> get_pointer(lower), <double *> get_pointer(upper))
         # self.c_object.setBoundedB(<double *> &lower[0][0], <double *> &lower[0][0])
@@ -267,6 +285,10 @@ cdef class StandardBKT:
         """
         if self.c_object==NULL:
             return None
+
+        x =  np.ascontiguousarray(x,dtype=np.int32)
+        lengths =  np.ascontiguousarray(lengths,dtype=np.int32)
+
         cdef int * x_ptr = <int*> get_pointer(x)
         cdef int * l_ptr = <int*> get_pointer(lengths)
         cdef int ll = lengths.shape[0]
@@ -276,7 +298,7 @@ cdef class StandardBKT:
 
         return ret
 
-    def predict_next(self,int[::1] x=None,str algorithm="viterbi"):
+    def predict_next(self,np.ndarray[int, ndim=1] x=None,str algorithm="viterbi"):
         """
         预测下一个观测值，两种算法viterbi和posterior(后验概率分布)。
         Parameters
@@ -295,19 +317,21 @@ cdef class StandardBKT:
             (<_StandardBKT*>self.c_object).predict_first(<double*> get_pointer(out))
             return out
 
+        x =  np.ascontiguousarray(x,dtype=np.int32)
+
         cdef int n_x = x.shape[0]
         if algorithm=='viterbi':
             if n_x >0:
-                (<_StandardBKT*>self.c_object).predict_by_viterbi(<double*> get_pointer(out), <int*> &x[0], n_x)
+                (<_StandardBKT*>self.c_object).predict_by_viterbi(<double*> get_pointer(out), <int*> get_pointer(x), n_x)
 
 
         elif algorithm == "posterior":
-            (<_StandardBKT*>self.c_object).predict_by_posterior(<double*> get_pointer(out), <int*> &x[0], n_x)
+            (<_StandardBKT*>self.c_object).predict_by_posterior(<double*> get_pointer(out), <int*> get_pointer(x), n_x)
         else:
             raise ValueError("Unknown algorithm:%s"%algorithm)
         return out
 
-    def posterior_distributed(self,int[::1] x):
+    def posterior_distributed(self,np.ndarray[int, ndim=1] x):
         """
         计算后验概率分布
         Parameters
@@ -324,9 +348,11 @@ cdef class StandardBKT:
 
         cdef double ll;
         cdef int n_x = x.shape[0]
-        out = np.zeros((n_x,self.n_stat), dtype=np.float64)
+        x =  np.ascontiguousarray(x,dtype=np.int32)
 
-        (<_StandardBKT*>self.c_object).posterior_distributed(<double*> get_pointer(out), <int*> &x[0],n_x)
+        out = np.zeros((n_x,self.n_stat), dtype=np.float64, order='C')
+
+        (<_StandardBKT*>self.c_object).posterior_distributed(<double*> get_pointer(out), <int*>get_pointer(x),n_x)
         return out
 
     def viterbi(self,int[::1] x):
@@ -343,7 +369,7 @@ cdef class StandardBKT:
         """
         cdef double prob;
         cdef int n_x = x.shape[0]
-        out = np.zeros(n_x, dtype=np.int32)
+        out = np.zeros(n_x, dtype=np.int32, order='C')
 
         prob = (<_StandardBKT*>self.c_object).viterbi(<int*> get_pointer(out), <int*> &x[0],n_x)
 
@@ -357,7 +383,7 @@ cdef class StandardBKT:
         -------
             np.ndarray[double, ndim=1] shape=(n_stat)
         """
-        pi = np.zeros(self.n_stat, dtype=np.float64)
+        pi = np.zeros(self.n_stat, dtype=np.float64, order='C')
         self.c_object.get_pi(<double*> get_pointer(pi))
         return pi
 
@@ -369,7 +395,7 @@ cdef class StandardBKT:
         -------
             np.ndarray[double, ndim=2] shape=(n_stat,n_stat)
         """
-        arr = np.zeros(shape=(self.n_stat, self.n_stat), dtype=np.float64)
+        arr = np.zeros(shape=(self.n_stat, self.n_stat), dtype=np.float64, order='C')
         self.c_object.get_a(<double*> get_pointer(arr))
         return arr
 
@@ -381,7 +407,7 @@ cdef class StandardBKT:
         -------
             np.ndarray[double, ndim=2] shape=(n_stat,2)
         """
-        arr = np.zeros(shape=(self.n_stat, self.n_obs), dtype=np.float64)
+        arr = np.zeros(shape=(self.n_stat, self.n_obs), dtype=np.float64, order='C')
         self.c_object.get_b(<double*> get_pointer(arr))
         return arr
 
@@ -436,7 +462,8 @@ cdef class IRTBKT(StandardBKT):
     IRT变种BKT
 
     """
-    cdef double *items_info
+    cdef np.ndarray items_info
+    cdef np.ndarray train_items
 
     def __cinit__(self, int n_stat=7, int no_object=0,*argv,**kwargs):
     #     # print(n_stat)
@@ -450,7 +477,8 @@ cdef class IRTBKT(StandardBKT):
 
     def __init__(self, int n_stat=7,int no_object=0):
         # super(IRTBKT,self).__init__(n_stat,n_obs)
-        self.items_info = NULL
+        self.items_info = None
+        self.train_items = None
         self.n_stat = n_stat
         self.n_obs = 2
 
@@ -496,10 +524,10 @@ cdef class IRTBKT(StandardBKT):
             self.set_bounded_start(start_lb,start_ub)
             self.set_bounded_transition(transition_lb,transition_ub)
 
-
-    def __dealloc__(self):
-        self.items_info=NULL
-        del self.c_object
+    #
+    # def __dealloc__(self):
+    #     self.items_info=NULL
+    #     del self.c_object
 
     def set_item_info(self,np.ndarray[double,ndim=2] items):
         """
@@ -514,10 +542,16 @@ cdef class IRTBKT(StandardBKT):
 
         """
         assert items.shape[1] == 3
-        items=items.astype(np.float64)
 
-        self.items_info = <double *> get_pointer(items)
-        (<_IRTBKT*>self.c_object).set_items_info(self.items_info, items.shape[0])
+        # items=items.astype(np.float64)
+        self.items_info = np.ascontiguousarray(items,dtype=np.float64)
+
+        # printf("ptr 1 %x\n",self.items_info)
+        # print(items)
+        # 注意 c++ 对象的set_items_info 函数保存的传入指针，并没有自己拷贝数据。
+        # 所以需要确保传入的指针在对象生命周期不被python自动回收。
+        # 这里使用self.items_info持久保存数据，避免被回收
+        (<_IRTBKT*>self.c_object).set_items_info(<double *> get_pointer(self.items_info), items.shape[0])
 
         
 
@@ -532,8 +566,12 @@ cdef class IRTBKT(StandardBKT):
         -------
 
         """
+        # 注意 c++ 对象的 set_items 函数保存的传入指针，并没有自己拷贝数据。
+        # 所以需要确保传入的指针在对象生命周期不被python自动回收。
+        # 这里使用 self.train_items 持久保存数据，避免被回收
+        self.train_items = np.ascontiguousarray(items,dtype=np.int32)
 
-        (<_IRTBKT*>self.c_object).set_items(<int *> get_pointer(items),items.shape[0])
+        (<_IRTBKT*>self.c_object).set_items(<int *> get_pointer(self.train_items),items.shape[0])
 
     def fit(self, np.ndarray[int, ndim=1] x,
                  np.ndarray[int, ndim=1] lengths,
@@ -568,7 +606,7 @@ cdef class IRTBKT(StandardBKT):
                                       tol)
 
     
-    def predict_next(self,int[::1] x,int item_id,str algorithm="viterbi"):
+    def predict_next(self,np.ndarray[int, ndim=1] x,int item_id,str algorithm="viterbi"):
         """
         预测下一个观测值，两种算法viterbi(维特比)和posterior(后验概率分布)。
         Parameters
@@ -585,13 +623,14 @@ cdef class IRTBKT(StandardBKT):
         """
 
         cdef int n_x = x.shape[0]
-        out = np.zeros(self.n_obs, dtype=np.float64)
+        out = np.zeros(self.n_obs, dtype=np.float64, order='C')
         if algorithm=='viterbi':
-            (<_IRTBKT*>self.c_object).predict_by_viterbi(<double*> get_pointer(out), <int*> &x[0], n_x,item_id)
+            (<_IRTBKT*>self.c_object).predict_by_viterbi(<double*> get_pointer(out), <int*> get_pointer(x), n_x,item_id)
         elif algorithm == "posterior":
-            (<_IRTBKT*>self.c_object).predict_by_posterior(<double*> get_pointer(out), <int*> &x[0], n_x,item_id)
+            (<_IRTBKT*>self.c_object).predict_by_posterior(<double*> get_pointer(out), <int*> get_pointer(x), n_x,item_id)
         else:
             raise ValueError("Unkonwn algorithm:%s" % algorithm)
+
         return out
 
     def show(self):
@@ -603,6 +642,10 @@ cdef class IRTBKT(StandardBKT):
         print(self.transition.round(4))
         # print("-"*10,"emission","-"*10)
         # print(self.emission)
+    def debug(self):
+
+        (<_IRTBKT*>self.c_object).debug()
+
 
 cdef StandardBKT create_standard(_StandardBKT* model):
     cdef StandardBKT result = StandardBKT(1)

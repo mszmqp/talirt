@@ -6,7 +6,7 @@
 """
 模块用途描述
 
-Authors: zhangzhenhu(zhangzhenhu1@100tal.com)
+Authors: zhangzhenhu(acmtiger@gmail.com)
 Date:    2018/5/29 17:05
 """
 __version__ = "0.0.1"

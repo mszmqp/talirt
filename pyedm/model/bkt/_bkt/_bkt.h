@@ -66,6 +66,7 @@ public:
     double predict_by_viterbi(double *out, int *x, int n_x, int item_id);
 
     void predict_first(double *out, int item_id);
+    void debug();
 
 private:
     double emmit_pdf(int stat, int obs, int t) override;

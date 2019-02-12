@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 #
-# Copyright (c) 2014 Hal.com, Inc. All Rights Reserved
+#
 #
 """
 模块用途描述
 
-Authors: zhangzhenhu(zhangzhenhu1@100tal.com)
+Authors: zhangzhenhu(acmtiger@gmail.com)
 Date:    2018/6/22 11:06
 """
 import sys

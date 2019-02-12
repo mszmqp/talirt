@@ -709,7 +709,7 @@ void HMM::get_b(double *out) {
 double HMM::posterior_distributed(double *out, int *x, int n_x) {
 
 
-    if (x == NULL) {
+    if (x == NULL || n_x==0) {
         return 0;
     }
 
@@ -728,14 +728,24 @@ double HMM::posterior_distributed(double *out, int *x, int n_x) {
     log_likelihood += log(cn[0]);
 
     for (int t = 1; t < n_x; t++) {
-        for (int i = 0; i < n_stat; i++) {
+        for (int i = 0; i < this->n_stat; i++) {
             fwdlattice[t][i] = 0;
-            for (int j = 0; j < n_stat; ++j) {
+            for (int j = 0; j < this->n_stat; ++j) {
                 fwdlattice[t][i] += fwdlattice[t - 1][j] * this->A[j][i];
             }
             fwdlattice[t][i] *= this->emmit_pdf(i, x[t], t);
+//            if(isnan(fwdlattice[t][i])){
+//                std::cout<<"fwdlattice[t][i] t="<<t << " i=" << i <<" x[t]="<<x[t] ;
+//                std::cout<< " emmit_pdf:"<<this->emmit_pdf(i, x[t], t)<<std::endl;
+//
+//            }
         }
-        cn[t] = normalize1D<double>(fwdlattice[t], n_stat);
+        cn[t] = normalize1D<double>(fwdlattice[t], this->n_stat);
+
+//        if(isnan(cn[t])){
+//            std::cout<<"cn[t] t="<<t << " cn[t]=" << cn[t] <<std::endl;
+//        }
+
         log_likelihood += log(cn[t]);
     }
 
@@ -745,6 +755,9 @@ double HMM::posterior_distributed(double *out, int *x, int n_x) {
     for (int i = 0; i < this->n_stat; ++i) {
         backlattice[n_x - 1][i] = 1 / cn[n_x - 1];
 //        backlattice[n_x - 1][i] = 1 ;
+//            if(isnan(cn[n_x - 1])){
+//                std::cout<<"cn[n_x - 1] "  << cn[n_x - 1] <<std::endl;
+//            }
     }
 
     for (int t = n_x - 2; t >= 0; --t) {
@@ -765,6 +778,11 @@ double HMM::posterior_distributed(double *out, int *x, int n_x) {
         for (int i = 0; i < this->n_stat; ++i) {
 //            posterior[t][i] = fwdlattice[t][i] * backlattice[t][i] * cn[t] ;
             posterior[t][i] = fwdlattice[t][i] * backlattice[t][i]  ;
+
+//            if(isnan(posterior[t][i])){
+//                std::cout<<"fwdlattice[t][i] "  << fwdlattice[t][i] <<std::endl;
+//                std::cout<<"backlattice[t][i] "  << backlattice[t][i] <<std::endl;
+//            }
             nor += posterior[t][i];
         }
 

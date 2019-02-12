@@ -103,6 +103,10 @@ void IRTBKT::set_items_info(double *items, int length) {
 
     this->items = (Item *) items;
     this->items_length = length;
+
+//    std::cout<< "ptr_2 "<< this->items <<std::endl;
+//    print1D<double>((double*)this->items,this->items_length*3);
+
 }
 
 /*
@@ -164,11 +168,27 @@ double IRTBKT::emmit_pdf(int stat, int obs, int t) {
 //              << item->guess;
 //    std::cerr << " prob:" << prob << std::endl;
 
+//    if(t==0){
+    if(isnan(prob)){
+//        std::cout<< "ptr_2 "<< this->items <<std::endl;
 
+//        std::cout<< "stat=" << stat << " obs="<<obs<<" t="<<t<<std::endl;
+//        std::cout<< "item_id=" << item_id << " a="<<item->slop<<" b="<<item->intercept<<" c="<<item->guess<<std::endl;
+//        this->debug();
+        throw "function:emmit_pdf irt prob is nan!";
+
+    }
     return prob;
 //    return this->B[stat][obs];
 }
 
+void IRTBKT::debug() {
+
+    std::cout<< "stat=" << this->n_stat << " obs="<<this->n_obs<<std::endl;
+    std::cout<< this->items << " ";
+    print1D<double>((double*)this->items,this->items_length*3);
+
+}
 double IRTBKT::emmit_pdf_ex(int stat, int obs, int item_id) {
     assert(item_id < this->items_length);
     Item *item = this->items + item_id;
@@ -209,7 +229,7 @@ double IRTBKT::predict_by_posterior(double *out, int *x, int n_x, int item_id) {
     }
 
     // 没有历史观测序列，相当于预测首次结果
-    if (x == NULL) {
+    if (x == NULL || n_x==0) {
         for (int i = 0; i < this->n_obs; ++i) {
             out[i] = 0;
             for (int j = 0; j < this->n_stat; ++j) {
@@ -222,21 +242,31 @@ double IRTBKT::predict_by_posterior(double *out, int *x, int n_x, int item_id) {
     }
     // fwdlattice[-1]是最后时刻，隐状态的概率分布
     double *buffer = init1D<double>(n_x * this->n_stat);
-    MatrixView<double> posterior(n_x, this->n_stat, buffer);
 
     double ll = this->posterior_distributed(buffer, x, n_x);
 
+    MatrixView<double> posterior(n_x, this->n_stat, buffer);
+
+//    if(item_id==1552 || item_id==2086 ){
+//        std::cout<<n_x<<" " << this->n_stat<<std::endl;
+//        print1D<double>(buffer,n_x * this->n_stat);
+//    }
+
+
     double *predict_stat = init1D<double>(this->n_stat);
 
-    for (int k = 0; k < n_obs; ++k) {
+    for (int k = 0; k < this->n_obs; ++k) {
         out[k] = 0;
-        for (int i = 0; i < n_stat; ++i) {
+        for (int i = 0; i < this->n_stat; ++i) {
             // 预测下一时刻隐状态分布
             predict_stat[i] = 0;
-            for (int j = 0; j < n_stat; ++j) {
+            for (int j = 0; j < this->n_stat; ++j) {
                 predict_stat[i] += posterior[n_x - 1][j] * this->A[j][i];
             }
             out[k] += predict_stat[i] * this->emmit_pdf_ex(i, k, item_id);
+//            if(item_id==1552 || item_id==2086 ){
+//                std::cout<<"out_k "<<out[k]<<" "<<predict_stat[i]<<" "<<this->emmit_pdf_ex(i, k, item_id) <<std::endl;
+//            }
         }
 
     }

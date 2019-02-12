@@ -246,6 +246,8 @@ def test_irt_bkt(models, df_train, df_test, item_info):
     """"""
     # 所有题目的参数信息
     item_info_arr = item_info[['slop', 'difficulty', 'guess']].values.astype(np.float64)
+    # print(np.any(np.isnan(item_info_arr)))
+
     # 需要找到当前数据对应的前置观测序列，也就是当前(学生,知识点)下的前置作答数据，作为已知观测序列
     df_train_g = df_train.groupby(['knowledge', 'user'])
     df_eva = []
@@ -284,8 +286,10 @@ def test_irt_bkt(models, df_train, df_test, item_info):
         # 没有训练成功
         if not model.success:
             continue
+
         model.set_item_info(item_info_arr)
         model.set_train_items(train_items_id)
+
         # print('作答序列')
         # print(x)
         # print('题目难度序列')
@@ -297,6 +301,17 @@ def test_irt_bkt(models, df_train, df_test, item_info):
         # sd = model.posterior_distributed(x)
 
         result = model.predict_next(x, predict_item_id, 'posterior')
+        if result is None or np.isnan(result[1]):
+
+            print(result)
+            # print(x)
+            print(predict_item_id)
+            # print(row)
+            model.debug()
+            quit()
+
+        # if _ > 2000:
+        #     quit()
         row['pred_prob'] = result[1]
         row['作答序列'] = ','.join([str(a) for a in x])
         row['难度序列'] = ','.join([str(a) for a in item_info_arr[train_items_id, 1].round(2)])
@@ -306,6 +321,7 @@ def test_irt_bkt(models, df_train, df_test, item_info):
         # break
         # if len(df_eva) > 100:
         #     break
+    # quit()
     df_eva = pd.DataFrame(df_eva)
 
     df_eva['pred_label'] = df_eva['pred_prob']
@@ -403,11 +419,10 @@ def metric(y_true, y_prob):
     }
 
 
-def run_irt_bkt(train_data, test_data):
-    df_train, df_test, item_info = preprocess(train_data, test_data)
+def run_irt_bkt(df_train, df_test, df_item_info):
     # df_train.fillna({'knowledge',})
     # 去掉空知识点的数据
-    df_train = df_train.loc[~pd.isna(df_train['knowledge']), :]
+    # df_train = df_train.loc[~pd.isna(df_train['knowledge']), :]
     # 每个(知识点，用户)训练一个模型，所以 trace 用 'knowledge'+'user' 实现
     df_train['trace_name'] = df_train['knowledge'] + '_' + df_train['user']
     df_train['group_name'] = df_train['user']
@@ -419,10 +434,13 @@ def run_irt_bkt(train_data, test_data):
     df_train['trace'] = trace
     df_train['group'] = group
 
-    irt_models = train_irt_bkt(df_train, item_info)
-    df_eva = test_irt_bkt(irt_models, df_train, df_test, item_info)
+    irt_models = train_irt_bkt(df_train, df_item_info)
+    df_eva = test_irt_bkt(irt_models, df_train, df_test, df_item_info)
     y_true = df_eva['answer'].values
     y_prob = df_eva['pred_prob'].values
+
+    # print(np.any(np.isnan(y_true)), y_true)
+    # print(np.any(np.isnan(y_prob)), y_prob)
 
     m = metric(y_true, y_prob)
     m['model'] = 'IRT-BKT'
@@ -430,8 +448,8 @@ def run_irt_bkt(train_data, test_data):
     # write_badcase(df_eva, df_train, df_test, item_info)
 
 
-def run_standard_bkt(train_data, test_data):
-    df_train, df_test, item_info = preprocess(train_data, test_data)
+def run_standard_bkt(df_train, df_test, df_item_info):
+    # df_train, df_test, item_info = preprocess(train_data, test_data)
     df_train['trace_name'] = df_train['knowledge']
     df_train['group_name'] = df_train['user']
     # 按照 ('trace_name', 'group_name') 排序，保证相同trace_name的行在一起
@@ -443,8 +461,8 @@ def run_standard_bkt(train_data, test_data):
     df_train['trace'] = trace
     df_train['group'] = group
 
-    models = train_standard_bkt(df_train, item_info)
-    df_eva = test_standard_bkt(models, df_train, df_test, item_info)
+    models = train_standard_bkt(df_train, df_item_info)
+    df_eva = test_standard_bkt(models, df_train, df_test, df_item_info)
     y_true = df_eva['answer'].values
     y_prob = df_eva['pred_prob'].values
 
@@ -453,8 +471,7 @@ def run_standard_bkt(train_data, test_data):
     return m
 
 
-def run_standard_bkt_individual(train_data, test_data):
-    df_train, df_test, item_info = preprocess(train_data, test_data)
+def run_standard_bkt_individual(df_train, df_test, df_item_info):
     df_train['trace_name'] = df_train['knowledge'] + '_' + df_train['user']
     df_train['group_name'] = df_train['user']
     # 按照 ('trace_name', 'group_name') 排序，保证相同trace_name的行在一起
@@ -466,8 +483,8 @@ def run_standard_bkt_individual(train_data, test_data):
     df_train['trace'] = trace
     df_train['group'] = group
 
-    models = train_standard_bkt(df_train, item_info)
-    df_eva = test_standard_bkt(models, df_train, df_test, item_info)
+    models = train_standard_bkt(df_train, df_item_info)
+    df_eva = test_standard_bkt(models, df_train, df_test, df_item_info)
     y_true = df_eva['answer'].values
     y_prob = df_eva['pred_prob'].values
     m = metric(y_true, y_prob)
@@ -475,13 +492,64 @@ def run_standard_bkt_individual(train_data, test_data):
     return m
 
 
+def load_tal_data():
+    path = "/Users/zhangzhenhu/Documents/开源数据/ai_response_2019-02-12.pkl"
+    df_data = pd.read_pickle(path)
+    df_data.rename(columns={'user_id': 'user', 'item_id': 'item_name',
+                            'knowledge_id': 'knowledge'}, inplace=True)
+
+    df_data = df_data[['knowledge', 'user', 'item_name', 'answer', 'date_time']]
+    df_data.sort_values(['knowledge', 'user', 'date_time'])
+    df_g = df_data.groupby(['knowledge', 'user'])
+    mask = []
+
+    for key, df_u in df_g:
+        n = len(df_u)
+        if n < 5:
+            mask.extend([True] * n)
+            continue
+        mask.extend([True] * (n - 1))
+        mask.append(False)
+    mask = np.asarray(mask)
+    df_train = df_data.loc[mask]
+    df_test = df_data.loc[~mask]
+
+    # 计算题目难度，当前仅通过正确率，采用拉普拉斯修正计算正确率，作答次数少的题目不准确，todo 优化题目难度计算方法
+    item_info = df_train.groupby('item_name').agg(
+        {
+            'answer': ['count', 'sum'],
+            # 'Opportunity(SubSkills)': ['sum','mean'],
+        })
+    # groupby 之后，Dataframe 的 column 是m util index，不方便使用，这里转换一下
+    item_info.columns = ['_'.join(x) for x in item_info.columns.tolist()]
+    # 拉普拉斯修正 计算正确率
+    item_info['acc'] = (item_info['answer_sum'] + 1) / (item_info['answer_count'] + 2)
+
+    # IRT中的题目难度，正确率映射到区间[0,5]
+    item_info['difficulty'] = (1 - item_info['acc']) * 5
+    # IRT中的区分度参数，全部固定值 1
+    item_info['slop'] = 1.0
+    # IRT中的猜测参数，全部固定为 0
+    item_info['guess'] = 0
+    # 题目整型数字ID，
+    item_info['item_id'] = np.arange(item_info.shape[0], dtype=np.int32)
+    # 把题目【整型id】关联到训练数据中
+    df_train = df_train.join(item_info['item_id'], how='left', on='item_name')
+
+    # 把题目信息关联到测试数据中
+    df_test = df_test.join(item_info, how='left', on='item_name')
+
+    return df_train, df_test, item_info
+
+
 def main(options):
     kdd = KddCup2010('/Users/zhangzhenhu/Documents/开源数据/kddcup2010/')
     report = []
+
     for train, test, label in [
         (kdd.ba67_train, kdd.ba67_test, "bridge_to_algebra_2006_2007"),
-        # (kdd.a56_train, kdd.a56_test, "algebra_2005_2006"),
-        # (kdd.a67_train, kdd.a67_test, "algebra_2006_2007"),
+        (kdd.a56_train, kdd.a56_test, "algebra_2005_2006"),
+        (kdd.a67_train, kdd.a67_test, "algebra_2006_2007"),
 
     ]:
         print('\n' * 2)
@@ -489,21 +557,45 @@ def main(options):
         print(label)
         print('*' * 50)
 
+        df_train, df_test, df_item_info = preprocess(train, test)
+
         print("=" * 20, 'irt bkt', '=' * 20)
-        metric1 = run_irt_bkt(train, test)
+        metric1 = run_irt_bkt(df_train, df_test, df_item_info)
         metric1['data'] = label
         report.append(metric1)
 
         print("=" * 20, 'individual standard bkt', '=' * 20)
-        metric2 = run_standard_bkt_individual(train, test)
+        metric2 = run_standard_bkt_individual(df_train, df_test, df_item_info)
         metric2['data'] = label
         report.append(metric2)
 
         print("=" * 20, 'standard bkt', '=' * 20)
-        metric3 = run_standard_bkt(train, test)
+        metric3 = run_standard_bkt(df_train, df_test, df_item_info)
         metric3['data'] = label
         report.append(metric3)
 
+    # 智能练习数据
+    df_train, df_test, df_item_info = load_tal_data()
+    print('\n' * 2)
+    print('*' * 50)
+    print("智能练习数据")
+    print('*' * 50)
+    print("=" * 20, 'irt bkt', '=' * 20)
+    metric1 = run_irt_bkt(df_train.copy(), df_test.copy(), df_item_info)
+    metric1['data'] = "智能练习数据"
+    report.append(metric1)
+
+    print("=" * 20, 'individual standard bkt', '=' * 20)
+    metric2 = run_standard_bkt_individual(df_train.copy(), df_test.copy(), df_item_info)
+    metric2['data'] = "智能练习数据"
+    report.append(metric2)
+
+    print("=" * 20, 'standard bkt', '=' * 20)
+    metric3 = run_standard_bkt(df_train, df_test, df_item_info)
+    metric3['data'] = "智能练习数据"
+    report.append(metric3)
+
+    # 打印表格报告
     import pytablewriter
     print('\n' * 2)
     print('*' * 50)

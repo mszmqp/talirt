@@ -6,7 +6,7 @@
 """
 模块用途描述
 
-Authors: zhangzhenhu(zhangzhenhu1@100tal.com)
+Authors: zhangzhenhu(acmtiger@gmail.com)
 Date:    2018/3/12 15:57
 """
 import sys

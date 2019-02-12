@@ -6,7 +6,7 @@
 """
 模块用途描述
 
-Authors: zhangzhenhu(zhangzhenhu1@100tal.com)
+Authors: zhangzhenhu(acmtiger@gmail.com)
 Date:    2018/6/24 16:46
 """
 import numpy as np
