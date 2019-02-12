@@ -14,7 +14,7 @@ class StandardBKT : public HMM {
 public:
     StandardBKT(int n_stat = 2, int n_obs = 2) : HMM(n_stat, n_obs) {};
 
-    void predict_by_posterior(double *out, int *x, int n_x) override;
+    double predict_by_posterior(double *out, int *x, int n_x) override;
 
 private:
     double emmit_pdf(int stat, int obs, int item_pos) override {
@@ -61,9 +61,9 @@ public:
 
     void set_items(int items_id[], int length);
 
-    void predict_by_posterior(double *out, int *x, int n_x, int item_id);
+    double predict_by_posterior(double *out, int *x, int n_x, int item_id);
 
-    void predict_by_viterbi(double *out, int *x, int n_x, int item_id);
+    double predict_by_viterbi(double *out, int *x, int n_x, int item_id);
 
     void predict_first(double *out, int item_id);
 
@@ -72,11 +72,11 @@ private:
 
     double emmit_pdf_ex(int stat, int obs, int item_id);
 
-    void predict_by_posterior(double *out, int *x, int n_x) override {};
+    double predict_by_posterior(double *out, int *x, int n_x) override { return 0;};
 
-    void predict_by_viterbi(int *out, int *x, int n_x) {};
+    double predict_by_viterbi(double *out, int *x, int n_x) override { return 0;};
 
-    void predict_first(double *out){};
+    void predict_first(double *out) override {};
 };
 
 

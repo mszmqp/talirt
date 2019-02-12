@@ -100,7 +100,7 @@ public:
     /// \param max_iter 最大迭代次数
     /// \param tol 收敛的精度，当两轮迭代似然值的差值小于tol时，结束迭代。
     /// \return
-    bool estimate(int x[], int lengths[], int n_lengths, int max_iter = 20, double tol = 1e-2);
+    bool fit(int x[], int lengths[], int n_lengths, int max_iter = 20, double tol = 1e-2);
 
     /// 获取初始概率的值
     /// \param out 用于保存输出值。一维数组的指针。
@@ -134,9 +134,9 @@ public:
     /// \param b [输入，可选] 发射概率矩阵。如果为空指针，就使用类对象已有值。用一维连续空间表示二维数组。
     /// \param n_stat [输入，可选] 隐状态的数量
     /// \param n_obs [输入，可选] 观测状态的数量
-    virtual void predict_by_posterior(double *out, int *x, int n_x);
+    virtual double predict_by_posterior(double *out, int *x, int n_x);
 
-    virtual void predict_by_viterbi(double *out, int *x, int n_x);
+    virtual double predict_by_viterbi(double *out, int *x, int n_x);
 
     virtual void predict_first(double *out);
 

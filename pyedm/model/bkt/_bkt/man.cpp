@@ -59,7 +59,7 @@ int test_data() {
     lengths[j] = n_x;
     j++;
 
-    hmm.estimate(response, lengths, j);
+    hmm.fit(response, lengths, j);
 
 
     cout << "PI" << endl;
@@ -164,6 +164,6 @@ int main() {
 //    int lengths[] = {2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3};
     int lengths[] = {4};
     int x[] = {1, 1, 1, 0};
-    hmm.estimate(x, lengths, getArrayLen(lengths));
+    hmm.fit(x, lengths, getArrayLen(lengths));
     return 0;
 }

@@ -193,7 +193,7 @@ HMM::HMM(int n_stat, int n_obs) {
     this->x_pos = 0;
     this->gammalattice = NULL;
     this->cn = NULL;
-    this->msg = "Not estimate";
+    this->msg = "Not fit";
     this->minimum_obs = 3;
 }
 
@@ -350,7 +350,7 @@ void HMM::init(double pi[], double a[], double b[]) {
 }
 
 
-bool HMM::estimate(int *x, int *lengths, int n_lengths, int max_iter, double tol) {
+bool HMM::fit(int *x, int *lengths, int n_lengths, int max_iter, double tol) {
 
 //    std::cout << "n_stat:" << this->n_stat << " n_obs:"<<this->n_obs<<std::endl;
     this->success = false;
@@ -791,7 +791,7 @@ double HMM::viterbi(int *out, int *x, int n_x) {
     double **delta = init2D<double>(n_x, this->n_stat);
     int **psi = init2D<int>(n_x, this->n_stat);
 
-    int t = 0;
+//    int t = 0;
     for (int i = 0; i < this->n_stat; ++i) {
 
         delta[0][i] = this->PI[i] * this->emmit_pdf(i, x[0], 0);
@@ -848,7 +848,7 @@ double HMM::viterbi(int *out, int *x, int n_x) {
     return max_prob;
 }
 
-void HMM::predict_by_viterbi(double *out, int *x, int n_x) {
+double HMM::predict_by_viterbi(double *out, int *x, int n_x) {
 
 //    if(DEBUG){
 //        std::cout << "predict_by_viterbi " << std::endl;
@@ -856,7 +856,7 @@ void HMM::predict_by_viterbi(double *out, int *x, int n_x) {
     int *stat = init1D<int>(n_x);
 //    double *predict_obs=init1D(this->n_obs);
 
-    this->viterbi(stat, x, n_x);
+    double max_prob=this->viterbi(stat, x, n_x);
 
 
 
@@ -866,6 +866,7 @@ void HMM::predict_by_viterbi(double *out, int *x, int n_x) {
     }
 
     free(stat);
+    return max_prob;
 }
 
 void HMM::predict_first(double *out) {
@@ -882,9 +883,9 @@ void HMM::predict_first(double *out) {
 
 }
 
-void HMM::predict_by_posterior(double *out, int *x, int n_x) {
+double HMM::predict_by_posterior(double *out, int *x, int n_x) {
     if (out == NULL) {
-        return;
+        return 0;
     }
     // 没有历史观测序列，相当于预测首次结果
     if (x == NULL) {
@@ -896,7 +897,7 @@ void HMM::predict_by_posterior(double *out, int *x, int n_x) {
 
         }
 
-        return;
+        return 0;
     }
 
     // fwdlattice[-1]是最后时刻，隐状态的概率分布
@@ -925,5 +926,5 @@ void HMM::predict_by_posterior(double *out, int *x, int n_x) {
     free(buffer);
     free(predict_stat);
 
-
+    return ll;
 }

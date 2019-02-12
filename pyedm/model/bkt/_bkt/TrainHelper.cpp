@@ -56,7 +56,7 @@ void TrainHelper::set_items_info(double items[], int length) {
 
 }
 
-void TrainHelper::run(int trace[], int group[], int x[], int length, int item[], int max_iter, double tol) {
+void TrainHelper::fit(int trace[], int group[], int x[], int length, int item[], int max_iter, double tol) {
 
 
     int i, j;
@@ -118,7 +118,7 @@ void TrainHelper::run(int trace[], int group[], int x[], int length, int item[],
 
             ((IRTBKT *) this->models[i])->set_items(item + trace_pos, cur_x_length);
         }
-        this->models[i]->estimate(cur_x, group_ncount, group_num, max_iter, tol);
+        this->models[i]->fit(cur_x, group_ncount, group_num, max_iter, tol);
 
 
         trace_pos += trace_ncount[i]; // 下一个trace

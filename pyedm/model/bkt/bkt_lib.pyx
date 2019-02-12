@@ -5,11 +5,12 @@ cimport cython
 import numpy as np
 cimport numpy as np
 
-from cython.parallel import prange,parallel
-cimport openmp
-from libc.stdlib cimport malloc, free
-from libc.stdio cimport printf
+# from cython.parallel import prange,parallel
+# cimport openmp
+# from libc.stdlib cimport malloc, free
+# from libc.stdio cimport printf
 from libcpp cimport bool
+
 
 # from libcpp cimport new,delete
 cdef extern from "_bkt/_hmm.cpp":
@@ -21,11 +22,11 @@ cdef extern from "_bkt/_hmm.h" nogil:
         void set_bound_pi(double *lower, double *upper) nogil;
         void set_bound_a(double *lower, double *upper) nogil;
         void set_bound_b(double *lower, double *upper) nogil;
-        int estimate(int *x, int *lengths, int n_lengths, int max_iter, double tol) nogil;
+        int fit(int *x, int *lengths, int n_lengths, int max_iter, double tol) nogil;
         void get_pi(double *out) nogil;
         void get_a(double *out) nogil;
         void get_b(double *out) nogil;
-        void predict_by_posterior(double *out, int *x, int n_x) nogil;
+        double predict_by_posterior(double *out, int *x, int n_x) nogil;
         double posterior_distributed(double *out, int *x, int n_x) nogil;
         double viterbi(int *out,int *x,int n_x);
         void predict_by_viterbi(double *out,int *x,int n_x);
@@ -50,15 +51,15 @@ cdef extern from "_bkt/_bkt.h" nogil:
         void set_bound_pi(double *lower, double *upper) nogil;
         void set_bound_a(double *lower, double *upper) nogil;
         void set_bound_b(double *lower, double *upper) nogil;
-        int estimate(int *x, int *lengths, int n_lengths, int max_iter, double tol) nogil;
+        int fit(int *x, int *lengths, int n_lengths, int max_iter, double tol) nogil;
         void get_pi(double *out) nogil;
         void get_a(double *out) nogil;
         void get_b(double *out) nogil;
         # void predict_next(double *out, int *x, int n_x) nogil;
         double posterior_distributed(double *out, int *x, int n_x) nogil;
         double viterbi(int *out,int *x,int n_x);
-        void predict_by_posterior(double *out,int *x,int n_x);
-        void predict_by_viterbi(double *out,int *x,int n_x);
+        double predict_by_posterior(double *out,int *x,int n_x);
+        double predict_by_viterbi(double *out,int *x,int n_x);
         void predict_first(double *out);
         void set_minimum_obs(int value);
         int get_minimum_obs();
@@ -78,14 +79,14 @@ cdef extern from "_bkt/_bkt.h" nogil:
         void set_bound_pi(double *lower, double *upper) nogil;
         void set_bound_a(double *lower, double *upper) nogil;
         void set_bound_b(double *lower, double *upper) nogil;
-        int estimate(int *x, int *lengths, int n_lengths, int max_iter, double tol) nogil;
+        int fit(int *x, int *lengths, int n_lengths, int max_iter, double tol) nogil;
         void get_pi(double *out) nogil;
         void get_a(double *out) nogil;
         void get_b(double *out) nogil;
-        void predict_by_posterior(double *out, int *x, int n_x, int item_id) nogil;
+        double predict_by_posterior(double *out, int *x, int n_x, int item_id) nogil;
         double posterior_distributed(double *out, int *x, int n_x) nogil;
         double viterbi(int *out,int *x,int n_x);
-        void predict_by_viterbi(double *out,int *x,int n_x,int item_id);
+        double predict_by_viterbi(double *out,int *x,int n_x,int item_id);
         void predict_first(double *out);
         void set_minimum_obs(int value);
         int get_minimum_obs();
@@ -108,7 +109,7 @@ cdef extern from "_bkt/TrainHelper.h" nogil:
         void set_bound_a(double *lower , double *upper )
         void set_bound_b(double lower[], double upper[] )
         void set_items_info(double items[], int length)
-        void run(int trace[], int group[], int x[], int length, int item[], int max_iter,double tol)
+        void fit(int trace[], int group[], int x[], int length, int item[], int max_iter,double tol)
         _HMM **models
         int model_count
 
@@ -128,6 +129,9 @@ cdef void *get_pointer(np.ndarray arr):
 
 
 cdef class StandardBKT:
+    """
+    标准BKT模型
+    """
     cdef _HMM *c_object
     cdef int n_stat
     cdef int n_obs
@@ -169,9 +173,12 @@ cdef class StandardBKT:
         初始化设置参数
         Parameters
         ----------
-        start  初始矩阵
-        transition  转移矩阵
-        emission 发射矩阵
+        start : np.ndarray[double,ndim=1] shape=(2,)
+            初始矩阵
+        transition : np.ndarray[double,ndim=2] shape=(2,2)
+            转移矩阵
+        emission : np.ndarray[double,ndim=2] shape=(2,2)
+            发射矩阵
 
         Returns
         -------
@@ -188,29 +195,70 @@ cdef class StandardBKT:
                            <double*> get_pointer(emission))
 
     def set_bounded_start(self, np.ndarray[double,ndim=1] lower=None, np.ndarray[double,ndim=1] upper=None):
+        """
+        设置初始概率矩阵的约束
+        Parameters
+        ----------
+        lower : np.ndarray[double,ndim=1] shape=(2,)
+            下限约束
+        upper : np.ndarray[double,ndim=1] shape=(2,)
+            上限约束
+        Returns
+        -------
+
+        """
         if self.c_object!=NULL:
             self.c_object.set_bound_pi(<double *> get_pointer(lower), <double *> get_pointer(upper))
         # self.c_object.setBoundedPI(<double *> &lower[0], <double *> &upper[0])
 
     def set_bounded_transition(self, np.ndarray[double,ndim=2] lower=None, np.ndarray[double,ndim=2] upper=None):
+        """
+        设置转移概率矩阵的约束
+        Parameters
+        ----------
+        lower : np.ndarray[double,ndim=2] shape=(2,2)
+            下限约束
+        upper : np.ndarray[double,ndim=2] shape=(2,2)
+            上限约束
+
+        Returns
+        -------
+
+        """
         if self.c_object!=NULL:
             self.c_object.set_bound_a(<double *> get_pointer(lower), <double *> get_pointer(upper))
         # self.c_object.setBoundedA(<double *> &lower[0][0], <double *> &upper[0][0])
 
     def set_bounded_emission(self, np.ndarray[double,ndim=2] lower=None, np.ndarray[double,ndim=2] upper=None):
+        """
+        设置发射概率矩阵的约束
+        Parameters
+        ----------
+        lower : np.ndarray[double,ndim=2] shape=(2,2)
+            下限约束
+        upper : np.ndarray[double,ndim=2] shape=(2,2)
+            上限约束
+
+        Returns
+        -------
+
+        """
         if self.c_object!=NULL:
             self.c_object.set_bound_b(<double *> get_pointer(lower), <double *> get_pointer(upper))
         # self.c_object.setBoundedB(<double *> &lower[0][0], <double *> &lower[0][0])
 
-    def  estimate(self, np.ndarray[int, ndim=1] x, np.ndarray[int, ndim=1] lengths, int max_iter = 20,
+    def fit(self, np.ndarray[int, ndim=1] x, np.ndarray[int, ndim=1] lengths, int max_iter = 20,
                  double tol = 1e-2):
         """
-
+        训练模型
         Parameters
         ----------
-        x
-        lengths
-        max_iter
+        x : np.ndarray[int, ndim=1]
+            观测数据，如果是多个独立观测序列，首尾衔接，穿在一起。每个观测序列的长度通过参数lengths指定。
+        lengths : np.ndarray[int, ndim=1]
+            每个观测序列的长度
+        max_iter : int
+            最大迭代次数
         tol
 
         Returns
@@ -224,12 +272,24 @@ cdef class StandardBKT:
         cdef int ll = lengths.shape[0]
         cdef int ret = 0
         with nogil:
-            ret= self.c_object.estimate(x_ptr,l_ptr, ll, max_iter,tol)
+            ret= self.c_object.fit(x_ptr,l_ptr, ll, max_iter,tol)
 
         return ret
 
     def predict_next(self,int[::1] x=None,str algorithm="viterbi"):
+        """
+        预测下一个观测值，两种算法viterbi和posterior(后验概率分布)。
+        Parameters
+        ----------
+        x : np.ndarray[int, ndim=1]
+            已知的观测序列
+        algorithm : str
+            指定采用的算法，包括算法viterbi和posterior(后验概率分布)
 
+        Returns
+        -------
+            np.ndarray[int, ndim=1] shape=(2,) 观测状态的概率分布
+        """
         out = np.zeros(self.n_obs, dtype=np.float64)
         if x is None or x.shape[0] ==0:
             (<_StandardBKT*>self.c_object).predict_first(<double*> get_pointer(out))
@@ -241,23 +301,46 @@ cdef class StandardBKT:
                 (<_StandardBKT*>self.c_object).predict_by_viterbi(<double*> get_pointer(out), <int*> &x[0], n_x)
 
 
-        elif algorithm == "map":
+        elif algorithm == "posterior":
             (<_StandardBKT*>self.c_object).predict_by_posterior(<double*> get_pointer(out), <int*> &x[0], n_x)
         else:
-            raise ValueError("Unknown algorithm:%"%algorithm)
+            raise ValueError("Unknown algorithm:%s"%algorithm)
         return out
 
     def posterior_distributed(self,int[::1] x):
+        """
+        计算后验概率分布
+        Parameters
+        ----------
+        x : np.ndarray[int, ndim=1]
+            已知的观测序列
+
+        Returns
+        -------
+            np.ndarray[double, ndim=2] shape=(n_x,n_stat)
+            返回每个观测值的对应隐状态的后验概率分布
+
+        """
 
         cdef double ll;
         cdef int n_x = x.shape[0]
-        out = np.zeros((n_x,self.n_stat,), dtype=np.float64)
+        out = np.zeros((n_x,self.n_stat), dtype=np.float64)
 
         (<_StandardBKT*>self.c_object).posterior_distributed(<double*> get_pointer(out), <int*> &x[0],n_x)
         return out
 
     def viterbi(self,int[::1] x):
-
+        """
+        viterbi 解码算法
+        Parameters
+        ----------
+        x : np.ndarray[int, ndim=1]
+            已知的观测序列
+        Returns
+        -------
+            np.ndarray[int, ndim=1] shape=(n_x)
+            返回最有隐状态序列。
+        """
         cdef double prob;
         cdef int n_x = x.shape[0]
         out = np.zeros(n_x, dtype=np.int32)
@@ -269,10 +352,10 @@ cdef class StandardBKT:
     @property
     def start(self):
         """
-        初始矩阵
+        返回初始概率矩阵
         Returns
         -------
-
+            np.ndarray[double, ndim=1] shape=(n_stat)
         """
         pi = np.zeros(self.n_stat, dtype=np.float64)
         self.c_object.get_pi(<double*> get_pointer(pi))
@@ -281,10 +364,10 @@ cdef class StandardBKT:
     @property
     def transition(self):
         """
-        转移矩阵
+        返回转移矩阵
         Returns
         -------
-
+            np.ndarray[double, ndim=2] shape=(n_stat,n_stat)
         """
         arr = np.zeros(shape=(self.n_stat, self.n_stat), dtype=np.float64)
         self.c_object.get_a(<double*> get_pointer(arr))
@@ -293,10 +376,10 @@ cdef class StandardBKT:
     @property
     def emission(self):
         """
-        发射矩阵
+        返回发射矩阵
         Returns
         -------
-
+            np.ndarray[double, ndim=2] shape=(n_stat,2)
         """
         arr = np.zeros(shape=(self.n_stat, self.n_obs), dtype=np.float64)
         self.c_object.get_b(<double*> get_pointer(arr))
@@ -313,12 +396,24 @@ cdef class StandardBKT:
 
     @property
     def success(self):
+        """
+        模型是否训练成功
+        Returns
+        -------
+
+        """
         return self.c_object.success
 
     def __dealloc__(self):
         del self.c_object
     @property
     def minimum_obs(self):
+        """
+        最小数量的观测序列长度，小于这个长度的观测序列无法进行训练
+        Returns
+        -------
+
+        """
         return self.c_object.get_minimum_obs()
 
     def set_minimum_obs(self,int value):
@@ -337,10 +432,13 @@ cdef class StandardBKT:
 
 
 cdef class IRTBKT(StandardBKT):
+    """
+    IRT变种BKT
 
+    """
     cdef double *items_info
 
-    def __cinit__(self, int n_stat=7, int no_object=0):
+    def __cinit__(self, int n_stat=7, int no_object=0,*argv,**kwargs):
     #     # print(n_stat)
         if self.c_object !=NULL:
             del self.c_object
@@ -399,13 +497,17 @@ cdef class IRTBKT(StandardBKT):
             self.set_bounded_transition(transition_lb,transition_ub)
 
 
+    def __dealloc__(self):
+        self.items_info=NULL
+        del self.c_object
 
     def set_item_info(self,np.ndarray[double,ndim=2] items):
         """
-        设置题目的参数信息，
+        设置题目的参数信息，注意行的下标为题目的ID。
         Parameters
         ----------
-        items  shape=(n,3) 三列分别是题目的slop(区分度)、difficulty(难度)、guess(猜测)
+        items : np.ndarray[double,ndim=2] shape=(n,3) 
+            三列分别是题目的slop(区分度)、difficulty(难度)、guess(猜测)
 
         Returns
         -------
@@ -417,37 +519,79 @@ cdef class IRTBKT(StandardBKT):
         self.items_info = <double *> get_pointer(items)
         (<_IRTBKT*>self.c_object).set_items_info(self.items_info, items.shape[0])
 
-        pass
+        
 
     def set_train_items(self,np.ndarray[int,ndim=1] items):
+        """
+        设置观测序列对应的题目ID，注意这里的题目ID必须是整数，其代表着:set_item_info:函数中传入矩阵的行的下标。
+        Parameters
+        ----------
+        items : np.ndarray[int,ndim=1] shape=(n_x,)
+            
+        Returns
+        -------
+
+        """
 
         (<_IRTBKT*>self.c_object).set_items(<int *> get_pointer(items),items.shape[0])
 
-    def estimate(self, np.ndarray[int, ndim=1] x,
+    def fit(self, np.ndarray[int, ndim=1] x,
                  np.ndarray[int, ndim=1] lengths,
                  np.ndarray[int,ndim=1] train_items=None,
                  int max_iter = 20,
                  double tol = 1e-2):
+        """
+        训练模型
+        Parameters
+        ----------
+        x : np.ndarray[int, ndim=1]
+            观测序列，训练数据。如果有多个独立的观测序列，首尾衔接的串行在一起。
+        lengths : np.ndarray[int, ndim=1]
+            每个独立观测序列的长度。
+        train_items : np.ndarray[int, ndim=1]
+            每个观测值，对应的题目ID（set_item_info函数中传入矩阵的行的下标）。
+        max_iter : int
+            默认值20
+        tol : double 
+            默认值1e-2
 
+        Returns
+        -------
+
+        """
         if train_items is None:
             raise ValueError("train_items must not None")
 
         (<_IRTBKT*>self.c_object).set_items(<int *> get_pointer(train_items),train_items.shape[0])
 
-        return self.c_object.estimate(<int*> get_pointer(x), <int*> get_pointer(lengths), lengths.shape[0], max_iter,
+        return self.c_object.fit(<int*> get_pointer(x), <int*> get_pointer(lengths), lengths.shape[0], max_iter,
                                       tol)
 
-
+    
     def predict_next(self,int[::1] x,int item_id,str algorithm="viterbi"):
+        """
+        预测下一个观测值，两种算法viterbi(维特比)和posterior(后验概率分布)。
+        Parameters
+        ----------
+        x : np.ndarray[int, ndim=1]
+            观测序列，训练数据。如果有多个独立的观测序列，首尾衔接的串行在一起。
+        item_id : int
+            待预测的下一个观测值对应的题目ID（set_item_info函数中传入矩阵的行的下标）
+        algorithm
+
+        Returns
+        -------
+
+        """
 
         cdef int n_x = x.shape[0]
         out = np.zeros(self.n_obs, dtype=np.float64)
         if algorithm=='viterbi':
             (<_IRTBKT*>self.c_object).predict_by_viterbi(<double*> get_pointer(out), <int*> &x[0], n_x,item_id)
-        elif algorithm == "map":
+        elif algorithm == "posterior":
             (<_IRTBKT*>self.c_object).predict_by_posterior(<double*> get_pointer(out), <int*> &x[0], n_x,item_id)
         else:
-            raise ValueError("Unkonwn algorithm:%" % algorithm)
+            raise ValueError("Unkonwn algorithm:%s" % algorithm)
         return out
 
     def show(self):
@@ -473,6 +617,9 @@ cdef IRTBKT create_irt(int n_stat, int n_obs, _IRTBKT* model):
 
 
 cdef class TrainHelper:
+    """
+    模型训练辅助工具，适合大批量数据训练，提升训练效率。
+    """
     cdef _TrainHelper *c_object
     cdef double *items_info
     cdef int model_type
@@ -488,6 +635,15 @@ cdef class TrainHelper:
         self.items_info = NULL
 
     def __init__(self, int n_stat=2,int model_type=1):
+        """
+
+        Parameters
+        ----------
+        n_stat : int
+            隐状态的数量
+        model_type : int
+            模型的类型，1-标准bkt；2-IRT变种BKT
+        """
         self.items_info = NULL
         self.model_type=model_type
         self.n_stat = n_stat
@@ -499,16 +655,19 @@ cdef class TrainHelper:
              np.ndarray[double,ndim=2] transition=None,
              np.ndarray[double,ndim=2] emission=None):
         """
-        初始化设置参数
+        初始化参数
         Parameters
         ----------
-        start  初始矩阵
-        transition  转移矩阵
-        emission 发射矩阵
+        start : np.ndarray[double,ndim=1]
+            初始矩阵
+        transition : np.ndarray[double,ndim=2]
+            转移矩阵
+        emission : np.ndarray[double,ndim=2]
+            发射矩阵
 
         Returns
         -------
-
+            None
         """
         if start is not None:
             assert abs(start.sum()-1.0) <1e-12
@@ -518,20 +677,58 @@ cdef class TrainHelper:
         self.c_object.init(<double*> get_pointer(start), <double*> get_pointer(transition),<double*> get_pointer(emission))
 
     def set_bound_start(self, np.ndarray[double,ndim=1] lower=None, np.ndarray[double,ndim=1] upper=None):
+        """
+        设置初始概率矩阵的约束
+        Parameters
+        ----------
+        lower : np.ndarray[double,ndim=1]
+            下限约束
+        upper : np.ndarray[double,ndim=1]
+            上限约束
+        Returns
+        -------
+            None
+        """
         self.c_object.set_bound_pi(<double *> get_pointer(lower), <double *> get_pointer(upper))
 
     def set_bound_transition(self, np.ndarray[double,ndim=2] lower=None, np.ndarray[double,ndim=2] upper=None):
+        """
+        设置转移概率矩阵的约束
+        Parameters
+        ----------
+        lower : np.ndarray[double,ndim=2]
+            下限约束
+        upper : np.ndarray[double,ndim=2]
+            上限约束
+        Returns
+        -------
+            None
+        """
         self.c_object.set_bound_a(<double *> get_pointer(lower), <double *> get_pointer(upper))
 
     def set_bound_emission(self, np.ndarray[double,ndim=2] lower=None, np.ndarray[double,ndim=2] upper=None):
+        """
+        设置发射概率矩阵的约束，IRT变种BKT无需设置。
+        Parameters
+        ----------
+        lower : np.ndarray[double,ndim=2]
+            下限约束
+        upper : np.ndarray[double,ndim=2]
+            上限约束
+        Returns
+        -------
+            None
+        """
+
         self.c_object.set_bound_b(<double *> get_pointer(lower), <double *> get_pointer(upper))
 
     def set_item_info(self,np.ndarray[double,ndim=2] items):
         """
-
+        设置题目的参数信息，仅IRT变种BKT模型适用。
         Parameters
         ----------
-        items  shape=(n,3) 三列分别是题目的slop(区分度)、difficulty(难度)、guess(猜测)
+        items :np.ndarray[double,ndim=2], shape=(items_count,3)
+            三列分别是题目的 slop(区分度)、difficulty(难度)、guess(猜测)
 
         Returns
         -------
@@ -541,20 +738,63 @@ cdef class TrainHelper:
         self.c_object.set_items_info(self.items_info, items.shape[0])
 
 
-    def run(self, np.ndarray[int, ndim=1] trace,
+    def fit(self, np.ndarray[int, ndim=1] trace,
                  np.ndarray[int, ndim=1] group,
                  np.ndarray[int, ndim=1] x,
                  np.ndarray[int,ndim=1] items=None,
                  int max_iter = 20,
                  double tol = 1e-2):
+        """
+        开始训练。
+        trace 用来区分模型，也就是每个trace ID 会训练一个独立的模型。
+        同一个trace id中，不同观测序列用group进行区分，一个group id 代表一个独立的观测序列。
+
+        trace  group  x
+        0       0     1
+        0       0     0
+        0       0     1
+        0       1     0
+        0       1     1
+        0       1     0
+        1       0     0
+        1       0     0
+        1       0     1
+        1       1     0
+        1       1     0
+        1       1     0
+        1       1     0
+        ...    ...    ...
+
+        trace==0 和trace==1 分别训练两个HMM模型。trace==0中，有group==0，1两个观测序列。
+
+
+        Parameters
+        ----------
+        trace : np.ndarray[int32, ndim=1]
+            trace ID 序列，和训练数据x一一对应，每个trace id 单独训练一个模型。相同trace id必须是相邻的。
+        group : np.ndarray[int32, ndim=1]
+
+        x :  np.ndarray[int32, ndim=1]
+            训练数据，观测值序列。
+        items : np.ndarray[int32, ndim=1]
+            仅IRT变种BKT模型适用,训练数据中，每条数据对应的题目整型ID。
+        max_iter : int
+            最大迭代次数
+        tol : double
+            最小收敛阈值
+
+        Returns
+        -------
+
+        """
         cdef int length =trace.shape[0]
         if group.shape[0] == length == x.shape[0]:
             pass
         else:
-            raise ValueError("")
+            raise ValueError("trace,group,x长度不一致")
 
 
-        self.c_object.run(<int*> get_pointer(trace),
+        self.c_object.fit(<int*> get_pointer(trace),
                         <int*> get_pointer(group),
                         <int*> get_pointer(x),
                         length,
@@ -565,6 +805,12 @@ cdef class TrainHelper:
 
     @property
     def model_count(self):
+        """
+        模型的数量
+        Returns
+        -------
+
+        """
         return self.c_object.model_count
     # cdef _model_dump(self,model):
     cdef void _update_result(self):
@@ -579,138 +825,10 @@ cdef class TrainHelper:
 
     @property
     def models(self):
+        """
+        返回训练好的模型
+        Returns
+        -------
+            list
+        """
         return self._results
-
-cpdef parallel_fit(
-            list data,
-            int n_stat=2,int n_obs=2,
-            np.ndarray start=None,
-            np.ndarray transition=None,
-            np.ndarray emission=None,
-            dict bound={},
-            str model = "IRT",
-            np.ndarray items_info=None,
-            int max_iter = 20,
-            double tol = 1e-2,
-            int n_jobs=5,
-            ):
-    if model not in ['IRT','STANDARD']:
-        raise ValueError("model must one of ['IRT','STANDARD']")
-        # return
-
-    cdef Py_ssize_t i
-    cdef int n_task= len(data) # 一共有多少训练任务，一次训练任务可以有多个观测序列
-    cdef int **x_ptr = <int**>malloc(n_task * sizeof(int*)) # 每个训练任务的训练数据
-    cdef int **length_ptr = <int**>malloc(n_task * sizeof(int*))# 每个训练任务的 各个观测序列长度
-    cdef int **item_id_ptr = <int**>malloc(n_task * sizeof(int*)) #  每个训练任务的 训练数据对应的题目id序列
-    # np.ndarray[int, ndim=1] x
-    # np.ndarray[int, ndim=1] lengths
-    every_task_length_ar = np.zeros(n_task,dtype=np.int32)
-    # cdef int * every_task_length_ptr =<int*>get_pointer(every_task_length_ar)
-    cdef int[::1] every_task_length = every_task_length_ar
-    # cdef int [:] hehe
-    for i,item in enumerate(data):
-        # 所有观测序列
-        x_ptr[i] = <int*>get_pointer(item['x'])
-        # 每个作答对应的题目ID
-        item_id_ptr[i] = <int*>get_pointer(item.get('items_id',None))
-        # 每个独立观测序列的长度
-        length_ptr[i] = <int*>get_pointer(item['lengths'])
-        # 有几个独立观测序列
-        every_task_length[i] = item['lengths'].shape[0]
-        # hehe = length_ptr[i]
-        # print(item['lengths'].shape,item['lengths'],every_task_length[i], length_ptr[i][0],)
-
-    cdef double *start_ptr = <double*>get_pointer(start)
-    cdef double* start_lb_ptr = <double*>get_pointer(bound.get('start_lb',None))
-    cdef double* start_ub_ptr = <double*>get_pointer(bound.get('start_ub',None))
-
-    cdef double* transition_ptr = <double*>get_pointer(transition)
-    cdef double* transition_lb_ptr = <double*>get_pointer(bound.get('transition_lb',None))
-    cdef double* transition_ub_ptr = <double*>get_pointer(bound.get('transition_ub',None))
-
-
-    cdef double* emission_ptr = <double*>get_pointer(emission)
-    cdef double* emission_lb_ptr = <double*>get_pointer(bound.get('emission_lb',None))
-    cdef double* emission_ub_ptr = <double*>get_pointer(bound.get('emission_ub',None))
-
-    cdef double*  items_ptr = <double*>get_pointer(items_info)
-    cdef int items_size = items_info.shape[0]
-    # cdef IRTBKT * objects = NULL #new[n_task] IRTBKT;
-    cdef int model_type = 0
-    # cdef IRTBKT ** objects
-    # cdef StandardBKT ** objects_2
-    # if model == "IRT":
-    cdef _IRTBKT ** objects = <_IRTBKT**>malloc(n_task * sizeof(_IRTBKT*)) # IRTBKT(n_stat,n_obs)[n_task];
-    #
-    #     model_type = 1
-    # elif model == "STANDARD":
-    #     objects = <StandardBKT**>malloc(n_task * sizeof(StandardBKT*))
-    #     model_type = 2
-
-    for i in range(n_task):
-    #     if model_type == 1:
-        objects[i] =  new _IRTBKT(n_stat,n_obs)
-    #     elif model_type == 2:
-    #         objects[i] =  new StandardBKT(n_stat,n_obs)
-    # print(n_jobs)
-    if True:
-    # with nogil, parallel():
-    #     openmp.omp_set_num_threads(n_jobs)
-        # bkt = NULL # new IRTBKT(n_stat,n_obs)
-        for i in range(n_task):
-            # bkt = new IRTBKT(n_stat,n_obs)
-
-            objects[i].init(start_ptr,transition_ptr,emission_ptr)
-            objects[i].set_bound_pi(start_lb_ptr,start_ub_ptr)
-            objects[i].set_bound_a(transition_lb_ptr,transition_ub_ptr)
-            objects[i].set_bound_b(emission_lb_ptr,emission_ub_ptr)
-            # if model_type == 1:
-            objects[i].set_items_info(items_ptr,items_size)
-                # objects[i].set_items_info(items_ptr,items_size)
-            objects[i].set_items(item_id_ptr[i],every_task_length[i])
-            objects[i].estimate(x_ptr[i],length_ptr[i],every_task_length[i],max_iter,tol)
-            # del bkt
-
-    free(x_ptr)
-    free(length_ptr)
-    free(item_id_ptr)
-    # print(n_task)
-    results = []
-    for i in range(n_task):
-        bkt = objects[i]
-        result={
-            'index':i,
-            'success':bkt.success,
-            # 'trace': trace,
-            'n_stat':bkt.n_stat,
-            'n_obs':bkt.n_obs,
-            'start': np.zeros(n_stat, dtype=np.float64),
-            'transition': np.zeros(shape=(n_stat,n_stat), dtype=np.float64),
-            'emission': np.zeros(shape=(n_stat,n_obs), dtype=np.float64),
-            'log_likelihood': bkt.log_likelihood,
-
-        }
-        result.update(data[i])
-        bkt.get_pi(<double*>get_pointer(result['start']))
-        bkt.get_a(<double*>get_pointer(result['transition']))
-        bkt.get_b(<double*>get_pointer(result['emission']))
-
-        results.append(result)
-        # showbkt(result)
-
-
-    for i in range(n_task):
-        del objects[i]
-    free(objects)
-
-    return results
-
-    # delete objects
-
-cdef showbkt(bkt):
-        print(bkt['n_stat'],bkt['n_obs'],bkt['success'])
-        print("="*10,"start","="*10)
-        print(bkt['start'].round(3))
-        print("="*10,"transition","="*10)
-        print(bkt['transition'].round(3))

@@ -71,7 +71,7 @@ public:
     /// \param tol 收敛的精度，当两轮迭代似然值的差值小于tol时，结束迭代。
     /// \return
     void
-    run(int trace[], int group[], int x[], int length, int item[] = NULL, int max_iter = 100,
+    fit(int trace[], int group[], int x[], int length, int item[] = NULL, int max_iter = 100,
         double tol = 1e-2);
 
 };

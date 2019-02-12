@@ -5,9 +5,9 @@
 #include "_bkt.h"
 
 
-void StandardBKT::predict_by_posterior(double *out, int *x, int n_x) {
+double StandardBKT::predict_by_posterior(double *out, int *x, int n_x) {
     if (out == NULL) {
-        return;
+        return 0;
     }
     // 没有历史观测序列，相当于预测首次结果
     if (x == NULL) {
@@ -19,7 +19,7 @@ void StandardBKT::predict_by_posterior(double *out, int *x, int n_x) {
 
         }
 
-        return;
+        return 0;
     }
 
     // fwdlattice[-1]是最后时刻，隐状态的概率分布
@@ -47,7 +47,7 @@ void StandardBKT::predict_by_posterior(double *out, int *x, int n_x) {
 
     free(buffer);
     free(predict_stat);
-
+    return ll;
 
 }
 
@@ -153,7 +153,7 @@ double IRTBKT::emmit_pdf(int stat, int obs, int t) {
 //    std::cerr << "slop:" << item->slop <<" difficulty:" << item->intercept << " guess:" << item->guess << std::endl;
 
 //    double prob = item->irt(stat);
-    double prob = irt((double)stat+0.2, item);
+    double prob = irt((double) stat + 0.2, item);
     assert(prob > 0);
     assert(prob < 1);
     prob = obs ? prob : (1 - prob);
@@ -174,7 +174,7 @@ double IRTBKT::emmit_pdf_ex(int stat, int obs, int item_id) {
     Item *item = this->items + item_id;
 
 
-    double prob = irt((double)stat+0.5, item);
+    double prob = irt((double) stat + 0.5, item);
     assert(prob > 0);
     assert(prob < 1);
     prob = obs ? prob : (1 - prob);
@@ -202,10 +202,10 @@ void IRTBKT::predict_first(double *out, int item_id) {
 
 }
 
-void IRTBKT::predict_by_posterior(double *out, int *x, int n_x, int item_id) {
+double IRTBKT::predict_by_posterior(double *out, int *x, int n_x, int item_id) {
 
     if (out == NULL) {
-        return;
+        return 0;
     }
 
     // 没有历史观测序列，相当于预测首次结果
@@ -218,7 +218,7 @@ void IRTBKT::predict_by_posterior(double *out, int *x, int n_x, int item_id) {
 
         }
 
-        return;
+        return 0;
     }
     // fwdlattice[-1]是最后时刻，隐状态的概率分布
     double *buffer = init1D<double>(n_x * this->n_stat);
@@ -244,26 +244,27 @@ void IRTBKT::predict_by_posterior(double *out, int *x, int n_x, int item_id) {
 //    free2D(fwdlattice, n_x);
     free(predict_stat);
     free(buffer);
-
+    return ll;
 
 }
 
-void IRTBKT::predict_by_viterbi(double *out, int *x, int n_x, int item_id) {
+double IRTBKT::predict_by_viterbi(double *out, int *x, int n_x, int item_id) {
 
 //    if (DEBUG) {
 //        std::cout << "predict_by_viterbi " << "n_x:" << n_x << " item_id:" << item_id << std::endl;
 //    }
 
     if (out == NULL || x == NULL) {
-        return;
+        return 0;
     }
     int *stat = init1D<int>(n_x);
 
-    this->viterbi(stat, x, n_x);
+    double max_prob = this->viterbi(stat, x, n_x);
     for (int i = 0; i < this->n_obs; ++i) {
 
         out[i] = this->emmit_pdf_ex(stat[n_x - 1], i, item_id);
     }
 
     free(stat);
+    return max_prob;
 }

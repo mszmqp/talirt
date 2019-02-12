@@ -19,7 +19,7 @@ import sys
 from sklearn.utils import check_array, check_random_state
 from sklearn.utils.validation import check_is_fitted
 import pyedm.model.bkt._bktc as bktc
-from pyedm.model.bkt.bkt_lib import StandardBKT, IRTBKT, parallel_fit, TrainHelper
+from pyedm.model.bkt.bkt_lib import StandardBKT, IRTBKT, TrainHelper
 
 from pyedm.utils import normalize, log_mask_zero, log_normalize, iter_from_X_lengths, logsumexp
 import os
