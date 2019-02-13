@@ -287,7 +287,7 @@ def test_irt_bkt(models, df_train, df_test, item_info):
             continue
 
         model.set_item_info(item_info_arr)
-        model.set_train_items(train_items_id)
+        model.set_obs_items(train_items_id)
 
         # print('作答序列')
         # print(x)

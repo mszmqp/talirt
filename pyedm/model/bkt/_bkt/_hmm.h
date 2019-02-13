@@ -124,16 +124,10 @@ public:
 
     double viterbi(int *out, int *x, int n_x);
 
-    /// 预测下一个观测值
+    /// 使用后验概率分布的算法，预测下一个观测值
     /// \param out [输出] 预测的每个观测状态的概率值
     /// \param x [输入] 已知的观测序列
     /// \param n_x [输入] 已知观测序列的长度
-    /// \param item_pos [输入] 下一个预测的题目ID，若有的话。
-    /// \param pi [输入，可选] 初始概率值。如果为空指针，就使用类对象已有值。
-    /// \param a [输入，可选] 转移概率矩阵。如果为空指针，就使用类对象已有值。用一维连续空间表示二维数组。
-    /// \param b [输入，可选] 发射概率矩阵。如果为空指针，就使用类对象已有值。用一维连续空间表示二维数组。
-    /// \param n_stat [输入，可选] 隐状态的数量
-    /// \param n_obs [输入，可选] 观测状态的数量
     virtual double predict_by_posterior(double *out, int *x, int n_x);
 
     virtual double predict_by_viterbi(double *out, int *x, int n_x);

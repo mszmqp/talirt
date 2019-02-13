@@ -87,7 +87,7 @@ cdef extern from "_bkt/_bkt.h" nogil:
         double posterior_distributed(double *out, int *x, int n_x) nogil;
         double viterbi(int *out,int *x,int n_x);
         double predict_by_viterbi(double *out,int *x,int n_x,int item_id);
-        void predict_first(double *out);
+        void predict_first(double *out,int item_id);
         void set_minimum_obs(int value);
         int get_minimum_obs();
         void debug();
@@ -157,22 +157,22 @@ cdef class StandardBKT:
         start_lb = np.array([0] * self.n_stat, dtype=np.float64)
         start_ub = np.array([1] * self.n_stat, dtype=np.float64)
 
-        transition_init = np.array([[0.4, 0.6], [0, 1]])
-        transition_lb = np.array([[0, 0], [0, 1]]).astype(np.float64)
-        transition_ub = np.array([[1, 1], [0, 1]]).astype(np.float64)
-        emission_init = np.array([[0.8, 0.2], [0.2, 0.8]])
+        transition_init = np.array([[0.4, 0.6], [0, 1]], dtype=np.float64)
+        transition_lb = np.array([[0, 0], [0, 1]], dtype=np.float64)
+        transition_ub = np.array([[1, 1], [0, 1]], dtype=np.float64)
+        emission_init = np.array([[0.8, 0.2], [0.2, 0.8]], dtype=np.float64)
 
-        emission_lb = np.array([[0.7, 0], [0, 0.7]]).astype(np.float64)
-        emission_ub = np.array([[1, 0.3], [0.3, 1]]).astype(np.float64)
+        emission_lb = np.array([[0.7, 0], [0, 0.7]], dtype=np.float64)
+        emission_ub = np.array([[1, 0.3], [0.3, 1]], dtype=np.float64)
         self.init(start_init,transition_init,emission_init)
         self.set_bounded_start(start_lb,start_ub)
         self.set_bounded_transition(transition_lb,transition_ub)
         self.set_bounded_emission(emission_lb,emission_ub)
 
 
-    def init(self, np.ndarray[double,ndim=1] start=None,
-             np.ndarray[double,ndim=2] transition=None,
-             np.ndarray[double,ndim=2] emission=None):
+    def init(self, np.ndarray[cython.floating,ndim=1] start=None,
+             np.ndarray[cython.floating,ndim=2] transition=None,
+             np.ndarray[cython.floating,ndim=2] emission=None):
         """
         初始化设置参数
         Parameters
@@ -190,22 +190,23 @@ cdef class StandardBKT:
         """
         if start is not None:
             assert abs(start.sum()-1.0) <1e-12
+            start =  np.ascontiguousarray(start, dtype=np.float64)
+
         if transition is not None:
             assert np.all(abs(1.0-transition.sum(1)) <1e-12)
+            transition =  np.ascontiguousarray(transition, dtype=np.float64)
+
         if emission is not None:
             assert np.all(abs(1.0-emission.sum(1)) <1e-12)
+            emission =  np.ascontiguousarray(emission, dtype=np.float64)
 
 
 
         if self.c_object!=NULL:
-            start =  np.ascontiguousarray(start)
-            transition =  np.ascontiguousarray(transition)
-            emission =  np.ascontiguousarray(emission)
-
             self.c_object.init(<double*> get_pointer(start), <double*> get_pointer(transition),
                            <double*> get_pointer(emission))
 
-    def set_bounded_start(self, np.ndarray[double,ndim=1] lower=None, np.ndarray[double,ndim=1] upper=None):
+    def set_bounded_start(self, np.ndarray[cython.floating,ndim=1] lower=None, np.ndarray[cython.floating,ndim=1] upper=None):
         """
         设置初始概率矩阵的约束
         Parameters
@@ -218,14 +219,16 @@ cdef class StandardBKT:
         -------
 
         """
-        lower =  np.ascontiguousarray(lower)
-        upper =  np.ascontiguousarray(upper)
+        if lower is not None:
+            lower =  np.ascontiguousarray(lower, dtype=np.float64)
+        if upper is not None:
+            upper =  np.ascontiguousarray(upper, dtype=np.float64)
 
         if self.c_object!=NULL:
             self.c_object.set_bound_pi(<double *> get_pointer(lower), <double *> get_pointer(upper))
         # self.c_object.setBoundedPI(<double *> &lower[0], <double *> &upper[0])
 
-    def set_bounded_transition(self, np.ndarray[double,ndim=2] lower=None, np.ndarray[double,ndim=2] upper=None):
+    def set_bounded_transition(self, np.ndarray[cython.floating,ndim=2] lower=None, np.ndarray[cython.floating,ndim=2] upper=None):
         """
         设置转移概率矩阵的约束
         Parameters
@@ -239,8 +242,11 @@ cdef class StandardBKT:
         -------
 
         """
-        lower =  np.ascontiguousarray(lower)
-        upper =  np.ascontiguousarray(upper)
+        if lower is not None:
+            lower =  np.ascontiguousarray(lower, dtype=np.float64)
+        if upper is not None:
+            upper =  np.ascontiguousarray(upper, dtype=np.float64)
+
         if self.c_object!=NULL:
             self.c_object.set_bound_a(<double *> get_pointer(lower), <double *> get_pointer(upper))
         # self.c_object.setBoundedA(<double *> &lower[0][0], <double *> &upper[0][0])
@@ -259,13 +265,16 @@ cdef class StandardBKT:
         -------
 
         """
-        lower =  np.ascontiguousarray(lower)
-        upper =  np.ascontiguousarray(upper)
+        if lower is not None:
+            lower =  np.ascontiguousarray(lower, dtype=np.float64)
+        if upper is not None:
+            upper =  np.ascontiguousarray(upper, dtype=np.float64)
+
         if self.c_object!=NULL:
             self.c_object.set_bound_b(<double *> get_pointer(lower), <double *> get_pointer(upper))
         # self.c_object.setBoundedB(<double *> &lower[0][0], <double *> &lower[0][0])
 
-    def fit(self, np.ndarray[int, ndim=1] x, np.ndarray[int, ndim=1] lengths, int max_iter = 20,
+    def fit(self, np.ndarray[cython.integral, ndim=1] x, np.ndarray[cython.integral, ndim=1] lengths, int max_iter = 20,
                  double tol = 1e-2):
         """
         训练模型
@@ -286,8 +295,11 @@ cdef class StandardBKT:
         if self.c_object==NULL:
             return None
 
-        x =  np.ascontiguousarray(x,dtype=np.int32)
-        lengths =  np.ascontiguousarray(lengths,dtype=np.int32)
+        assert x is not None
+        assert lengths is not None
+
+        x =  np.ascontiguousarray(x, dtype=np.int32)
+        lengths =  np.ascontiguousarray(lengths, dtype=np.int32)
 
         cdef int * x_ptr = <int*> get_pointer(x)
         cdef int * l_ptr = <int*> get_pointer(lengths)
@@ -298,7 +310,7 @@ cdef class StandardBKT:
 
         return ret
 
-    def predict_next(self,np.ndarray[int, ndim=1] x=None,str algorithm="viterbi"):
+    def predict_next(self,np.ndarray[cython.integral, ndim=1] x=None,str algorithm="viterbi"):
         """
         预测下一个观测值，两种算法 viterbi 和 posterior(后验概率分布)。
         Parameters
@@ -312,12 +324,12 @@ cdef class StandardBKT:
         -------
             np.ndarray[int, ndim=1] shape=(2,) 观测状态的概率分布
         """
-        out = np.zeros(self.n_obs, dtype=np.float64)
+        out = np.zeros(self.n_obs, dtype=np.float64, order="C")
         if x is None or x.shape[0] ==0:
             (<_StandardBKT*>self.c_object).predict_first(<double*> get_pointer(out))
             return out
 
-        x =  np.ascontiguousarray(x,dtype=np.int32)
+        x =  np.ascontiguousarray(x, dtype=np.int32)
 
         cdef int n_x = x.shape[0]
         if algorithm=='viterbi':
@@ -331,7 +343,7 @@ cdef class StandardBKT:
             raise ValueError("Unknown algorithm:%s"%algorithm)
         return out
 
-    def posterior_distributed(self,np.ndarray[int, ndim=1] x):
+    def posterior_distributed(self,np.ndarray[cython.integral, ndim=1] x):
         """
         计算后验概率分布
         Parameters
@@ -348,14 +360,17 @@ cdef class StandardBKT:
 
         cdef double ll;
         cdef int n_x = x.shape[0]
-        x =  np.ascontiguousarray(x,dtype=np.int32)
+
+        assert x is not None
+
+        x =  np.ascontiguousarray(x, dtype=np.int32)
 
         out = np.zeros((n_x,self.n_stat), dtype=np.float64, order='C')
 
         (<_StandardBKT*>self.c_object).posterior_distributed(<double*> get_pointer(out), <int*>get_pointer(x),n_x)
         return out
 
-    def viterbi(self,np.ndarray[int, ndim=1] x):
+    def viterbi(self,np.ndarray[cython.integral, ndim=1] x):
         """
         viterbi 解码算法
         Parameters
@@ -367,9 +382,12 @@ cdef class StandardBKT:
             np.ndarray[int, ndim=1] shape=(n_x)
             返回最有隐状态序列。
         """
+        assert x is not None
+
         cdef double prob;
         cdef int n_x = x.shape[0]
-        x =  np.ascontiguousarray(x,dtype=np.int32)
+
+        x =  np.ascontiguousarray(x, dtype=np.int32)
 
         out = np.zeros(n_x, dtype=np.int32, order='C')
 
@@ -531,7 +549,7 @@ cdef class IRTBKT(StandardBKT):
     #     self.items_info=NULL
     #     del self.c_object
 
-    def set_item_info(self,np.ndarray[double,ndim=2] items):
+    def set_item_info(self,np.ndarray[cython.floating,ndim=2] items):
         """
         设置题目的参数信息，注意行的下标为题目的ID。
         Parameters
@@ -543,7 +561,8 @@ cdef class IRTBKT(StandardBKT):
         -------
 
         """
-        assert items.shape[1] == 3
+
+        assert items is not None and items.shape[1] == 3
 
         # items=items.astype(np.float64)
         self.items_info = np.ascontiguousarray(items,dtype=np.float64)
@@ -557,7 +576,7 @@ cdef class IRTBKT(StandardBKT):
 
         
 
-    def set_obs_items(self,np.ndarray[int,ndim=1] items):
+    def set_obs_items(self,np.ndarray[cython.integral,ndim=1] items):
         """
         设置观测序列对应的题目ID，注意这里的题目ID必须是整数，其代表着:set_item_info:函数中传入矩阵的行的下标。
         Parameters
@@ -568,6 +587,7 @@ cdef class IRTBKT(StandardBKT):
         -------
 
         """
+        assert items is not None
         # 注意 c++ 对象的 set_items 函数保存的传入指针，并没有自己拷贝数据。
         # 所以需要确保传入的指针在对象生命周期不被python自动回收。
         # 这里使用 self.train_items 持久保存数据，避免被回收
@@ -575,9 +595,9 @@ cdef class IRTBKT(StandardBKT):
 
         (<_IRTBKT*>self.c_object).set_obs_items(<int *> get_pointer(self.train_items),items.shape[0])
 
-    def fit(self, np.ndarray[int, ndim=1] x,
-                 np.ndarray[int, ndim=1] lengths,
-                 np.ndarray[int,ndim=1] train_items=None,
+    def fit(self, np.ndarray[cython.integral, ndim=1] x,
+                 np.ndarray[cython.integral, ndim=1] lengths,
+                 np.ndarray[cython.integral,ndim=1] obs_items=None,
                  int max_iter = 20,
                  double tol = 1e-2):
         """
@@ -588,7 +608,7 @@ cdef class IRTBKT(StandardBKT):
             观测序列，训练数据。如果有多个独立的观测序列，首尾衔接的串行在一起。
         lengths : np.ndarray[int, ndim=1]
             每个独立观测序列的长度。
-        train_items : np.ndarray[int, ndim=1]
+        obs_items : np.ndarray[int, ndim=1]
             每个观测值，对应的题目ID（set_item_info函数中传入矩阵的行的下标）。
         max_iter : int
             默认值20
@@ -599,16 +619,24 @@ cdef class IRTBKT(StandardBKT):
         -------
 
         """
-        if train_items is None:
+
+        assert x is not None and lengths is not None
+
+        if obs_items is None and self.train_items is None:
             raise ValueError("train_items must not None")
 
-        (<_IRTBKT*>self.c_object).set_obs_items(<int *> get_pointer(train_items),train_items.shape[0])
+        x = np.ascontiguousarray(x,dtype=np.int32)
+        lengths = np.ascontiguousarray(lengths,dtype=np.int32)
+
+        if obs_items is not None:
+            self.set_obs_items(obs_items)
+        # (<_IRTBKT*>self.c_object).set_obs_items(<int *> get_pointer(train_items),train_items.shape[0])
 
         return self.c_object.fit(<int*> get_pointer(x), <int*> get_pointer(lengths), lengths.shape[0], max_iter,
                                       tol)
 
     
-    def predict_next(self,np.ndarray[int, ndim=1] x,int item_id,str algorithm="viterbi"):
+    def predict_next(self,np.ndarray[cython.integral, ndim=1] x,int item_id,str algorithm="viterbi"):
         """
         预测下一个观测值，两种算法viterbi(维特比)和posterior(后验概率分布)。
         Parameters
@@ -624,14 +652,23 @@ cdef class IRTBKT(StandardBKT):
 
         """
 
+
+        out = np.zeros(self.n_obs, dtype=np.float64, order="C")
+        # 预测首次作答结果
+        if x is None or x.shape[0] ==0:
+            (<_IRTBKT*>self.c_object).predict_first(<double*> get_pointer(out), item_id)
+            return out
+
         cdef int n_x = x.shape[0]
-        out = np.zeros(self.n_obs, dtype=np.float64, order='C')
+
+        x = np.ascontiguousarray(x,dtype=np.int32)
+
         if algorithm=='viterbi':
             (<_IRTBKT*>self.c_object).predict_by_viterbi(<double*> get_pointer(out), <int*> get_pointer(x), n_x,item_id)
         elif algorithm == "posterior":
             (<_IRTBKT*>self.c_object).predict_by_posterior(<double*> get_pointer(out), <int*> get_pointer(x), n_x,item_id)
         else:
-            raise ValueError("Unkonwn algorithm:%s" % algorithm)
+            raise ValueError("Unknown algorithm:%s" % algorithm)
 
         return out
 
@@ -666,7 +703,7 @@ cdef class TrainHelper:
     模型训练辅助工具，适合大批量数据训练，提升训练效率。
     """
     cdef _TrainHelper *c_object
-    cdef double *items_info
+    cdef np.ndarray items_info
     cdef int model_type
     cdef int n_stat
     cdef int n_obs
@@ -677,7 +714,7 @@ cdef class TrainHelper:
         self.c_object = new _TrainHelper(n_stat, 2,model_type)
         # self.n_stat = n_stat
         # self.n_obs = n_obs
-        self.items_info = NULL
+        self.items_info = None
 
     def __init__(self, int n_stat=2,int model_type=1):
         """
@@ -689,16 +726,16 @@ cdef class TrainHelper:
         model_type : int
             模型的类型，1-标准bkt；2-IRT变种BKT
         """
-        self.items_info = NULL
+        self.items_info = None
         self.model_type=model_type
         self.n_stat = n_stat
         self.n_obs = 2
         # self._results = []
 
 
-    def init(self, np.ndarray[double,ndim=1] start=None,
-             np.ndarray[double,ndim=2] transition=None,
-             np.ndarray[double,ndim=2] emission=None):
+    def init(self, np.ndarray[cython.floating,ndim=1] start=None,
+             np.ndarray[cython.floating,ndim=2] transition=None,
+             np.ndarray[cython.floating,ndim=2] emission=None):
         """
         初始化参数
         Parameters
@@ -714,14 +751,22 @@ cdef class TrainHelper:
         -------
             None
         """
+
         if start is not None:
             assert abs(start.sum()-1.0) <1e-12
+            start =  np.ascontiguousarray(start, dtype=np.float64)
+
         if transition is not None:
             assert np.all(abs(1.0-transition.sum(1)) <1e-12)
+            transition =  np.ascontiguousarray(transition, dtype=np.float64)
+
+        if emission is not None:
+            assert np.all(abs(1.0-emission.sum(1)) <1e-12)
+            emission =  np.ascontiguousarray(emission, dtype=np.float64)
 
         self.c_object.init(<double*> get_pointer(start), <double*> get_pointer(transition),<double*> get_pointer(emission))
 
-    def set_bound_start(self, np.ndarray[double,ndim=1] lower=None, np.ndarray[double,ndim=1] upper=None):
+    def set_bound_start(self, np.ndarray[cython.floating,ndim=1] lower=None, np.ndarray[cython.floating,ndim=1] upper=None):
         """
         设置初始概率矩阵的约束
         Parameters
@@ -734,9 +779,15 @@ cdef class TrainHelper:
         -------
             None
         """
+
+        if lower is not None:
+            lower =  np.ascontiguousarray(lower, dtype=np.float64)
+        if upper is not None:
+            upper =  np.ascontiguousarray(upper, dtype=np.float64)
+
         self.c_object.set_bound_pi(<double *> get_pointer(lower), <double *> get_pointer(upper))
 
-    def set_bound_transition(self, np.ndarray[double,ndim=2] lower=None, np.ndarray[double,ndim=2] upper=None):
+    def set_bound_transition(self, np.ndarray[cython.floating,ndim=2] lower=None, np.ndarray[cython.floating,ndim=2] upper=None):
         """
         设置转移概率矩阵的约束
         Parameters
@@ -749,9 +800,13 @@ cdef class TrainHelper:
         -------
             None
         """
+        if lower is not None:
+            lower =  np.ascontiguousarray(lower, dtype=np.float64)
+        if upper is not None:
+            upper =  np.ascontiguousarray(upper, dtype=np.float64)
         self.c_object.set_bound_a(<double *> get_pointer(lower), <double *> get_pointer(upper))
 
-    def set_bound_emission(self, np.ndarray[double,ndim=2] lower=None, np.ndarray[double,ndim=2] upper=None):
+    def set_bound_emission(self, np.ndarray[cython.floating,ndim=2] lower=None, np.ndarray[cython.floating,ndim=2] upper=None):
         """
         设置发射概率矩阵的约束，IRT变种BKT无需设置。
         Parameters
@@ -764,10 +819,14 @@ cdef class TrainHelper:
         -------
             None
         """
+        if lower is not None:
+            lower =  np.ascontiguousarray(lower, dtype=np.float64)
+        if upper is not None:
+            upper =  np.ascontiguousarray(upper, dtype=np.float64)
 
         self.c_object.set_bound_b(<double *> get_pointer(lower), <double *> get_pointer(upper))
 
-    def set_item_info(self,np.ndarray[double,ndim=2] items):
+    def set_item_info(self,np.ndarray[cython.floating,ndim=2] items):
         """
         设置题目的参数信息，仅IRT变种BKT模型适用。
         Parameters
@@ -779,14 +838,16 @@ cdef class TrainHelper:
         -------
 
         """
-        self.items_info = <double *> get_pointer(items)
-        self.c_object.set_items_info(self.items_info, items.shape[0])
+        assert items is not None
+
+        self.items_info =  np.ascontiguousarray(items, dtype=np.float64)
+        self.c_object.set_items_info(<double *> get_pointer(self.items_info), items.shape[0])
 
 
-    def fit(self, np.ndarray[int, ndim=1] trace,
-                 np.ndarray[int, ndim=1] group,
-                 np.ndarray[int, ndim=1] x,
-                 np.ndarray[int,ndim=1] items=None,
+    def fit(self, np.ndarray[cython.integral, ndim=1] trace,
+                 np.ndarray[cython.integral, ndim=1] group,
+                 np.ndarray[cython.integral, ndim=1] x,
+                 np.ndarray[cython.integral,ndim=1] items=None,
                  int max_iter = 20,
                  double tol = 1e-2):
         """
@@ -832,6 +893,14 @@ cdef class TrainHelper:
         -------
 
         """
+        assert trace is not None
+        assert group is not None
+        assert x is not None
+        trace = np.ascontiguousarray(trace, dtype=np.int32)
+        group = np.ascontiguousarray(group, dtype=np.int32)
+        x = np.ascontiguousarray(x, dtype=np.int32)
+
+
         cdef int length =trace.shape[0]
         if group.shape[0] == length == x.shape[0]:
             pass
