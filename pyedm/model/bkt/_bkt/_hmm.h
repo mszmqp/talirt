@@ -122,21 +122,36 @@ public:
     /// \return
     double posterior_distributed(double *out, int *x, int n_x);
 
+    /// viterbi解码算法，求解最优隐状态序列
+    /// \param out
+    /// \param x
+    /// \param n_x
+    /// \return
     double viterbi(int *out, int *x, int n_x);
 
-    /// 使用后验概率分布的算法，预测下一个观测值
+    /// 预测下一个观测值。使用后验概率分布的算法。
     /// \param out [输出] 预测的每个观测状态的概率值
     /// \param x [输入] 已知的观测序列
     /// \param n_x [输入] 已知观测序列的长度
     virtual double predict_by_posterior(double *out, int *x, int n_x);
 
+    /// 预测下一个观测值。使用viterbi的算法。
+    /// \param out
+    /// \param x
+    /// \param n_x
+    /// \return
     virtual double predict_by_viterbi(double *out, int *x, int n_x);
 
+    /// 预测首个观测值。使用初始概率计算
+    /// \param out
     virtual void predict_first(double *out);
 
+    /// 训练时最小观测序列长度，序列长度小于这个值的观测序列无法进行训练
+    /// \param value
     void set_minimum_obs(int value) { this->minimum_obs = MIN(3, value); };
 
     int get_minimum_obs() { return this->minimum_obs; };
+
 protected:
     /// 前向算法
     /// \param x

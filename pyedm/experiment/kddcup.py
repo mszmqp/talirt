@@ -558,7 +558,7 @@ def load_tal_data():
 
     for key, df_u in df_g:
         n = len(df_u)
-        if n < 5:
+        if n < 6:
             mask.extend([True] * n)
             continue
         mask.extend([True] * (n - 1))
@@ -567,7 +567,7 @@ def load_tal_data():
     df_train = df_data.loc[mask]
     df_test = df_data.loc[~mask]
 
-    # 计算题目难度，当前仅通过正确率，采用拉普拉斯修正计算正确率，作答次数少的题目不准确，todo 优化题目难度计算方法
+    # 计算题目难度，当前仅通过正确率，作答次数少的题目不准确，采用拉普拉斯修正计算正确率
     item_info = df_train.groupby('item_name').agg(
         {
             'answer': ['count', 'sum'],

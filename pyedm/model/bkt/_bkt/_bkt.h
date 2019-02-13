@@ -66,11 +66,26 @@ public:
     /// \param length 序列长度
     void set_obs_items(int items_id[], int length);
 
+    /// 预测下一个观测值。使用后验概率分布的算法。
+    /// \param out [输出] 预测的每个观测状态的概率值
+    /// \param x [输入] 已知的观测序列
+    /// \param n_x [输入] 已知观测序列的长度
+    /// \param item_id [输入] 待预测下一题的题目id
     double predict_by_posterior(double *out, int *x, int n_x, int item_id);
 
+    /// 预测下一个观测值。使用viterbi的算法。
+    /// \param out  [输出] 预测的每个观测状态的概率值
+    /// \param x
+    /// \param n_x
+    /// \param item_id  [输入] 待预测下一题的题目id
+    /// \return
     double predict_by_viterbi(double *out, int *x, int n_x, int item_id);
 
+    /// 预测首个观测值。使用初始概率计算
+    /// \param out
+    /// \param item_id
     void predict_first(double *out, int item_id);
+
     void debug();
 
 private:
@@ -78,6 +93,7 @@ private:
 
     double emmit_pdf_ex(int stat, int obs, int item_id);
 
+    //通过私有化&重写的方式使得父类的函数废弃掉
     double predict_by_posterior(double *out, int *x, int n_x) override { return 0;};
 
     double predict_by_viterbi(double *out, int *x, int n_x) override { return 0;};
