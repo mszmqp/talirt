@@ -12,12 +12,11 @@ Date:    2019/1/17 11:08
 import sys
 import argparse
 from pyedm.data.kddcup2010 import KddCup2010
-from pyedm.model.bkt import BKTBatch, TrainHelper
+from pyedm.model.bkt import TrainHelper
 import numpy as np
 import pandas as pd
 from sklearn import metrics
 from tqdm import tqdm
-import hmmlearn
 
 __version__ = 1.0
 
@@ -302,7 +301,6 @@ def test_irt_bkt(models, df_train, df_test, item_info):
 
         result = model.predict_next(x, predict_item_id, 'posterior')
         if result is None or np.isnan(result[1]):
-
             print(result)
             # print(x)
             print(predict_item_id)
@@ -387,6 +385,17 @@ def write_badcase(df_eva, df_train, df_test, item_info, filepath="irt_bkt_badcas
 
 
 def metric(y_true, y_prob):
+    """
+    二分类结果简单评估指标计算
+    Parameters
+    ----------
+    y_true
+    y_prob
+
+    Returns
+    -------
+
+    """
     y_pred = y_prob.copy()
     y_pred[y_pred >= 0.5] = 1
     y_pred[y_pred < 0.5] = 0
@@ -415,11 +424,24 @@ def metric(y_true, y_prob):
         'rmse': np.sqrt(mse),
         'acc': acc,
         'auc_score': auc_score,
+        'delta_acc': acc - y_true.mean(),
 
     }
 
 
 def run_irt_bkt(df_train, df_test, df_item_info):
+    """
+    IRT变种BKT模型，每个（知识点，学生）训练一个模型
+    Parameters
+    ----------
+    df_train
+    df_test
+    df_item_info
+
+    Returns
+    -------
+
+    """
     # df_train.fillna({'knowledge',})
     # 去掉空知识点的数据
     # df_train = df_train.loc[~pd.isna(df_train['knowledge']), :]
@@ -449,6 +471,19 @@ def run_irt_bkt(df_train, df_test, df_item_info):
 
 
 def run_standard_bkt(df_train, df_test, df_item_info):
+    """
+    标准BKT模型，每个知识点训练一个模型
+    Parameters
+    ----------
+    df_train
+    df_test
+    df_item_info
+
+    Returns
+    -------
+
+    """
+
     # df_train, df_test, item_info = preprocess(train_data, test_data)
     df_train['trace_name'] = df_train['knowledge']
     df_train['group_name'] = df_train['user']
@@ -472,6 +507,18 @@ def run_standard_bkt(df_train, df_test, df_item_info):
 
 
 def run_standard_bkt_individual(df_train, df_test, df_item_info):
+    """
+    标准BKT模型，但是每个（知识点，学生）训练一个模型
+    Parameters
+    ----------
+    df_train
+    df_test
+    df_item_info
+
+    Returns
+    -------
+
+    """
     df_train['trace_name'] = df_train['knowledge'] + '_' + df_train['user']
     df_train['group_name'] = df_train['user']
     # 按照 ('trace_name', 'group_name') 排序，保证相同trace_name的行在一起
@@ -493,6 +540,12 @@ def run_standard_bkt_individual(df_train, df_test, df_item_info):
 
 
 def load_tal_data():
+    """
+    智能练习作答数据
+    Returns
+    -------
+
+    """
     path = "/Users/zhangzhenhu/Documents/开源数据/ai_response_2019-02-12.pkl"
     df_data = pd.read_pickle(path)
     df_data.rename(columns={'user_id': 'user', 'item_id': 'item_name',
@@ -601,7 +654,8 @@ def main(options):
     print('*' * 50)
     print("Final Report")
     print('*' * 50)
-    columns = ['data', 'model', 'origin_count', 'origin_acc', 'rmse', 'acc', 'auc_score']
+    columns = ['data', 'model', 'origin_count', 'origin_acc',
+               'rmse', 'auc_score', 'acc', 'delta_acc']
 
     lines = []
     for rp in report:

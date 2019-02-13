@@ -300,13 +300,13 @@ cdef class StandardBKT:
 
     def predict_next(self,np.ndarray[int, ndim=1] x=None,str algorithm="viterbi"):
         """
-        预测下一个观测值，两种算法viterbi和posterior(后验概率分布)。
+        预测下一个观测值，两种算法 viterbi 和 posterior(后验概率分布)。
         Parameters
         ----------
         x : np.ndarray[int, ndim=1]
             已知的观测序列
         algorithm : str
-            指定采用的算法，包括算法viterbi和posterior(后验概率分布)
+            指定采用的算法，包括算法 viterbi 和 posterior(后验概率分布)。['viterbi','posterior']
 
         Returns
         -------
@@ -355,7 +355,7 @@ cdef class StandardBKT:
         (<_StandardBKT*>self.c_object).posterior_distributed(<double*> get_pointer(out), <int*>get_pointer(x),n_x)
         return out
 
-    def viterbi(self,int[::1] x):
+    def viterbi(self,np.ndarray[int, ndim=1] x):
         """
         viterbi 解码算法
         Parameters
@@ -369,9 +369,11 @@ cdef class StandardBKT:
         """
         cdef double prob;
         cdef int n_x = x.shape[0]
+        x =  np.ascontiguousarray(x,dtype=np.int32)
+
         out = np.zeros(n_x, dtype=np.int32, order='C')
 
-        prob = (<_StandardBKT*>self.c_object).viterbi(<int*> get_pointer(out), <int*> &x[0],n_x)
+        prob = (<_StandardBKT*>self.c_object).viterbi(<int*> get_pointer(out), <int*> get_pointer(x),n_x)
 
         return out
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 #
-# Copyright (c) 2014 Hal.com, Inc. All Rights Reserved
+# Copyright (c) 2014 Zhenhu.com, Inc. All Rights Reserved
 #
 # setup.py
 from setuptools import find_packages
@@ -26,19 +26,20 @@ include_dirs.append(cython_gsl.get_include())
 NAME = "pyedm"
 PACKAGES = [NAME] + ["%s.%s" % (NAME, i) for i in find_packages(NAME)]
 extensions = [
-    Extension(name="pyedm.model.bkt._bktc",
-              sources=['pyedm/model/bkt/_bktc' + ext],
-              include_dirs=include_dirs,
-              libraries=cython_gsl.get_libraries() + ["m"],
-              library_dirs=[cython_gsl.get_library_dir()],
-              ),
+    # deprecated
+    # Extension(name="pyedm.model.bkt._bktc",
+    #           sources=['pyedm/model/bkt/_bktc' + ext],
+    #           include_dirs=include_dirs,
+    #           libraries=cython_gsl.get_libraries() + ["m"],
+    #           library_dirs=[cython_gsl.get_library_dir()],
+    #           ),
     Extension(name="pyedm.model.bkt.bkt_lib",
               sources=['pyedm/model/bkt/bkt_lib' + '.pyx' if USE_CYTHON else '.cpp'],
               include_dirs=include_dirs,
               libraries=cython_gsl.get_libraries() + ["m"],
               library_dirs=[cython_gsl.get_library_dir()],
-              extra_compile_args=['-fopenmp', '-Wc++11-extensions', '-Wunused-variable'],
-              extra_link_args=['-fopenmp'],
+              extra_compile_args=['-std=c++11'],  # '-Wc++11-extensions', '-Wunused-variable',
+              # extra_link_args=[],
               ),
     Extension(name="pyedm.model.irt._uirt_clib",
               sources=['pyedm/model/irt/_uirt_clib' + ext],
@@ -71,5 +72,3 @@ setup(
     author_email='acmtiger@gmail.com',
     zip_safe=False,
 )
-
-# rm -fr build/ && python3 setup.py build_ext --inplace &&  mv talirt/talirt/model/*.so talirt/model/
