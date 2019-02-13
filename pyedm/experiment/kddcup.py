@@ -558,7 +558,7 @@ def load_tal_data():
 
     for key, df_u in df_g:
         n = len(df_u)
-        if n < 6:
+        if n < 5:
             mask.extend([True] * n)
             continue
         mask.extend([True] * (n - 1))
