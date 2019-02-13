@@ -74,7 +74,7 @@ cdef extern from "_bkt/_bkt.h" nogil:
         _IRTBKT(int, int) nogil except +
         # void set_items_data(double *items, int length) nogil;
         void set_items_info(double *items, int length) nogil;
-        void set_items(int *items_id,int length) nogil;
+        void set_obs_items(int *items_id,int length) nogil;
         void init(double *pi, double *a, double *b) nogil;
         void set_bound_pi(double *lower, double *upper) nogil;
         void set_bound_a(double *lower, double *upper) nogil;
@@ -557,7 +557,7 @@ cdef class IRTBKT(StandardBKT):
 
         
 
-    def set_train_items(self,np.ndarray[int,ndim=1] items):
+    def set_obs_items(self,np.ndarray[int,ndim=1] items):
         """
         设置观测序列对应的题目ID，注意这里的题目ID必须是整数，其代表着:set_item_info:函数中传入矩阵的行的下标。
         Parameters
@@ -573,7 +573,7 @@ cdef class IRTBKT(StandardBKT):
         # 这里使用 self.train_items 持久保存数据，避免被回收
         self.train_items = np.ascontiguousarray(items,dtype=np.int32)
 
-        (<_IRTBKT*>self.c_object).set_items(<int *> get_pointer(self.train_items),items.shape[0])
+        (<_IRTBKT*>self.c_object).set_obs_items(<int *> get_pointer(self.train_items),items.shape[0])
 
     def fit(self, np.ndarray[int, ndim=1] x,
                  np.ndarray[int, ndim=1] lengths,
@@ -602,7 +602,7 @@ cdef class IRTBKT(StandardBKT):
         if train_items is None:
             raise ValueError("train_items must not None")
 
-        (<_IRTBKT*>self.c_object).set_items(<int *> get_pointer(train_items),train_items.shape[0])
+        (<_IRTBKT*>self.c_object).set_obs_items(<int *> get_pointer(train_items),train_items.shape[0])
 
         return self.c_object.fit(<int*> get_pointer(x), <int*> get_pointer(lengths), lengths.shape[0], max_iter,
                                       tol)

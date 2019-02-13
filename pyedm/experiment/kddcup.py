@@ -417,8 +417,8 @@ def metric(y_true, y_prob):
     print('classification_report')
     print(metrics.classification_report(y_true, y_pred))
     return {
-        'origin_count': len(y_true),
-        'origin_acc': y_true.mean(),
+        'test size': len(y_true),
+        'correct rate': y_true.mean(),
         'mae': mae,
         'mse': mse,
         'rmse': np.sqrt(mse),
@@ -654,7 +654,7 @@ def main(options):
     print('*' * 50)
     print("Final Report")
     print('*' * 50)
-    columns = ['data', 'model', 'origin_count', 'origin_acc',
+    columns = ['data', 'model', 'test size', 'correct rate',
                'rmse', 'auc_score', 'acc', 'delta_acc']
 
     lines = []

@@ -55,11 +55,16 @@ public:
     IRTBKT(int n_stat, int n_obs);
 
     ~IRTBKT();
-
+    /// 设置题目参数。每个题目三个double类型参数，实际是二维数据(n,3)，n是题目数量。
+    /// 但这里需要用一维连续空间保存二维数据，传入的是一维数组空间的地址。
+    /// \param items 数组指针，注意，内部不会重新保存一份，所以请确保传入指针在使用期间不要被释放
+    /// \param length
     void set_items_info(double *items, int length);
-//    void set_items_info(double items[], int length);
 
-    void set_items(int items_id[], int length);
+    /// 设置观测序列对应的题目id序列，在训练fit和预测前，都必须先传入对应的题目id序列。
+    /// \param items_id 题目id序列的指针。注意，内部不会重新保存一份，所以请确保传入指针在使用期间不要被释放
+    /// \param length 序列长度
+    void set_obs_items(int items_id[], int length);
 
     double predict_by_posterior(double *out, int *x, int n_x, int item_id);
 

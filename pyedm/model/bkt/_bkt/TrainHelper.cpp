@@ -116,7 +116,7 @@ void TrainHelper::fit(int trace[], int group[], int x[], int length, int item[],
 //        }
         if (this->model_type == 2) {
 
-            ((IRTBKT *) this->models[i])->set_items(item + trace_pos, cur_x_length);
+            ((IRTBKT *) this->models[i])->set_obs_items(item + trace_pos, cur_x_length);
         }
         this->models[i]->fit(cur_x, group_ncount, group_num, max_iter, tol);
 

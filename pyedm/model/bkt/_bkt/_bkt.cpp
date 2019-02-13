@@ -57,11 +57,11 @@ double sigmoid(double z) {
 }
 
 double irt(double theta, Item *item, int m = 1) {
-
+//    double D = 1.702;
     double z = 0;
     switch (m) {
         case 1:
-            z = theta - item->intercept;
+            z =  theta - item->intercept;
             break;
         default:
             z = item->slop * theta - item->intercept;
@@ -132,7 +132,7 @@ void IRTBKT::set_items_info(double items_ptr[], int length) {
 }
 */
 
-void IRTBKT::set_items(int items_id[], int length) {
+void IRTBKT::set_obs_items(int items_id[], int length) {
 //    if (this->items_id != NULL) {
 //        delete[] this->items_id;
 //    }
@@ -169,7 +169,7 @@ double IRTBKT::emmit_pdf(int stat, int obs, int t) {
 //    std::cerr << " prob:" << prob << std::endl;
 
 //    if(t==0){
-    if(isnan(prob)){
+    if (isnan(prob)) {
 //        std::cout<< "ptr_2 "<< this->items <<std::endl;
 
 //        std::cout<< "stat=" << stat << " obs="<<obs<<" t="<<t<<std::endl;
@@ -184,11 +184,12 @@ double IRTBKT::emmit_pdf(int stat, int obs, int t) {
 
 void IRTBKT::debug() {
 
-    std::cout<< "stat=" << this->n_stat << " obs="<<this->n_obs<<std::endl;
-    std::cout<< this->items << " ";
-    print1D<double>((double*)this->items,this->items_length*3);
+    std::cout << "stat=" << this->n_stat << " obs=" << this->n_obs << std::endl;
+    std::cout << this->items << " ";
+    print1D<double>((double *) this->items, this->items_length * 3);
 
 }
+
 double IRTBKT::emmit_pdf_ex(int stat, int obs, int item_id) {
     assert(item_id < this->items_length);
     Item *item = this->items + item_id;
@@ -229,7 +230,7 @@ double IRTBKT::predict_by_posterior(double *out, int *x, int n_x, int item_id) {
     }
 
     // 没有历史观测序列，相当于预测首次结果
-    if (x == NULL || n_x==0) {
+    if (x == NULL || n_x == 0) {
         for (int i = 0; i < this->n_obs; ++i) {
             out[i] = 0;
             for (int j = 0; j < this->n_stat; ++j) {
