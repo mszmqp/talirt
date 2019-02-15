@@ -14,8 +14,8 @@ import numpy.distutils.misc_util
 import cython_gsl
 
 DESCRIPTION = 'A set of python modules for machine learning and data mining in education'
-with open('README.rst') as f:
-    LONG_DESCRIPTION = f.read()
+# with open('README.rst') as f:
+#     LONG_DESCRIPTION = f.read()
 
 USE_CYTHON = True
 

@@ -868,22 +868,58 @@ double HMM::viterbi(int *out, int *x, int n_x) {
 
 double HMM::predict_by_viterbi(double *out, int *x, int n_x) {
 
-//    if(DEBUG){
-//        std::cout << "predict_by_viterbi " << std::endl;
-//    }
-    int *stat = init1D<int>(n_x);
-//    double *predict_obs=init1D(this->n_obs);
 
-    double max_prob=this->viterbi(stat, x, n_x);
-
-
-
-    for (int i = 0; i < this->n_obs; ++i) {
-
-        out[i] = this->emmit_pdf(stat[n_x - 1], i, n_x);
+    if (out == NULL) {
+        return 0;
     }
 
-    free(stat);
+    int next_stat=-1; // 预测的隐状态
+    double _max_t = -1;
+    double max_prob = 0; // 隐状态序列的概率
+
+    // 如果没有已知观测序列x，就是预测第一个观测值，基于初始概率PI进行预测
+    if (n_x == 0 || x == NULL) {
+
+        // 选出初始概率中最大概率的状态
+        for (int i = 0; i < this->n_stat; ++i) {
+            if (this->PI[i] > _max_t) {
+                _max_t = this->PI[i];
+                next_stat = i;
+            }
+        }
+
+        max_prob = _max_t;
+
+    } else { // 有观测序列x，预测下一个观测值
+
+        int *stat = init1D<int>(n_x);
+        // 已知观测序列x，通过viterbi算法解码得到最大概率的隐状态序列
+        max_prob = this->viterbi(stat, x, n_x);
+
+        // 预测下一个隐状态的值
+
+        // 当前状态下，最大概率转移到哪一个状态
+        for (int j = 0; j < this->n_stat; ++j) {
+            if (this->A[stat[n_x - 1]][j] > _max_t) {
+                _max_t = this->A[stat[n_x - 1]][j];
+                next_stat = j;
+            }
+        }
+
+        max_prob *= _max_t;
+        free(stat);
+
+    }
+
+    assert(next_stat >=0 );
+
+    // 根据预测的下一个隐状态，算出可能的观测值
+    for (int i = 0; i < this->n_obs; ++i) {
+
+        out[i] = this->emmit_pdf(next_stat, i);
+    }
+
+
     return max_prob;
 }
 
@@ -906,7 +942,7 @@ double HMM::predict_by_posterior(double *out, int *x, int n_x) {
         return 0;
     }
     // 没有历史观测序列，相当于预测首次结果
-    if (x == NULL) {
+    if (x == NULL || n_x==0) {
         for (int i = 0; i < this->n_obs; ++i) {
             out[i] = 0;
             for (int j = 0; j < this->n_stat; ++j) {

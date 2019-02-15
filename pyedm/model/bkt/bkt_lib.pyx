@@ -325,18 +325,18 @@ cdef class StandardBKT:
             np.ndarray[int, ndim=1] shape=(2,) 观测状态的概率分布
         """
         out = np.zeros(self.n_obs, dtype=np.float64, order="C")
+        cdef int n_x = 0
+        # 预测首次作答结果
         if x is None or x.shape[0] ==0:
-            (<_StandardBKT*>self.c_object).predict_first(<double*> get_pointer(out))
-            return out
+            x = None
+            n_x = 0
+        else:
+            n_x = x.shape[0]
+            x = np.ascontiguousarray(x,dtype=np.int32)
 
-        x =  np.ascontiguousarray(x, dtype=np.int32)
-
-        cdef int n_x = x.shape[0]
         if algorithm=='viterbi':
             if n_x >0:
                 (<_StandardBKT*>self.c_object).predict_by_viterbi(<double*> get_pointer(out), <int*> get_pointer(x), n_x)
-
-
         elif algorithm == "posterior":
             (<_StandardBKT*>self.c_object).predict_by_posterior(<double*> get_pointer(out), <int*> get_pointer(x), n_x)
         else:
@@ -654,14 +654,16 @@ cdef class IRTBKT(StandardBKT):
 
 
         out = np.zeros(self.n_obs, dtype=np.float64, order="C")
+        cdef int n_x = 0
         # 预测首次作答结果
         if x is None or x.shape[0] ==0:
-            (<_IRTBKT*>self.c_object).predict_first(<double*> get_pointer(out), item_id)
-            return out
-
-        cdef int n_x = x.shape[0]
-
-        x = np.ascontiguousarray(x,dtype=np.int32)
+        #     (<_IRTBKT*>self.c_object).predict_first(<double*> get_pointer(out), item_id)
+        #     return out
+            x = None
+            n_x = 0
+        else:
+            n_x = x.shape[0]
+            x = np.ascontiguousarray(x,dtype=np.int32)
 
         if algorithm=='viterbi':
             (<_IRTBKT*>self.c_object).predict_by_viterbi(<double*> get_pointer(out), <int*> get_pointer(x), n_x,item_id)

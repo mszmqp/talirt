@@ -61,7 +61,7 @@ double irt(double theta, Item *item, int m = 1) {
     double z = 0;
     switch (m) {
         case 1:
-            z =  theta - item->intercept;
+            z = theta - item->intercept;
             break;
         default:
             z = item->slop * theta - item->intercept;
@@ -229,7 +229,7 @@ double IRTBKT::predict_by_posterior(double *out, int *x, int n_x, int item_id) {
         return 0;
     }
 
-    // 没有历史观测序列，相当于预测首次结果
+    // 没有历史观测序列x，相当于预测首次结果
     if (x == NULL || n_x == 0) {
         for (int i = 0; i < this->n_obs; ++i) {
             out[i] = 0;
@@ -241,19 +241,18 @@ double IRTBKT::predict_by_posterior(double *out, int *x, int n_x, int item_id) {
 
         return 0;
     }
+
+
+
     // fwdlattice[-1]是最后时刻，隐状态的概率分布
     double *buffer = init1D<double>(n_x * this->n_stat);
-
+    // 计算隐状态的后验概率分布
     double ll = this->posterior_distributed(buffer, x, n_x);
 
     MatrixView<double> posterior(n_x, this->n_stat, buffer);
 
-//    if(item_id==1552 || item_id==2086 ){
-//        std::cout<<n_x<<" " << this->n_stat<<std::endl;
-//        print1D<double>(buffer,n_x * this->n_stat);
-//    }
 
-
+    // 待预测的下一个隐状态概率分布
     double *predict_stat = init1D<double>(this->n_stat);
 
     for (int k = 0; k < this->n_obs; ++k) {
@@ -264,10 +263,8 @@ double IRTBKT::predict_by_posterior(double *out, int *x, int n_x, int item_id) {
             for (int j = 0; j < this->n_stat; ++j) {
                 predict_stat[i] += posterior[n_x - 1][j] * this->A[j][i];
             }
+            // 预测观测值
             out[k] += predict_stat[i] * this->emmit_pdf_ex(i, k, item_id);
-//            if(item_id==1552 || item_id==2086 ){
-//                std::cout<<"out_k "<<out[k]<<" "<<predict_stat[i]<<" "<<this->emmit_pdf_ex(i, k, item_id) <<std::endl;
-//            }
         }
 
     }
@@ -285,17 +282,56 @@ double IRTBKT::predict_by_viterbi(double *out, int *x, int n_x, int item_id) {
 //        std::cout << "predict_by_viterbi " << "n_x:" << n_x << " item_id:" << item_id << std::endl;
 //    }
 
-    if (out == NULL || x == NULL) {
+    if (out == NULL) {
         return 0;
     }
-    int *stat = init1D<int>(n_x);
 
-    double max_prob = this->viterbi(stat, x, n_x);
-    for (int i = 0; i < this->n_obs; ++i) {
+    int next_stat=-1; // 预测的隐状态
+    double _max_t = -1;
+    double max_prob = 0; // 隐状态序列的概率
 
-        out[i] = this->emmit_pdf_ex(stat[n_x - 1], i, item_id);
+    // 如果没有已知观测序列x，就是预测第一个观测值，基于初始概率PI进行预测
+    if (n_x == 0 || x == NULL) {
+
+        // 选出初始概率中最大概率的状态
+        for (int i = 0; i < this->n_stat; ++i) {
+            if (this->PI[i] > _max_t) {
+                _max_t = this->PI[i];
+                next_stat = i;
+            }
+        }
+
+        max_prob = _max_t;
+
+    } else { // 有观测序列x，预测下一个观测值
+
+        int *stat = init1D<int>(n_x);
+        // 已知观测序列x，通过viterbi算法解码得到最大概率的隐状态序列
+        max_prob = this->viterbi(stat, x, n_x);
+
+        // 预测下一个隐状态的值
+
+        // 当前状态下，最大概率转移到哪一个状态
+        for (int j = 0; j < this->n_stat; ++j) {
+            if (this->A[stat[n_x - 1]][j] > _max_t) {
+                _max_t = this->A[stat[n_x - 1]][j];
+                next_stat = j;
+            }
+        }
+
+        max_prob *= _max_t;
+        free(stat);
+
     }
 
-    free(stat);
+    assert(next_stat >=0 );
+
+    // 根据预测的下一个隐状态，算出可能的观测值
+    for (int i = 0; i < this->n_obs; ++i) {
+
+        out[i] = this->emmit_pdf_ex(next_stat, i, item_id);
+    }
+
+
     return max_prob;
 }
