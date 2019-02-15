@@ -12,4 +12,3 @@
     :numbered:
 
     info.rst
-    bkt&irt.rst

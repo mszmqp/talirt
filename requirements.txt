@@ -3,6 +3,5 @@ pymc3
 scipy
 numpy
 pandas
-elasticsearch-dsl=5
 CythonGSL
 numexpr

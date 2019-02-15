@@ -6,7 +6,7 @@
 """
 Authors: zhangzhenhu(acmtiger@gmail.com)
 Date:    2019/1/17 10:36
-
+KDD Cup 2010 公开的数据集
 KDD Cup 2010 Educational Data Mining Challenge
 
 Description: http://pslcdatashop.web.cmu.edu/KDDCup/

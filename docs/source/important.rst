@@ -46,34 +46,33 @@ pymc3的问题
 1. pymc3.sample(discard_tuned_samples=False),必须设置为discard_tuned_samples=False
 2. 修改pymc3/sampling.py:664
 
-```python
-def _iter_sample(draws, step, start=None, trace=None, chain=0, tune=None,
-                 model=None, random_seed=None):
-                 ...
+.. code-block:: python
 
+    def _iter_sample(draws, step, start=None, trace=None, chain=0, tune=None,
+                     model=None, random_seed=None):
+                     ...
 
-
-    try:
-        step.tune = bool(tune)
-        for i in range(draws):
-            if i == tune:
-                step = stop_tuning(step)
-            if step.generates_stats:
-                point, states = step.step(point)
-                if strace.supports_sampler_stats:
-                    if i>= tune: # 增加行
-                        strace.record(point, states)
+        try:
+            step.tune = bool(tune)
+            for i in range(draws):
+                if i == tune:
+                    step = stop_tuning(step)
+                if step.generates_stats:
+                    point, states = step.step(point)
+                    if strace.supports_sampler_stats:
+                        if i>= tune: # 增加行
+                            strace.record(point, states)
+                    else:
+                        if i>=tune: # 增加行
+                            strace.record(point)
                 else:
+                    point = step.step(point)
                     if i>=tune: # 增加行
                         strace.record(point)
-            else:
-                point = step.step(point)
-                if i>=tune: # 增加行
-                    strace.record(point)
-            yield strace
+                yield strace
 
 
-```
+
 
 性能问题
 ------------------
@@ -91,21 +90,24 @@ pymc3效率比较差，而且还伴随内存问题。主要导致原因是其每
 ------------------
 学生答题有缺失值，对于观测变量缺失值的情况，pymc3是支持缺失值的http://docs.pymc.io/notebooks/getting_started中有一段
 
-	Missing values are handled transparently by passing a MaskedArray or a pandas.
-	DataFrame with NaN values to the observed argument when creating an observed stochastic random variable.
-	Behind the scenes, another random variable, disasters.missing_values is created to model the missing values.
-	 All we need to do to handle the missing values is ensure we sample this random variable as well.
+::
+    Missing values are handled transparently by passing a MaskedArray or a pandas.
+    DataFrame with NaN values to the observed argument when creating an observed stochastic random variable.
+    Behind the scenes, another random variable, disasters.missing_values is created to model the missing values.
+    All we need to do to handle the missing values is ensure we sample this random variable as well.
 
-	Unfortunately because they are discrete variables and thus have no meaningful gradient,
-	we cannot use NUTS for sampling switchpoint or the missing disaster observations.
-	Instead, we will sample using a Metroplis step method, which implements adaptive Metropolis-Hastings,
-	because it is designed to handle discrete values.
-	PyMC3 automatically assigns the correct sampling algorithms.
+    Unfortunately because they are discrete variables and thus have no meaningful gradient,
+    we cannot use NUTS for sampling switchpoint or the missing disaster observations.
+    Instead, we will sample using a Metroplis step method, which implements adaptive Metropolis-Hastings,
+    because it is designed to handle discrete values.
+    PyMC3 automatically assigns the correct sampling algorithms.
 
 
 **但是实验发现，这么搞抽样会非常慢**
 
+
 burn-in 数量
 ------------------------------------
+
 
 sampler默认是nuts，经实验 burn-in 1000和10000没区别不大。
