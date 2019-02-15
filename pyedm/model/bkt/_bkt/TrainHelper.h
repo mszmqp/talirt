@@ -8,7 +8,12 @@
 //#include "_hmm.h"
 #include "_bkt.h"
 
+/*
+ * 批量训练辅助工具。
+*/
 class TrainHelper {
+
+
 private:
     int n_stat;
     int n_obs;

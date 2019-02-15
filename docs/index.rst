@@ -7,7 +7,7 @@ Welcome to talirt's documentation!
 ===================================
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 2
    :caption: 目录:
 
    source/ctt/index.rst
@@ -17,6 +17,7 @@ Welcome to talirt's documentation!
    source/estimation/index.rst
    source/literature/index.rst
    source/论文概览.rst
+   source/important.rst
 
 
 Indices and tables

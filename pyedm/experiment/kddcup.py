@@ -300,26 +300,14 @@ def test_irt_bkt(models, df_train, df_test, item_info):
         # sd = model.posterior_distributed(x)
 
         result = model.predict_next(x, predict_item_id, 'posterior')
-        if result is None or np.isnan(result[1]):
-            print(result)
-            # print(x)
-            print(predict_item_id)
-            # print(row)
-            model.debug()
-            quit()
 
-        # if _ > 2000:
-        #     quit()
         row['pred_prob'] = result[1]
         row['作答序列'] = ','.join([str(a) for a in x])
         row['难度序列'] = ','.join([str(a) for a in item_info_arr[train_items_id, 1].round(2)])
         row['viterbi'] = ','.join([str(a) for a in model.viterbi(x)])
 
         df_eva.append(row)
-        # break
-        # if len(df_eva) > 100:
-        #     break
-    # quit()
+
     df_eva = pd.DataFrame(df_eva)
 
     df_eva['pred_label'] = df_eva['pred_prob']
