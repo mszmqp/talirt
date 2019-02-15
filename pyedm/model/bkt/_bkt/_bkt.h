@@ -2,8 +2,8 @@
 // Created by 张振虎 on 2019/1/16.
 //
 
-#ifndef HMM_IRTBKT_H
-#define HMM_IRTBKT_H
+#ifndef HMM_IRTBKT_H_
+#define HMM_IRTBKT_H_
 
 #include "utils.h"
 #include <math.h>

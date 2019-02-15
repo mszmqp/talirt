@@ -5,8 +5,8 @@
 //#include <gsl/gsl_matrix.h>
 
 
-#ifndef BKT_HMM_H_
-#define BKT_HMM_H_
+#ifndef BKT_HMM_H
+#define BKT_HMM_H
 
 #include <map>
 #include <string>
@@ -19,12 +19,77 @@
 #include "utils.h"
 
 //typedef signed char NPAR;
-
+typedef unsigned int UINT;
 
 
 bool issimplexbounded(double *ar, double *lb, double *ub, int size);
 
 void projectsimplexbounded(double *ar, double *lb, double *ub, int size);
+
+class FitBit {
+public:
+    int *data;
+    int *items;
+    UINT data_length;
+    UINT item_length;
+    UINT n_obs;
+    UINT n_stat;
+    MatrixView<double> PI;
+    MatrixView<double> A;
+    MatrixView<double> B;
+
+    double **fwdlattice;
+    double **backlattice;
+    double **gammalattice;
+    double *cn;
+
+    double *gamma_sum;
+    double *gamma_sum_less;
+
+    double **xi_sum;
+
+    double log_likelihood;
+    bool success;
+    FitBit();
+
+    ~FitBit();
+
+    void set_data(int *x, UINT length, bool copy = false);
+
+    void set_item(int *item, UINT length, bool copy = false);
+
+    /// 必须在set_data之后调用
+    /// \param n_stat
+    /// \param n_obs
+    void init(int n_stat, int n_obs);
+
+    /// 必须在init之后调用
+    /// \param ptr
+    /// \param copy
+    void set_pi(double *ptr, bool copy = false);
+
+    void set_a(double *ptr, bool copy = false);
+
+    void set_b(double *ptr, bool copy = false);
+
+    void reset();
+
+private:
+    bool free_data;
+    bool free_item;
+
+    double *PI_ptr;
+    double *A_ptr;
+    double *B_ptr;
+};
+
+
+///
+/// \param x
+/// \param lengths
+/// \param n_lengths
+/// \return
+FitBit *covert2fb(int *x, int *lengths, int n_lengths);
 
 
 /*
@@ -53,7 +118,9 @@ private:
     double **fwdlattice;
     double **backlattice;
     double **gammalattice;
-//    double **xi_sum;
+
+
+
     double *cn;
 
     int x_pos;
@@ -160,6 +227,7 @@ protected:
     /// \param A
     /// \return
     double forward(int x_pos, int n_x, double *PI, double **A);
+    void forward(FitBit *fb);
 
     /// 后向算法
     /// \param x
@@ -168,6 +236,7 @@ protected:
     /// \param A
     /// \return
     double backward(int x_pos, int n_x, double *PI, double **A);
+    void backward(FitBit *fb);
 
     /// 计算gamma
     /// \param x
@@ -176,10 +245,12 @@ protected:
     /// \param backlattice
     /// \param gamma_sum
     void gamma(int x_pos, int n, double **fwdlattice, double **backlattice, double *gamma_sum);
+    void gamma(FitBit *fb);
 
     void xi(int x_pos, int n, double **fwdlattice, double **backlattice, double **xi_sum);
 
     virtual double emmit_pdf(int stat, int obs, int t = -1);
+    virtual double emmit_pdf(FitBit *fb,int stat, int t);
 
     void bounded();
 

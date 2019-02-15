@@ -318,7 +318,7 @@ public:
     int rows;
     int cols;
 
-    MatrixView(int rows, int cols, C *ptr) {
+    MatrixView(int rows=0, int cols=0, C *ptr=NULL) {
         this->rows = rows;
         this->cols = cols;
         this->data = ptr;
