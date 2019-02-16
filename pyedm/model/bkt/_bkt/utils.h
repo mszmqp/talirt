@@ -318,13 +318,37 @@ public:
     int rows;
     int cols;
 
-    MatrixView(int rows=0, int cols=0, C *ptr=NULL) {
+    MatrixView(int rows = 0, int cols = 0, C *ptr = NULL) {
         this->rows = rows;
         this->cols = cols;
         this->data = ptr;
     };
 
     C *operator[](int k) { return &(this->data[k * this->cols]); }
+
+    void init(int rows = 0, int cols = 0) {
+        this->rows = rows;
+        this->cols = cols;
+        this->data = init1D<C>(this->rows * this->cols);
+    }
+
+    void toZero() {
+        toZero1D<C>(this->data, this->rows * this->cols);
+    }
+
+    void print() {
+        for (int i = 0; i < this->rows; ++i) {
+            for (int j = 0; j < this->cols; ++j) {
+                std::cout << (*this)[i][j] << " ";
+            }
+            std::cout << std::endl;
+        }
+    }
+
+    void free_data() {
+        free(this->data);
+    }
+
 };
 
 

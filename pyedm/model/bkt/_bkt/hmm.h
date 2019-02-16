@@ -34,7 +34,7 @@ public:
     UINT item_length;
     UINT n_obs;
     UINT n_stat;
-    MatrixView<double> PI;
+    double *PI;
     MatrixView<double> A;
     MatrixView<double> B;
 
@@ -47,9 +47,11 @@ public:
     double *gamma_sum_less;
 
     double **xi_sum;
+    double **gamma_obs_sum;
 
     double log_likelihood;
     bool success;
+
     FitBit();
 
     ~FitBit();
@@ -74,22 +76,83 @@ public:
 
     void reset();
 
+    void _print2d(double **x, int rows, int cols) {
+        for (int i = 0; i < rows; ++i) {
+            std::cout << i;
+            for (int j = 0; j < cols; ++j) {
+                std::cout << " " << x[i][j];
+
+            }
+            std::cout << std::endl;
+        }
+    }
+
+    void print_alpha() {
+        std::cout << "alpha" << std::endl;
+//        double * cn_cumsum = init1D<double>(this->n_stat);
+        double cn_cumsum = 1;
+        for (int i = 0; i < this->data_length; ++i) {
+            std::cout << i;
+            cn_cumsum *= this->cn[i];
+            for (int j = 0; j < this->n_stat; ++j) {
+
+                std::cout << " " << this->fwdlattice[i][j] * cn_cumsum;
+
+            }
+            std::cout << std::endl;
+        }
+    };
+
+    void print_beta() {
+        std::cout << "beta" << std::endl;
+        double cn_cumsum = 1;
+        for (int i = this->data_length-1; i >=0; --i) {
+            std::cout << i;
+            cn_cumsum *= this->cn[i];
+//            std::cout << " cn:" <<this->cn[i] << " cn_cumsum:" << cn_cumsum;
+            for (int j = 0; j < this->n_stat; ++j) {
+
+//                std::cout << " " << this->backlattice[i][j] << " " << this->backlattice[i][j]*cn_cumsum;
+                std::cout <<  " " << this->backlattice[i][j]*cn_cumsum;
+
+            }
+            std::cout << std::endl;
+        }
+    };
+
+    void print_gamma() {
+        std::cout << "gamma" << std::endl;
+        for (int i = 0; i < this->data_length; ++i) {
+            std::cout << i;
+            for (int j = 0; j < this->n_stat; ++j) {
+
+                std::cout << " " << this->gammalattice[i][j];
+
+            }
+            std::cout << std::endl;
+        }
+    };
+    void print_xi_sum(){
+        std::cout << "xi sum" << std::endl;
+        print2D<double>(this->xi_sum,this->n_stat,this->n_stat);
+    }
+    void print_gamma_sum_less(){
+        std::cout << "gamma sum less" << std::endl;
+        print1D<double>(this->gamma_sum_less,this->n_stat);
+    }
+
 private:
     bool free_data;
     bool free_item;
-
-    double *PI_ptr;
-    double *A_ptr;
-    double *B_ptr;
+    bool free_pi;
+    bool free_a;
+    bool free_b;
+//    double *PI_ptr;
+//    double *A_ptr;
+//    double *B_ptr;
 };
 
 
-///
-/// \param x
-/// \param lengths
-/// \param n_lengths
-/// \return
-FitBit *covert2fb(int *x, int *lengths, int n_lengths);
 
 
 /*
@@ -100,12 +163,15 @@ class HMM {
 public:
     int iter;
     double log_likelihood;
+    double log_likelihood_0;
     int n_obs;
     int n_stat;
     int max_iter;
+
     double *PI;
-    double **A;
-    double **B;
+    MatrixView<double> A;
+    MatrixView<double> B;
+
     bool success;
     std::string msg;
 
@@ -115,20 +181,7 @@ private:
     double **A_LOW, **A_UPPER;
     double **B_LOW, **B_UPPER;
 
-    double **fwdlattice;
-    double **backlattice;
-    double **gammalattice;
-
-
-
-    double *cn;
-
-    int x_pos;
-    int *x_ptr;
     int minimum_obs;
-
-
-//    EmissionDistribution *ed;
 
 public:
     ///
@@ -188,6 +241,7 @@ public:
     /// \param n_x
     /// \return
     double posterior_distributed(double *out, int *x, int n_x);
+    double posterior_distributed(FitBit *fb,double *out);
 
     /// viterbi解码算法，求解最优隐状态序列
     /// \param out
@@ -220,6 +274,15 @@ public:
     int get_minimum_obs() { return this->minimum_obs; };
 
 protected:
+
+    ///
+    /// \param x
+    /// \param lengths
+    /// \param n_lengths
+    /// \return
+    virtual FitBit **covert2fb(int *x, int *lengths, int n_lengths);
+    virtual FitBit *covert2fb(int *x, int length);
+
     /// 前向算法
     /// \param x
     /// \param n_x
@@ -227,6 +290,7 @@ protected:
     /// \param A
     /// \return
     double forward(int x_pos, int n_x, double *PI, double **A);
+
     void forward(FitBit *fb);
 
     /// 后向算法
@@ -236,6 +300,7 @@ protected:
     /// \param A
     /// \return
     double backward(int x_pos, int n_x, double *PI, double **A);
+
     void backward(FitBit *fb);
 
     /// 计算gamma
@@ -245,14 +310,21 @@ protected:
     /// \param backlattice
     /// \param gamma_sum
     void gamma(int x_pos, int n, double **fwdlattice, double **backlattice, double *gamma_sum);
+
     void gamma(FitBit *fb);
 
     void xi(int x_pos, int n, double **fwdlattice, double **backlattice, double **xi_sum);
 
-    virtual double emmit_pdf(int stat, int obs, int t = -1);
-    virtual double emmit_pdf(FitBit *fb,int stat, int t);
+    void xi(FitBit *fb);
+
+    virtual double emmit_pdf(int stat, int obs);
+
+    virtual double emmit_pdf(FitBit *fb, int stat, int t);
+
+    virtual void compute_param(FitBit **fb_list, int length);
 
     void bounded();
+    double compute_loglikehood(FitBit **fb_list, int fb_length);
 
 };
 

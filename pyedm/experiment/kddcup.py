@@ -621,20 +621,26 @@ def main(options):
     print('*' * 50)
     print("智能练习数据")
     print('*' * 50)
+
     print("=" * 20, 'irt bkt', '=' * 20)
     metric1 = run_irt_bkt(df_train.copy(), df_test.copy(), df_item_info)
     metric1['data'] = "智能练习数据"
     report.append(metric1)
+
+    print("=" * 20, 'standard bkt', '=' * 20)
+    metric3 = run_standard_bkt(df_train, df_test, df_item_info)
+    metric3['data'] = "智能练习数据"
+    report.append(metric3)
+
+    # quit()
+
 
     print("=" * 20, 'individual standard bkt', '=' * 20)
     metric2 = run_standard_bkt_individual(df_train.copy(), df_test.copy(), df_item_info)
     metric2['data'] = "智能练习数据"
     report.append(metric2)
 
-    print("=" * 20, 'standard bkt', '=' * 20)
-    metric3 = run_standard_bkt(df_train, df_test, df_item_info)
-    metric3['data'] = "智能练习数据"
-    report.append(metric3)
+
 
     # 打印表格报告
     import pytablewriter

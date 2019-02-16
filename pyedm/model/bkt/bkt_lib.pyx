@@ -13,9 +13,9 @@ from libcpp cimport bool
 
 
 # from libcpp cimport new,delete
-cdef extern from "_bkt/_hmm.cpp":
+cdef extern from "_bkt/hmm.cpp":
     pass
-cdef extern from "_bkt/_hmm.h" nogil:
+cdef extern from "_bkt/hmm.h" nogil:
     cdef cppclass _HMM "HMM":
         _HMM(int, int) nogil except +
         void init(double *pi, double *a, double *b) nogil;
@@ -40,11 +40,11 @@ cdef extern from "_bkt/_hmm.h" nogil:
         int max_iter;
         bool success;
 
-cdef extern from "_bkt/_bkt.cpp":
+cdef extern from "_bkt/bkt.cpp":
     pass
 
 
-cdef extern from "_bkt/_bkt.h" nogil:
+cdef extern from "_bkt/bkt.h" nogil:
     cdef cppclass _StandardBKT "StandardBKT":
         _StandardBKT(int, int) nogil except +
         void init(double *pi, double *a, double *b) nogil;

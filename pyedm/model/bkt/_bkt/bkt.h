@@ -7,20 +7,20 @@
 
 #include "utils.h"
 #include <math.h>
-#include "_hmm.h"
+#include "hmm.h"
 
 
 class StandardBKT : public HMM {
 public:
     StandardBKT(int n_stat = 2, int n_obs = 2) : HMM(n_stat, n_obs) {};
 
-    double predict_by_posterior(double *out, int *x, int n_x) override;
+//    double predict_by_posterior(double *out, int *x, int n_x) override;
 
 private:
-    double emmit_pdf(int stat, int obs, int item_pos) override {
-//        std::cout << "x_pos " << x_pos << std::endl;
-        return this->B[stat][obs];
-    };
+//    double emmit_pdf(int stat, int obs, int item_pos) override {
+////        std::cout << "x_pos " << x_pos << std::endl;
+//        return this->B[stat][obs];
+//    };
 };
 
 //#pragma pack(8)
@@ -87,9 +87,19 @@ public:
     void predict_first(double *out, int item_id);
 
     void debug();
+//    double posterior_distributed(double *out, int *x, int n_x);
 
 private:
-    double emmit_pdf(int stat, int obs, int t) override;
+    ///
+    /// \param x
+    /// \param lengths
+    /// \param n_lengths
+    /// \return
+    FitBit **covert2fb(int *x, int *lengths, int n_lengths) override ;
+    FitBit *covert2fb(int *x, int length) override ;
+
+//    double emmit_pdf(int stat, int obs, int t) override;
+    double emmit_pdf(FitBit *fb, int stat, int t) override;
 
     double emmit_pdf_ex(int stat, int obs, int item_id);
 

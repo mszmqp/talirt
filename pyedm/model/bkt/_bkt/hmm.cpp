@@ -20,11 +20,17 @@ FitBit::FitBit() {
     this->gamma_sum = NULL;
     this->gamma_sum_less = NULL;
 
-    this->PI_ptr = NULL;
-    this->A_ptr = NULL;
-    this->B_ptr = NULL;
+    this->xi_sum = NULL;
+    this->gamma_obs_sum = NULL;
+
+//    this->PI_ptr = NULL;
+//    this->A_ptr = NULL;
+//    this->B_ptr = NULL;
     this->free_data = false;
     this->free_item = false;
+    this->free_pi = false;
+    this->free_a = false;
+    this->free_b = false;
 
     this->success = false;
     this->log_likelihood = 0;
@@ -38,9 +44,18 @@ FitBit::~FitBit() {
     if (this->free_item) {
         free(this->items);
     }
-    free(this->PI_ptr);
-    free(this->A_ptr);
-    free(this->B_ptr);
+    if (free_pi) {
+
+        free(this->PI);
+    }
+    if (free_a) {
+        free(this->A.data);
+
+    }
+    if (free_b) {
+        free(this->B.data);
+    }
+
 
     free2D(this->fwdlattice, this->data_length);
     free2D(this->backlattice, this->data_length);
@@ -49,10 +64,13 @@ FitBit::~FitBit() {
     free(this->cn);
     free(this->gamma_sum);
     free(this->gamma_sum_less);
+    free2D(this->xi_sum, this->n_stat);
+    free2D(this->gamma_obs_sum, this->n_stat);
+
 
 }
 
-void FitBit::set_data(int *x, UINT length, bool copy = false) {
+void FitBit::set_data(int *x, UINT length, bool copy) {
 
     // 先释放原来的,避免内存泄漏
     if (this->free_data) {
@@ -65,14 +83,14 @@ void FitBit::set_data(int *x, UINT length, bool copy = false) {
         cpy1D<int>(x, this->data, length);
     } else {
         this->free_data = false;
-        this->data = data;
+        this->data = x;
 
 
     }
     this->data_length = length;
 }
 
-void FitBit::set_item(int *item, UINT length, bool copy = false) {
+void FitBit::set_item(int *item, UINT length, bool copy) {
 
     // 先释放原来的,避免内存泄漏
     if (this->free_item) {
@@ -95,41 +113,49 @@ void FitBit::set_item(int *item, UINT length, bool copy = false) {
 }
 
 
-void FitBit::set_pi(double *ptr, bool copy = false) {
+void FitBit::set_pi(double *ptr, bool copy) {
     assert(this->n_stat > 0 && this->n_obs > 0);
+
     // 先释放原来的,避免内存泄漏
-    free(this->PI_ptr);
+    if (free_pi) {
+        free(this->PI);
+
+    }
 
     if (copy) {
-        this->PI_ptr = Calloc(double, this->n_stat);
+        this->PI = Calloc(double, this->n_stat);
 
-        cpy1D<double>(ptr, this->PI_ptr, this->n_stat);
-
-        this->PI.data = this->PI_ptr;
+        cpy1D<double>(ptr, this->PI, this->n_stat);
+        this->free_pi = true;
+//        this->PI.data = this->PI_ptr;
     } else {
 
-
-        this->PI.data = ptr;
+        this->free_pi = false;
+        this->PI = ptr;
     }
-    this->PI.rows = 1;
-    this->PI.cols = this->n_stat;
+//    this->PI.rows = 1;
+//    this->PI.cols = this->n_stat;
 
 }
 
-void FitBit::set_a(double *ptr, bool copy = false) {
+void FitBit::set_a(double *ptr, bool copy) {
     assert(this->n_stat > 0 && this->n_obs > 0);
+
     // 先释放原来的,避免内存泄漏
-    free(this->A_ptr);
+    if (free_a) {
+        free(this->A.data);
+
+    }
 
     if (copy) {
-        this->A_ptr = Calloc(double, this->n_stat * this->n_stat);
+        this->A.data = Calloc(double, this->n_stat * this->n_stat);
 
-        cpy1D<double>(ptr, this->A_ptr, this->n_stat * this->n_stat);
+        cpy1D<double>(ptr, this->A.data, this->n_stat * this->n_stat);
+        this->free_a = true;
 
-        this->A.data = this->A_ptr;
     } else {
 
-
+        this->free_a = false;
         this->A.data = ptr;
     }
     this->A.rows = this->n_stat;
@@ -137,21 +163,23 @@ void FitBit::set_a(double *ptr, bool copy = false) {
 
 }
 
-void FitBit::set_b(double *ptr, bool copy = false) {
+void FitBit::set_b(double *ptr, bool copy) {
     assert(this->n_stat > 0 && this->n_obs > 0);
     // 先释放原来的,避免内存泄漏
-    free(this->B_ptr);
+    if (free_b) {
+        free(this->B.data);
+
+    }
 
     if (copy) {
-        this->B_ptr = Calloc(double, this->n_stat * this->n_obs);
+        this->B.data = Calloc(double, this->n_stat * this->n_obs);
 
-        cpy1D<double>(ptr, this->B_ptr, this->n_stat * this->n_obs);
+        cpy1D<double>(ptr, this->B.data, this->n_stat * this->n_obs);
+        this->free_b = true;
 
-        this->B.data = this->B_ptr;
     } else {
-
-
         this->B.data = ptr;
+        this->free_b = false;
     }
     this->B.rows = this->n_stat;
     this->B.cols = this->n_obs;
@@ -169,10 +197,12 @@ void FitBit::init(int n_stat, int n_obs) {
     free(this->cn);
     free(this->gamma_sum);
     free(this->gamma_sum_less);
+    free2D(this->xi_sum, this->n_stat);
+    free2D(this->gamma_obs_sum, this->n_stat);
 
 
-    this->n_stat = n_stat;
-    this->n_obs = n_obs;
+    this->n_stat = (UINT) n_stat;
+    this->n_obs = (UINT) n_obs;
     this->log_likelihood = 0;
     // 申请新空间
     this->fwdlattice = init2D<double>(this->data_length, this->n_stat);
@@ -182,20 +212,21 @@ void FitBit::init(int n_stat, int n_obs) {
 
     this->gamma_sum = init1D<double>(this->n_stat);
     this->gamma_sum_less = init1D<double>(this->n_stat);
-
+    this->xi_sum = init2D<double>(this->n_stat, this->n_stat);
+    this->gamma_obs_sum = init2D<double>(this->n_stat, this->n_obs);
 }
 
 void FitBit::reset() {
 
-    toZero1D(this->cn, this->data_length);
-    toZero2D(this->fwdlattice, this->data_length, this->n_stat);
-    toZero2D(this->backlattice, this->data_length, this->n_stat);
-    toZero2D(this->gammalattice, this->data_length, this->n_stat);
+//    toZero1D(this->cn, this->data_length);
+//    toZero2D(this->fwdlattice, this->data_length, this->n_stat);
+//    toZero2D(this->backlattice, this->data_length, this->n_stat);
+//    toZero2D(this->gammalattice, this->data_length, this->n_stat);
     this->log_likelihood = 0;
     this->success = false;
 }
 
-FitBit **covert2fb(int *x, int *lengths, int n_lengths) {
+FitBit **HMM::covert2fb(int *x, int *lengths, int n_lengths) {
     int n_x = 0;
     int *x_pos = x;
 
@@ -207,13 +238,18 @@ FitBit **covert2fb(int *x, int *lengths, int n_lengths) {
 
         // 当前观测序列的长度
         n_x = lengths[i];
-
-        result[i]->set_data(x_pos, n_x);
+        result[i] = new FitBit();
+        result[i]->set_data(x_pos, (UINT) n_x);
 
     }
     return result;
 }
 
+FitBit *HMM::covert2fb(int *x, int length) {
+    FitBit *fb = new FitBit();
+    fb->set_data(x, length);
+    return fb;
+}
 //typedef signed char int;
 
 bool issimplexbounded(double *ar, double *lb, double *ub, int size) {
@@ -381,26 +417,31 @@ HMM::HMM(int n_stat, int n_obs) {
     toZero1D(this->PI_LOW, this->n_stat);
     setConstant1D(this->PI_UPPER, this->n_stat, 1.0);
 
-    this->A = init2D<double>(this->n_stat, this->n_stat);
+//    this->A.data = init1D<double>(this->n_stat*this->n_stat);
+    this->A.init(this->n_stat, this->n_stat);
+
     this->A_LOW = init2D<double>(this->n_stat, this->n_stat);;
     this->A_UPPER = init2D<double>(this->n_stat, this->n_stat);;
-    toZero2D(this->A, this->n_stat, this->n_stat);
+
+//    toZero1D(this->A.data, this->n_stat*this->n_stat);
     toZero2D(this->A_LOW, this->n_stat, this->n_stat);
     setConstant2D(this->A_UPPER, this->n_stat, this->n_stat, 1.0);
 
-    this->B = init2D<double>(this->n_stat, this->n_obs);
+//    this->B = init2D<double>(this->n_stat, this->n_obs);
+    this->B.init(this->n_stat, this->n_obs);
+
     this->B_LOW = init2D<double>(this->n_stat, this->n_obs);
     this->B_UPPER = init2D<double>(this->n_stat, this->n_obs);
-    toZero2D(this->B, this->n_stat, this->n_obs);
+//    toZero2D(this->B, this->n_stat, this->n_obs);
     toZero2D(this->B_LOW, this->n_stat, this->n_obs);
     setConstant2D(this->B_UPPER, this->n_stat, this->n_obs, 1.0);
 
-    this->fwdlattice = NULL;
-    this->backlattice = NULL;
-    this->x_ptr = NULL;
-    this->x_pos = 0;
-    this->gammalattice = NULL;
-    this->cn = NULL;
+//    this->fwdlattice = NULL;
+//    this->backlattice = NULL;
+//    this->x_ptr = NULL;
+//    this->x_pos = 0;
+//    this->gammalattice = NULL;
+//    this->cn = NULL;
     this->msg = "Not fit";
     this->minimum_obs = 3;
 }
@@ -409,10 +450,15 @@ HMM::~HMM() {
     free(this->PI);
     free(this->PI_LOW);
     free(this->PI_UPPER);
-    free2D(this->A, this->n_stat);
+
+    this->A.free_data();
+//    free(this->A.data);
+
     free2D(this->A_LOW, this->n_stat);
     free2D(this->A_UPPER, this->n_stat);
-    free2D(this->B, this->n_stat);
+
+//    free(this->B.data);
+    this->B.free_data();
     free2D(this->B_LOW, this->n_stat);
     free2D(this->B_UPPER, this->n_stat);
 }
@@ -495,7 +541,7 @@ void HMM::bounded() {
     for (int i = 0; i < this->n_stat; ++i) {
 
         projectsimplexbounded(this->A[i], this->A_LOW[i], this->A_UPPER[i], this->n_stat);
-        if (this->B && this->B_LOW && this->B_UPPER) {
+        if (this->B.data && this->B_LOW && this->B_UPPER) {
 
             projectsimplexbounded(this->B[i], this->B_LOW[i], this->B_UPPER[i], this->n_obs);
         }
@@ -564,245 +610,251 @@ bool HMM::fit(int *x, int *lengths, int n_lengths, int max_iter, double tol) {
     this->success = false;
     this->max_iter = max_iter;
 
-    FitBit **fb_list = covert2fb(x, lengths, n_lengths);
+    FitBit **fb_list = this->covert2fb(x, lengths, n_lengths);
     for (int l = 0; l < n_lengths; ++l) {
         fb_list[l]->init(this->n_stat, this->n_obs);
     }
-    FitBit *fb;
-    double *gamma_sum_T = init1D<double>(this->n_stat);
-    double *gamma_sum_T_1 = init1D<double>(this->n_stat);
-
-    double **xi_sum = init2D<double>(this->n_stat, this->n_stat);
-    double **gamma_obs_sum = init2D<double>(this->n_stat, this->n_obs);
+    FitBit *fb = NULL;
 
 
-    double *PI = init1D<double>(this->n_stat);
-    double **A = init2D<double>(this->n_stat, this->n_stat);
-    double **B = init2D<double>(this->n_stat, this->n_obs);
-
-
-    int n_x, iter;
-    int x_pos;
+    int iter = 0;
+//    int x_pos;
     double cur_log_likelihood = 0, pre_log_likelihood = 0;
 
-    this->x_ptr = x;
+    this->log_likelihood_0 = 0;
+    this->log_likelihood = 0;
 
-    for (iter = 0; iter < max_iter; ++iter) {
-//        start_pos = 0;
-//        this->x_pos = 0;
-        x_pos = 0;
-        n_x = 0;
-        toZero1D<double>(PI, this->n_stat);
-        toZero2D<double>(A, this->n_stat, this->n_stat);
-        toZero2D<double>(B, this->n_stat, this->n_obs);
 
-        toZero2D<double>(xi_sum, this->n_stat, this->n_stat);
-        toZero2D<double>(gamma_obs_sum, this->n_stat, this->n_obs);
-        toZero1D<double>(gamma_sum_T, this->n_stat);
-        toZero1D<double>(gamma_sum_T_1, this->n_stat);
+    int valid_count = 0;
+    for (iter = 0; iter < this->max_iter; ++iter) {
 
         pre_log_likelihood = cur_log_likelihood;
         cur_log_likelihood = 0;
 
 //        std::cout << "------" << iter << "-----" << n_lengths << std::endl;
-//        std::cout << "PI" << std::endl;
-//        print1D(this->PI, this->n_stat);
-//        cout << "A" << endl;
-//        print2D(this->A, this->n_stat, this->n_stat);
-//        cout << "B" << endl;
-//        print2D(this->B, this->n_stat, this->n_obs);
-
-
-        // 注意gamma_obs_sum gamma_sum xi_sum 是累计了所有观测序列的值
+        valid_count = 0;
         for (int c = 0; c < n_lengths; ++c) {
             fb = fb_list[c];
 
             if (fb->data_length < this->minimum_obs) { // 序列长度至少要是3
-                this->success = false;
+                fb->success = false;
                 continue;
             }
-            cur_log_likelihood += this->forward(x_pos, n_x, this->PI, this->A);
-//            cur_log_likelihood += log_likelihood;
-            this->backward(x_pos, n_x, this->PI, this->A);
-            // 重制gamma，每个序列独立
-//            toZero2D<double>(this->gammalattice, n_x, this->n_stat);
+            valid_count += 1;
+            fb->set_pi(this->PI);
+            fb->set_a(this->A.data);
+            fb->set_b(this->B.data);
+            fb->reset();
 
-            this->gamma(x_pos, n_x, this->fwdlattice, this->backlattice, gamma_sum_T);
+            this->forward(fb);
+            this->backward(fb);
+            this->gamma(fb);
+            this->xi(fb);
+            fb->success = true;
+            cur_log_likelihood += fb->log_likelihood;
 
-            // 计算n_x-1个gamma的和gamma_sum_T_1
-            for (int t = 0; t < n_x - 1; ++t) {
-                for (int i = 0; i < this->n_stat; ++i) {
-                    gamma_sum_T_1[i] += this->gammalattice[t][i];
-                }
-            }
+//            fb->print_alpha();
+//            fb->print_beta();
+//            fb->print_gamma();
+//            fb->print_gamma_sum_less();
+//            fb->print_xi_sum();
 
+        } // 所有观测序列前后向算法， 循环结束
 
-            this->xi(x_pos, n_x, this->fwdlattice, this->backlattice, xi_sum);
-
-
-//            std::cout << "log_likehood " << cur_log_likelihood << std::endl;
-//            cout << "cn" << endl;
-//            print1D(this->cn, n_x);
-//            cout << "alpha" << endl;
-//            print2D(this->fwdlattice, n_x, this->n_stat);
-//          //  --printAlpha(this->fwdlattice, this->cn, n_x, this->n_stat);
-//            cout << "beta" << endl;
-//            print2D(this->backlattice, n_x, this->n_stat);
-//            //--printBeta(this->backlattice, this->cn, n_x, this->n_stat);
-//            cout << "gamma" << endl;
-//            print2D(this->gammalattice, n_x, this->n_stat);
-//            cout << "xi_sum" << endl;
-//            print2D(xi_sum, this->n_stat, this->n_stat);
-
-            // 累加每个序列的第一个gamma，用于计算初识概率PI
-            for (int i = 0; i < this->n_stat; ++i) {
-                PI[i] += this->gammalattice[0][i];
-//                this->PI[i]+=PI[i];
-            }
-
-//            normalize1D(PI, this->n_stat);
-
-            // 发射概率的分子部分
-            for (int t = 0; t < n_x; t++) {
-                for (int i = 0; i < this->n_stat; ++i) {
-                    gamma_obs_sum[i][x[x_pos + t]] += this->gammalattice[t][i];
-                }
-            }
+        if (iter == 0) {
+            this->log_likelihood_0 = cur_log_likelihood;
         }
-
-//        cout << "xi_sum" << endl;
-//        print2D(xi_sum, this->n_stat, this->n_stat);
-//        cout << "gamma_sum" << endl;
-//        print1D(gamma_sum, this->n_stat);
-
-        for (int i = 0; i < this->n_stat; ++i) {
-            // 计算新的转移概率，注意 转移概率的gamma_sum是T-1个求和，
-            for (int j = 0; j < this->n_stat; ++j) {
-                // 当观测序列都是一个观测值的时候 会出现分母为0
-                if (gamma_sum_T_1[i] == 0) {
-                    if (xi_sum[i][j] == gamma_sum_T_1[i]) {
-                        A[i][j] = 1;
-                    }
-                } else {
-
-                    A[i][j] = xi_sum[i][j] / gamma_sum_T_1[i];
-                }
-            }
-
-            // 计算发射概率，注意发射概率的gamma_sum是T个求和
-            for (int k = 0; k < this->n_obs; ++k) {
-                // 当观测序列都是一个观测值的时候 会出现分母为0
-                if (gamma_sum_T[i] == 0) {
-                    if (gamma_obs_sum[i][k] == gamma_sum_T[i]) {
-                        B[i][k] = 1;
-                    } else { // todo 这个分支会出现吗？
-                        B[i][k] = 0;
-                    }
-                } else {
-                    B[i][k] = gamma_obs_sum[i][k] / gamma_sum_T[i];
-
-                }
-            }
-
+        // 没有有效的训练数据
+        if (valid_count == 0) {
+            this->success = false;
+            return false;
         }
+        this->compute_param(fb_list, n_lengths);
 
-        for (int i = 0; i < this->n_stat; ++i) {
-            this->PI[i] = PI[i] / n_lengths;
-        }
-        cpy2D(A, this->A, this->n_stat, this->n_stat);
-        cpy2D(B, this->B, this->n_stat, this->n_obs);
-        this->bounded();
-
-//        std::cout << "PI" << std::endl;
+//        cout << "log likelihood " << cur_log_likelihood << endl;
+//        cout << "PI" << endl;
 //        print1D(this->PI, this->n_stat);
 //        cout << "A" << endl;
-//        print2D(this->A, this->n_stat, this->n_stat);
+//        this->A.print();
 //        cout << "B" << endl;
-//        print2D(this->B, this->n_stat, this->n_obs);
-//        cout << "log likelihood " << cur_log_likelihood << endl;
+//        this->B.print();
 
-
-        if (abs(cur_log_likelihood - pre_log_likelihood) < tol) {
+        // 检查是否收敛
+        if ((cur_log_likelihood - pre_log_likelihood) / valid_count < tol) {
             break;
         }
+
+
     }
 
 
     this->iter = iter;
     this->log_likelihood = cur_log_likelihood;
 
-    free(PI);
-    free2D(A, this->n_stat);
-    free2D(B, this->n_stat);
-    free(gamma_sum_T_1);
-    free(gamma_sum_T);
-    free2D(gamma_obs_sum, this->n_stat);
-    free2D(xi_sum, this->n_stat);
-
-    free(this->cn);
-    free2D(this->fwdlattice, max_n_x);
-    free2D(this->backlattice, max_n_x);
-    free2D(this->gammalattice, max_n_x);
-    this->x_ptr = NULL;
-//    cout << "=================" << endl;
-//    cout << "iter" << endl;
-//    cout << iter << endl;
-//    cout << "log likelihood" << endl;
-//    cout << cur_log_likelihood << endl;
     this->success = true;
     this->msg = "OK";
     return true;
 
 }
 
+double HMM::compute_loglikehood(FitBit **fb_list, int fb_length) {
+
+    FitBit *fb = NULL;
+    double log_likelihood = 0;
+    for (int c = 0; c < fb_length; ++c) {
+        fb = fb_list[c];
+
+        if (fb->data_length < this->minimum_obs) { // 序列长度至少要是3
+            fb->success = false;
+            continue;
+        }
+//        valid_count += 1;
+        fb->set_pi(this->PI);
+        fb->set_a(this->A.data);
+        fb->set_b(this->B.data);
+        fb->reset();
+
+        this->forward(fb);
+        log_likelihood += fb->log_likelihood;
+    }
+    return log_likelihood;
+}
+
+void HMM::compute_param(FitBit **fb_list, int fb_length) {
+
+    double *gamma_sum = init1D<double>(this->n_stat);
+    double *gamma_sum_less = init1D<double>(this->n_stat);
+
+    double **xi_sum = init2D<double>(this->n_stat, this->n_stat);
+    double **gamma_obs_sum = init2D<double>(this->n_stat, this->n_obs);
+
+
+//    double *PI = init1D<double>(this->n_stat);
+//    double **A = init2D<double>(this->n_stat, this->n_stat);
+//    double **B = init2D<double>(this->n_stat, this->n_obs);
+
+    // 计算新的模型参数
+
+    toZero1D<double>(this->PI, this->n_stat);
+    this->A.toZero();
+    this->B.toZero();
+//    toZero2D<double>(A, this->n_stat, this->n_stat);
+//    toZero2D<double>(B, this->n_stat, this->n_obs);
+
+    toZero2D<double>(xi_sum, this->n_stat, this->n_stat);
+    toZero2D<double>(gamma_obs_sum, this->n_stat, this->n_obs);
+    toZero1D<double>(gamma_sum, this->n_stat);
+    toZero1D<double>(gamma_sum_less, this->n_stat);
+    // 有效的观测序列数量
+    int valid_count = 0;
+    FitBit *fb = NULL;
+    int n_x; // 当前观测序列的观测值长度
+    // 累加所有观测序列的一些值
+    for (int c = 0; c < fb_length; ++c) {
+        fb = fb_list[c];
+        n_x = fb->data_length;
+
+        if (!fb->success) { // 当前观测序列 失败了
+            continue;
+        }
+        valid_count += 1;
+        // 累加每个序列的第一个gamma，用于计算初识概率PI
+        for (int i = 0; i < this->n_stat; ++i) {
+
+            this->PI[i] += fb->gammalattice[0][i];
+
+            gamma_sum[i] += fb->gamma_sum[i];
+            gamma_sum_less[i] += fb->gamma_sum_less[i];
+
+            for (int j = 0; j < this->n_stat; ++j) {
+                xi_sum[i][j] += fb->xi_sum[i][j];
+            }
+
+        }
+
+        // 发射概率的分子部分
+        for (int t = 0; t < n_x; t++) { // todo n_x-1 改成 n_x
+            for (int i = 0; i < this->n_stat; ++i) {
+                gamma_obs_sum[i][fb->data[t]] += fb->gammalattice[t][i];
+            }
+        }
+
+
+    } // 累加结束
+
+
+
+    for (int i = 0; i < this->n_stat; ++i) {
+        // 计算新的转移概率，注意 转移概率的gamma_sum是T-1个求和，
+        for (int j = 0; j < this->n_stat; ++j) {
+            // 当观测序列都是一个观测值的时候 会出现分母为0
+            if (gamma_sum_less[i] == 0) {
+                if (xi_sum[i][j] == gamma_sum_less[i]) {
+                    this->A[i][j] = 1;
+                }
+            } else {
+
+                this->A[i][j] = xi_sum[i][j] / gamma_sum_less[i];
+            }
+        }
+
+        // 计算发射概率，注意发射概率的gamma_sum是T个求和
+        for (int k = 0; k < this->n_obs; ++k) {
+            // 当观测序列都是一个观测值的时候 会出现分母为0
+            if (gamma_sum[i] == 0) {
+                if (gamma_obs_sum[i][k] == gamma_sum[i]) { //todo gamma_sum_less 改成 gamma_sum
+                    this->B[i][k] = 1;
+                } else { // todo 这个分支会出现吗？
+                    this->B[i][k] = 0;
+                }
+            } else {
+                this->B[i][k] = gamma_obs_sum[i][k] / gamma_sum[i]; //todo gamma_sum_less 改成 gamma_sum
+
+            }
+        }
+
+    }
+
+    for (int i = 0; i < this->n_stat; ++i) {
+        this->PI[i] = this->PI[i] / valid_count;
+    }
+
+
+//    cout << "================" << endl;
+//    cout << "PI" << endl;
+//    print1D(this->PI, 2);
+//    cout << "A" << endl;
+//    this->A.print();
+//    cout << "B" << endl;
+//    this->B.print();
+
+
+
+
+//    cpy2D(A, this->A, this->n_stat, this->n_stat);
+//    cpy2D(B, this->B, this->n_stat, this->n_obs);
+    this->bounded();
+
+
+//    free(PI);
+//    free2D(A, this->n_stat);
+//    free2D(B, this->n_stat);
+    free(gamma_sum_less);
+    free(gamma_sum);
+    free2D(gamma_obs_sum, this->n_stat);
+    free2D(xi_sum, this->n_stat);
+
+
+}
 
 /*
  * 缩放因子参考 https://pdfs.semanticscholar.org/4ce1/9ab0e07da9aa10be1c336400c8e4d8fc36c5.pdf
  */
-double HMM::forward(int x_pos, int n_x, double *PI, double **A) {
+
+void HMM::forward(FitBit *fb) {
 
 
-    int *x = this->x_ptr + x_pos;
-
-    double log_likelihood = 0;
-    for (int i = 0; i < this->n_stat; i++) {
-        this->fwdlattice[0][i] = PI[i] * this->emmit_pdf(i, x[0], x_pos + 0);
-    }
-//    if (this->fwdlattice[0][0] == 0) {
-//        cout << "--------" << endl;
-//        cout << PI[0] << endl;
-//        cout << this->emmit_pdf(x_pos + 0, 0, x[0]) << endl;
-//    }
-
-    this->cn[0] = normalize1D(this->fwdlattice[0], this->n_stat);
-    log_likelihood += log(this->cn[0]);
-    for (int t = 1; t < n_x; t++) {
-
-        for (int i = 0; i < this->n_stat; i++) {
-            this->fwdlattice[t][i] = 0;
-            for (int j = 0; j < this->n_stat; ++j) {
-                this->fwdlattice[t][i] += this->fwdlattice[t - 1][j] * A[j][i];
-            }
-            this->fwdlattice[t][i] *= this->emmit_pdf(i, x[t], x_pos + t);
-
-//            if (this->fwdlattice[t][i] == 0) {
-//                cout << "--------" << endl;
-//                cout << "PI[i]" << PI[i] << endl;
-//                cout << "prob " << this->emmit_pdf(x_pos + t, i, x[t]) << endl;
-//            }
-
-        }
-        this->cn[t] = normalize1D(this->fwdlattice[t], this->n_stat);
-        log_likelihood += log(this->cn[t]);
-    }
-
-    return log_likelihood;
-}
-
-double HMM::forward(FitBit *fb) {
-
-
-    int *x = fb->data;
+//    int *x = fb->data;
 
     double log_likelihood = 0;
     for (int i = 0; i < this->n_stat; i++) {
@@ -811,7 +863,7 @@ double HMM::forward(FitBit *fb) {
 
 
     fb->cn[0] = normalize1D(fb->fwdlattice[0], fb->n_stat);
-    log_likelihood += log(fb->cn[0]);
+    log_likelihood += log(1 / fb->cn[0]);
 
     for (int t = 1; t < fb->data_length; t++) {
 
@@ -825,69 +877,34 @@ double HMM::forward(FitBit *fb) {
 
         }
         fb->cn[t] = normalize1D(fb->fwdlattice[t], this->n_stat);
-        log_likelihood += log(fb->cn[t]);
+        log_likelihood += log(1 / fb->cn[t]);
     }
     fb->log_likelihood = log_likelihood;
-    return log_likelihood;
+//    return log_likelihood;
 }
 
-double HMM::backward(int x_pos, int n_x, double *PI, double **A) {
-//    double likelihood = 0;
-    int *x = this->x_ptr + x_pos;
-
-    for (int i = 0; i < this->n_stat; ++i) {
-        this->backlattice[n_x - 1][i] = 1 / this->cn[n_x - 1];
-    }
-
-    for (int t = n_x - 2; t >= 0; --t) {
-        for (int i = 0; i < this->n_stat; ++i) {
-
-            this->backlattice[t][i] = 0;
-            for (int j = 0; j < this->n_stat; ++j) {
-                this->backlattice[t][i] +=
-                        A[i][j] * this->emmit_pdf(j, x[t + 1], x_pos + t) * this->backlattice[t + 1][j];
-            }
-            this->backlattice[t][i] /= this->cn[t];
-        }
-    }
-    return 0;
-}
 
 void HMM::backward(FitBit *fb) {
 //    double likelihood = 0;
-    int *x = fb->data;
+//    int *x = fb->data;
+    int n_x = fb->data_length;
 
     for (int i = 0; i < this->n_stat; ++i) {
         fb->backlattice[n_x - 1][i] = 1 / fb->cn[n_x - 1];
     }
 
-    for (int t = fb->data_length - 2; t >= 0; --t) {
+    for (int t = n_x - 2; t >= 0; --t) {
         for (int i = 0; i < this->n_stat; ++i) {
 
             fb->backlattice[t][i] = 0;
             for (int j = 0; j < this->n_stat; ++j) {
-                this->fb[t][i] +=
-                        fb->A[i][j] * this->emmit_pdf(fb, j, t) * fb->backlattice[t + 1][j];
+                fb->backlattice[t][i] +=
+                        fb->A[i][j] * this->emmit_pdf(fb, j, t + 1) * fb->backlattice[t + 1][j];
             }
             fb->backlattice[t][i] /= fb->cn[t];
         }
     }
-    return 0;
-}
 
-
-void HMM::gamma(int x_pos, int n, double **fwdlattice, double **backlattice, double *gamma_sum) {
-//    int *x = this->x_ptr + x_pos;
-
-    for (int t = 0; t < n; ++t) {
-        for (int i = 0; i < this->n_stat; ++i) {
-            // 注意这里乘上了this->cn[t]
-            // 是因为，在论文中，最后算转移概率和发射概率时，都必须要乘以一下。而不影响算初始概率。
-            this->gammalattice[t][i] = fwdlattice[t][i] * backlattice[t][i] * this->cn[t];
-            gamma_sum[i] += this->gammalattice[t][i];
-        }
-
-    }
 }
 
 
@@ -913,17 +930,20 @@ void HMM::gamma(FitBit *fb) {
 
 }
 
-void HMM::xi(int x_pos, int n, double **fwdlattice, double **backlattice, double **xi_sum) {
 
-    int *x = this->x_ptr + x_pos;
+void HMM::xi(FitBit *fb) {
+
+//    int *x = this->x_ptr + x_pos;
+//    int *x = fb->data;
+    toZero2D<double>(fb->xi_sum, this->n_stat, this->n_stat);
     // xi的值并不需要每个时刻保留，而只用到所有时刻累加的结果。
     // 面对多序列时，全部累加在一起就行
-    for (int t = 0; t < n - 1; ++t) {
-        for (int i = 0; i < this->n_stat; ++i) {
-            for (int j = 0; j < this->n_stat; ++j) {
+    for (int t = 0; t < fb->data_length - 1; ++t) {
+        for (int i = 0; i < fb->n_stat; ++i) {
+            for (int j = 0; j < fb->n_stat; ++j) {
 
-                xi_sum[i][j] += fwdlattice[t][i] * this->A[i][j] * this->emmit_pdf(j, x[t + 1], x_pos + t) *
-                                backlattice[t + 1][j];
+                fb->xi_sum[i][j] += fb->fwdlattice[t][i] * fb->A[i][j] * this->emmit_pdf(fb, j, t + 1) *
+                                    fb->backlattice[t + 1][j];
             }
         }
 
@@ -931,11 +951,12 @@ void HMM::xi(int x_pos, int n, double **fwdlattice, double **backlattice, double
 
 }
 
-double HMM::emmit_pdf(int stat, int obs, int t) {
+double HMM::emmit_pdf(int stat, int obs) {
     return this->B[stat][obs];
 }
 
 double HMM::emmit_pdf(FitBit *fb, int stat, int t) {
+    assert(t < fb->data_length);
     int obs = fb->data[t];
     return fb->B[stat][obs];
 }
@@ -950,7 +971,7 @@ void HMM::get_pi(double *out) {
 }
 
 void HMM::get_a(double *out) {
-    if (this->A == NULL || out == NULL) {
+    if (this->A.data == NULL || out == NULL) {
         return;
     }
     for (int i = 0; i < this->n_stat; ++i) {
@@ -962,7 +983,7 @@ void HMM::get_a(double *out) {
 }
 
 void HMM::get_b(double *out) {
-    if (this->B == NULL || out == NULL) {
+    if (this->B.data == NULL || out == NULL) {
         return;
     }
     for (int i = 0; i < this->n_stat; ++i) {
@@ -974,13 +995,43 @@ void HMM::get_b(double *out) {
 
 double HMM::posterior_distributed(double *out, int *x, int n_x) {
 
+    FitBit *fb = this->covert2fb(x,n_x);
 
-    if (x == NULL || n_x == 0) {
+    double ll = this->posterior_distributed(fb, out);
+
+    free(fb);
+    return ll;
+}
+
+double HMM::posterior_distributed(FitBit *fb, double *out) {
+
+
+    if (fb == NULL || fb->data_length == 0 || fb->data == NULL) {
         return 0;
     }
 
-    MatrixView<double> posterior(n_x, this->n_stat, out);
-//    double cn;
+    fb->init(this->n_stat, this->n_obs);
+
+    fb->set_pi(this->PI);
+    fb->set_a(this->A.data);
+    fb->set_b(this->B.data);
+
+    this->forward(fb);
+    this->backward(fb);
+    this->gamma(fb);
+
+    // 后验概率分布,其实就是gamma
+    MatrixView<double> posterior(fb->data_length, this->n_stat, out);
+    for (int t = 0; t < fb->data_length; ++t) {
+        for (int i = 0; i < this->n_stat; ++i) {
+            posterior[t][i] = fb->gammalattice[t][i];
+        }
+    }
+
+    /*
+    if (x == NULL || n_x == 0) {
+        return 0;
+    }
     double log_likelihood = 0;
 
     // 前向算法
@@ -988,7 +1039,9 @@ double HMM::posterior_distributed(double *out, int *x, int n_x) {
     double *cn = init1D<double>(n_x);
 
     for (int i = 0; i < this->n_stat; i++) {
-        fwdlattice[0][i] = this->PI[i] * this->emmit_pdf(i, x[0], 0);
+//        fwdlattice[0][i] = this->PI[i] * this->emmit_pdf(i, x[0], 0);
+        fwdlattice[0][i] = this->PI[i] * this->emmit_pdf(fb, i, 0);
+
     }
     cn[0] = normalize1D<double>(fwdlattice[0], n_stat);
     log_likelihood += log(cn[0]);
@@ -999,10 +1052,8 @@ double HMM::posterior_distributed(double *out, int *x, int n_x) {
             for (int j = 0; j < this->n_stat; ++j) {
                 fwdlattice[t][i] += fwdlattice[t - 1][j] * this->A[j][i];
             }
-            fwdlattice[t][i] *= this->emmit_pdf(i, x[t], t);
-//            if(isnan(fwdlattice[t][i])){
-//                std::cout<<"fwdlattice[t][i] t="<<t << " i=" << i <<" x[t]="<<x[t] ;
-//                std::cout<< " emmit_pdf:"<<this->emmit_pdf(i, x[t], t)<<std::endl;
+//            fwdlattice[t][i] *= this->emmit_pdf(i, x[t], t);
+            fwdlattice[t][i] *= this->emmit_pdf(fb, i, t);
 //
 //            }
         }
@@ -1031,7 +1082,8 @@ double HMM::posterior_distributed(double *out, int *x, int n_x) {
             backlattice[t][i] = 0;
             for (int j = 0; j < this->n_stat; ++j) {
                 backlattice[t][i] +=
-                        this->A[i][j] * this->emmit_pdf(j, x[t + 1], t) * backlattice[t + 1][j];
+//                        this->A[i][j] * this->emmit_pdf(j, x[t + 1], t) * backlattice[t + 1][j];
+                        this->A[i][j] * this->emmit_pdf(fb, j, t + 1) * backlattice[t + 1][j];
             }
             backlattice[t][i] /= cn[t];
         }
@@ -1064,13 +1116,16 @@ double HMM::posterior_distributed(double *out, int *x, int n_x) {
     free(cn);
     free2D(fwdlattice, n_x);
     free2D(backlattice, n_x);
-//    cout << "ll:" << log_likelihood<<endl;
-    return log_likelihood;
+
+     */
+
+    return fb->log_likelihood;
 }
 
 
 double HMM::viterbi(int *out, int *x, int n_x) {
 
+    FitBit *fb = covert2fb(x,n_x);
 
     double **delta = init2D<double>(n_x, this->n_stat);
     int **psi = init2D<int>(n_x, this->n_stat);
@@ -1078,12 +1133,13 @@ double HMM::viterbi(int *out, int *x, int n_x) {
 //    int t = 0;
     for (int i = 0; i < this->n_stat; ++i) {
 
-        delta[0][i] = this->PI[i] * this->emmit_pdf(i, x[0], 0);
+//        delta[0][i] = this->PI[i] * this->emmit_pdf(i, x[0], 0);
+        delta[0][i] = this->PI[i] * this->emmit_pdf(fb, i, 0);
         psi[0][i] = 0;
     }
     // todo 添加对数操作，将乘法改成加法，避免溢出
     double max_prob = -1, tmp = 0;
-    int max_stat;
+    int max_stat = 0;
     for (int t = 1; t < n_x; ++t) {
 
         for (int i = 0; i < this->n_stat; ++i) {
@@ -1096,7 +1152,8 @@ double HMM::viterbi(int *out, int *x, int n_x) {
                 }
             };
 
-            delta[t][i] = max_prob * this->emmit_pdf(max_stat, x[t], t);
+//            delta[t][i] = max_prob * this->emmit_pdf(max_stat, x[t], t);
+            delta[t][i] = max_prob * this->emmit_pdf(fb, max_stat, t);
             psi[t][i] = max_stat;
         }
     }
@@ -1128,7 +1185,7 @@ double HMM::viterbi(int *out, int *x, int n_x) {
 
     free2D(delta, n_x);
     free2D(psi, n_x);
-
+    free(fb);
     return max_prob;
 }
 
@@ -1207,12 +1264,14 @@ double HMM::predict_by_posterior(double *out, int *x, int n_x) {
     if (out == NULL) {
         return 0;
     }
+
+
     // 没有历史观测序列，相当于预测首次结果
     if (x == NULL || n_x == 0) {
         for (int i = 0; i < this->n_obs; ++i) {
             out[i] = 0;
             for (int j = 0; j < this->n_stat; ++j) {
-                out[i] += this->PI[j] * this->emmit_pdf(j, i, 0);
+                out[i] += this->PI[j] * this->emmit_pdf(j, i);
             }
 
         }
@@ -1220,31 +1279,35 @@ double HMM::predict_by_posterior(double *out, int *x, int n_x) {
         return 0;
     }
 
+//    FitBit *fb = covert2fb(x,n_x);
+
     // fwdlattice[-1]是最后时刻，隐状态的概率分布
 
     double *buffer = init1D<double>(n_x * this->n_stat);
     MatrixView<double> posterior(n_x, this->n_stat, buffer);
 
     double ll = this->posterior_distributed(buffer, x, n_x);
+//    double ll = this->posterior_distributed(fb, buffer);
 
     double *predict_stat = init1D<double>(this->n_stat);
 
-    for (int k = 0; k < n_obs; ++k) {
+    for (int k = 0; k < this->n_obs; ++k) {
         out[k] = 0;
-        for (int i = 0; i < n_stat; ++i) {
+        for (int i = 0; i < this->n_stat; ++i) {
             // 预测下一时刻隐状态分布
             predict_stat[i] = 0;
-            for (int j = 0; j < n_stat; ++j) {
+            for (int j = 0; j < this->n_stat; ++j) {
                 predict_stat[i] += posterior[n_x - 1][j] * this->A[j][i];
             }
 
-            out[k] += predict_stat[i] * this->emmit_pdf(i, k, 0);
+            out[k] += predict_stat[i] * this->emmit_pdf(i, k);
         }
 
     }
 
     free(buffer);
     free(predict_stat);
+//    free(fb);
 
     return ll;
 }

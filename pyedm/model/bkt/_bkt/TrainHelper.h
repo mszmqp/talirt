@@ -6,7 +6,7 @@
 #define HMM_TRAINHELPER_H
 
 //#include "_hmm.h"
-#include "_bkt.h"
+#include "bkt.h"
 
 /*
  * 批量训练辅助工具。
