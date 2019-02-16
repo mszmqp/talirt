@@ -687,7 +687,7 @@ bool HMM::fit(int *x, int *lengths, int n_lengths, int max_iter, double tol) {
 
     }
 
-
+    free2D(fb_list,n_lengths);
     this->iter = iter;
     this->log_likelihood = cur_log_likelihood;
 

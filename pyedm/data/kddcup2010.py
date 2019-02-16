@@ -82,7 +82,7 @@ class KddCup2010:
             file_path = os.path.join(self.data_dir, 'algebra_2008_2009', 'algebra_2008_2009_test.txt')
         if not os.path.exists(file_path):
             raise ValueError("file not exists %s" % file_path)
-        return self.read(file_path)
+        return self.read_test(file_path)
 
     @property
     def ba67_train(self, file_path=None):
@@ -102,6 +102,24 @@ class KddCup2010:
             raise ValueError("file not exists %s" % file_path)
         return self.read(file_path)
 
+    @property
+    def ba89_train(self, file_path=None):
+        if file_path is None:
+            file_path = os.path.join(self.data_dir, 'bridge_to_algebra_2008_2009',
+                                     'bridge_to_algebra_2008_2009_train.txt')
+        if not os.path.exists(file_path):
+            raise ValueError("file not exists %s" % file_path)
+        return self.read(file_path)
+
+    @property
+    def ba89_test(self, file_path=None):
+        if file_path is None:
+            file_path = os.path.join(self.data_dir, 'bridge_to_algebra_2008_2009',
+                                     'bridge_to_algebra_2008_2009_test.txt')
+        if not os.path.exists(file_path):
+            raise ValueError("file not exists %s" % file_path)
+        return self.read_test(file_path)
+
     @staticmethod
     def read(file_path):
         df_data = pd.read_csv(file_path, sep='\t', dtype={'Row': np.int32,
@@ -115,6 +133,25 @@ class KddCup2010:
                                                           "Incorrects": np.int32,
                                                           "Hints": np.int32,
                                                           "Corrects": np.int32,
+                                                          "KC(SubSkills)": np.string_,
+                                                          "Opportunity(SubSkills)": np.string_,
+                                                          })
+        df_data['item_name'] = df_data['Problem Name'] + ',' + df_data['Step Name']
+        return df_data
+
+    @staticmethod
+    def read_test(file_path):
+        df_data = pd.read_csv(file_path, sep='\t', dtype={'Row': np.int32,
+                                                          "Anon Student Id": np.string_,
+                                                          "Problem Hierarchy": np.string_,
+                                                          "Problem View": np.int32,
+                                                          # "Step Duration (sec)": np.float64,
+                                                          # "Correct Step Duration (sec)": np.float64,
+                                                          # "Error Step Duration (sec)": np.float64,
+                                                          # "Correct First Attempt": np.int32,
+                                                          # "Incorrects": np.int32,
+                                                          # "Hints": np.int32,
+                                                          # "Corrects": np.int32,
                                                           "KC(SubSkills)": np.string_,
                                                           "Opportunity(SubSkills)": np.string_,
                                                           })

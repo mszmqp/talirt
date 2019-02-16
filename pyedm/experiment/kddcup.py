@@ -126,11 +126,11 @@ def train_irt_bkt(df_train, item_info):
     # 隐状态设置为7个
     n_stat = 7
     # 初始概率矩阵，均匀分布
-    start_init = np.array([1.0 / 7] * 7, dtype=np.float64)
+    start_init = np.array([1.0 / 7] * 7, dtype=np.float64, order="C")
     # assert start_init.sum() == 1
     # 初始概率矩阵的上下限约束
-    start_lb = np.array([0] * n_stat, dtype=np.float64)
-    start_ub = np.array([1] * n_stat, dtype=np.float64)
+    start_lb = np.array([0] * n_stat, dtype=np.float64, order="C")
+    start_ub = np.array([1] * n_stat, dtype=np.float64, order="C")
     # 转移矩阵的初始值
     transition_init = np.array([
         [0.5, 0.5, 0, 0, 0, 0, 0],
@@ -140,7 +140,7 @@ def train_irt_bkt(df_train, item_info):
         [0, 0, 0, 0, 0.5, 0.5, 0],
         [0, 0, 0, 0, 0, 0.5, 0.5],
         [0, 0, 0, 0, 0, 0, 1],
-    ], dtype=np.float64)
+    ], dtype=np.float64, order="C")
     # 转移矩阵的下限约束
     transition_lb = np.array([
         [0, 0, 0, 0, 0, 0, 0],
@@ -150,7 +150,7 @@ def train_irt_bkt(df_train, item_info):
         [0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0],
-    ], dtype=np.float64)
+    ], dtype=np.float64, order="C")
     # 转移矩阵的上限约束
     transition_ub = np.array([
         [1, .5, .5, .5, .5, .5, .5],
@@ -160,14 +160,15 @@ def train_irt_bkt(df_train, item_info):
         [0, 0, 0, 0, 1, .5, .5],
         [0, 0, 0, 0, 0, 1, .5],
         [0, 0, 0, 0, 0, 0, 1],
-    ], dtype=np.float64)
+    ], dtype=np.float64, order="C")
     # 训练器
     th = TrainHelper(n_stat=7, model_type=2)
     th.init(start=start_init, transition=transition_init)
     th.set_bound_start(start_lb, start_ub)
     th.set_bound_transition(transition_lb, transition_ub)
     #
-    th.set_item_info(item_info[['slop', 'difficulty', 'guess']].values.astype(np.float64))
+    item_info_arr = item_info[['slop', 'difficulty', 'guess']].values.astype(np.float64, order="C")
+    th.set_item_info(item_info_arr)
 
     trace = df_train['trace'].values
     group = df_train['group'].values
@@ -244,21 +245,29 @@ def train_standard_bkt(df_train, item_info):
 def test_irt_bkt(models, df_train, df_test, item_info):
     """"""
     # 所有题目的参数信息
-    item_info_arr = item_info[['slop', 'difficulty', 'guess']].values.astype(np.float64)
+    item_info_arr = item_info[['slop', 'difficulty', 'guess']].values.astype(np.float64, order="C")
     # print(np.any(np.isnan(item_info_arr)))
+    # print(item_info_arr.flags['C_CONTIGUOUS'])
 
     # 需要找到当前数据对应的前置观测序列，也就是当前(学生,知识点)下的前置作答数据，作为已知观测序列
     df_train_g = df_train.groupby(['knowledge', 'user'])
-    df_eva = []
-    for _, row in tqdm(df_test.iterrows(), total=df_test.shape[0]):
+    # df_eva = []
+    df_trace = df_train_g.agg({'trace': lambda x: x.iloc[0]})
+
+    # predict_list = []
+    df_test['pred_prob'] = np.nan
+
+    for index, row in tqdm(df_test.iterrows(), total=df_test.shape[0]):
         # for _, row in df_test.iterrows():
         if row['knowledge'] is np.nan:  # 空知识点暂时不处理
+            # predict_list.append(np.nan)
             continue
         # 要预测的题目 必须在训练数据中出现过，否则没有题目的信息
         try:
             predict_item = item_info.loc[row['item_name']]
             predict_item_id = int(predict_item['item_id'])
         except KeyError:
+            # predict_list.append(np.nan)
             # 没找到对应的题目
             continue
         # 找到当前（知识点，用户）的训练数据（以前的作答序列）
@@ -266,14 +275,16 @@ def test_irt_bkt(models, df_train, df_test, item_info):
         try:
             # cur_train = df_train.loc[key]
             cur_train = df_train_g.get_group(key)
-            x = cur_train['answer'].values.astype(np.int32)  # 对应的 x
+            x = cur_train['answer'].values.astype(np.int32, order="C")  # 对应的 x
 
-            train_items_id = cur_train['item_id'].values.astype(np.int32)  # 对应的 item_id
+            train_items_id = cur_train['item_id'].values.astype(np.int32, order="C")  # 对应的 item_id
             # 获取 trace 编号，用于找到对应的模型
+            # trace_index = df_trace.loc[key]['trace']
             trace = cur_train['trace']  # 对应的trace
             trace_index = trace.iloc[0]
 
         except KeyError:
+            # predict_list.append(np.nan)
             # 没找到对应的作答序列
             # if cur_train.empty:
             continue
@@ -282,12 +293,14 @@ def test_irt_bkt(models, df_train, df_test, item_info):
         # print("前置序列长度", len(trace))
         # trace_index = trace.iloc[0]
         model = models[trace_index]
+
         # 没有训练成功
         if not model.success:
             continue
 
-        model.set_item_info(item_info_arr)
         model.set_obs_items(train_items_id)
+        model.set_item_info(item_info_arr)
+        # continue
 
         # print('作答序列')
         # print(x)
@@ -300,15 +313,18 @@ def test_irt_bkt(models, df_train, df_test, item_info):
         # sd = model.posterior_distributed(x)
 
         result = model.predict_next(x, predict_item_id, 'posterior')
+        df_test.loc[index, 'pred_prob'] = result[1]
+        # predict_list.append(result[1])
 
-        row['pred_prob'] = result[1]
-        row['作答序列'] = ','.join([str(a) for a in x])
-        row['难度序列'] = ','.join([str(a) for a in item_info_arr[train_items_id, 1].round(2)])
-        row['viterbi'] = ','.join([str(a) for a in model.viterbi(x)])
+        # row['pred_prob'] = result[1]
 
-        df_eva.append(row)
+        # row['作答序列'] = ','.join([str(a) for a in x])
+        # row['难度序列'] = ','.join([str(a) for a in item_info_arr[train_items_id, 1].round(2)])
+        # row['viterbi'] = ','.join([str(a) for a in model.viterbi(x)])
 
-    df_eva = pd.DataFrame(df_eva)
+        # df_eva.append(df_test.loc[index])
+
+    df_eva = df_test.loc[~df_test['pred_prob'].isna()].copy()
 
     df_eva['pred_label'] = df_eva['pred_prob']
     df_eva.loc[df_eva['pred_label'] >= 0.5, 'pred_label'] = 1
@@ -321,9 +337,12 @@ def test_standard_bkt(models, df_train, df_test, item_info):
     # item_info_arr = item_info[['slop', 'difficulty', 'guess']].values.astype(np.float64)
     df_train_g = df_train.groupby(['knowledge', 'user'])
     df_eva = []
+    predict_list = []
+
     for _, row in tqdm(df_test.iterrows(), total=df_test.shape[0]):
         # for _, row in df_test.iterrows():
         if row['knowledge'] is np.nan:  # 空知识点暂时不处理
+            predict_list.append(np.nan)
             continue
         # 找到当前（知识点，用户）的训练数据（以前的作答序列）
         key = (row['knowledge'], row['user'])
@@ -337,20 +356,24 @@ def test_standard_bkt(models, df_train, df_test, item_info):
             x = cur_train['answer'].values.astype(np.int32)  # 对应的 x
         except KeyError:
             # 没找到对应的作答序列 todo 首次作答的预测
+            predict_list.append(np.nan)
             continue
 
         model = models[trace_index]
         # 没有训练成功
         if not model.success:
+            predict_list.append(np.nan)
             continue
 
         result = model.predict_next(x, 'posterior')
         # 预测做正确的概率
         row['pred_prob'] = result[1]
         df_eva.append(row)
+        predict_list.append(result[1])
         # break
         # if len(df_eva) > 100:
         #     break
+    df_test['pred_prob'] = predict_list
     df_eva = pd.DataFrame(df_eva)
     # 预测的作答结果
     df_eva['pred_label'] = df_eva['pred_prob']
@@ -372,7 +395,7 @@ def write_badcase(df_eva, df_train, df_test, item_info, filepath="irt_bkt_badcas
     writer.close()
 
 
-def metric(y_true, y_prob):
+def metric(y_true: np.ndarray, y_prob: np.ndarray):
     """
     二分类结果简单评估指标计算
     Parameters
@@ -384,6 +407,15 @@ def metric(y_true, y_prob):
     -------
 
     """
+    if np.isnan(y_true.sum()) or np.isnan(y_prob.sum()):
+        return {'test size': 0,
+                'correct rate': 0,
+                'mae': 0,
+                'mse': 0,
+                'rmse': 0,
+                'acc': 0,
+                'auc_score': 0,
+                'delta_acc': 0, }
     y_pred = y_prob.copy()
     y_pred[y_pred >= 0.5] = 1
     y_pred[y_pred < 0.5] = 0
@@ -395,15 +427,16 @@ def metric(y_true, y_prob):
 
     print("origin data, length:%d acc:%.4f" % (y_true.shape[0], y_true.mean()))
     print('-' * 50)
-    print('mae:%.4f' % mae, "mse:%.4f" % mse, "rmse:%.4f" % np.sqrt(mse),
+    print('count:%d' % len(y_true),
+          'mae:%.4f' % mae, "mse:%.4f" % mse, "rmse:%.4f" % np.sqrt(mse),
           'acc:%.4f' % acc,
           'auc_score:%.4f' % auc_score)
-    print('-' * 50)
-    print("confusion_matrix")
-    print(metrics.confusion_matrix(y_true, y_pred))
-    print('-' * 50)
-    print('classification_report')
-    print(metrics.classification_report(y_true, y_pred))
+    # print('-' * 50)
+    # print("confusion_matrix")
+    # print(metrics.confusion_matrix(y_true, y_pred))
+    # print('-' * 50)
+    # print('classification_report')
+    # print(metrics.classification_report(y_true, y_pred))
     return {
         'test size': len(y_true),
         'correct rate': y_true.mean(),
@@ -415,6 +448,81 @@ def metric(y_true, y_prob):
         'delta_acc': acc - y_true.mean(),
 
     }
+
+
+def extend_predict(df_train, df_test):
+    """
+    对于模型没有成功预测的样本进行补充预测
+    Returns
+    -------
+
+    """
+    # 每个 knowledge 的正确率
+    df_k = df_train.groupby('knowledge').agg({'answer': "mean"})
+    df_k.columns = ['acc']
+
+    # 每个用户的正确率
+    df_u = df_train.groupby('user').agg({'answer': "mean"})
+    df_u.columns = ['acc']
+
+    # 每个题目的正确率
+    df_i = df_train.groupby('item_name').agg({'answer': "mean"})
+    df_i.columns = ['acc']
+    rmse_k = 0
+    rmse_u = 0
+    rmse_i = 0
+    rmse_final = 0
+    count = 0
+    for index, row in df_test.iterrows():
+        if not np.isnan(row['pred_prob']):
+            continue
+
+        knowledge = row['knowledge']
+        user = row['user']
+        item = row['item_name']
+
+        knowledge_acc = df_k.loc[knowledge]['acc']
+        try:
+            user_acc = df_u.loc[user]['acc']
+        except:
+            user_acc = 0.5
+
+        try:
+            item_acc = df_k.loc[item]['acc']
+        except KeyError:
+            item_acc = 0.5
+
+        answer = row['answer']
+        final_prob = user_acc
+
+        count += 1
+        rmse_k += (answer - knowledge_acc) ** 2
+        rmse_u += (answer - user_acc) ** 2
+        rmse_i += (answer - item_acc) ** 2
+        rmse_final += (answer - final_prob) ** 2
+
+        df_test.loc[index, 'pred_prob'] = final_prob
+
+        # print(row['answer'], knowledge_acc, user_acc, item_acc, )
+    if count == 0:
+        rmse_k = 0
+        rmse_u = 0
+        rmse_i = 0
+        rmse_final = 0
+    else:
+        rmse_k = np.sqrt(rmse_k / count)
+        rmse_u = np.sqrt(rmse_u / count)
+        rmse_i = np.sqrt(rmse_i / count)
+        rmse_final = np.sqrt(rmse_final / count)
+
+    print("rmse_final:%f" % rmse_final,
+          "rmse_k:%f" % rmse_k,
+          "rmse_u:%f" % rmse_u,
+          "rmse_i:%f" % rmse_i)
+    df_test['pred_label'] = df_test['pred_prob']
+    df_test.loc[df_test['pred_label'] >= 0.5, 'pred_label'] = 1
+    df_test.loc[df_test['pred_label'] < 0.5, 'pred_label'] = 0
+    df_test['pred_result'] = df_test['pred_label'] == df_test['answer']
 
 
 def run_irt_bkt(df_train, df_test, df_item_info):
@@ -445,15 +553,25 @@ def run_irt_bkt(df_train, df_test, df_item_info):
     df_train['group'] = group
 
     irt_models = train_irt_bkt(df_train, df_item_info)
+
     df_eva = test_irt_bkt(irt_models, df_train, df_test, df_item_info)
+
+    # df_test
+    extend_predict(df_train, df_test)
+
+    # df_eva 中只包括模型成功预测的样本，没有包括模型无法覆盖的样本
     y_true = df_eva['answer'].values
     y_prob = df_eva['pred_prob'].values
+
+    # y_true = df_test['answer'].values
+    # y_prob = df_test['pred_prob'].values
 
     # print(np.any(np.isnan(y_true)), y_true)
     # print(np.any(np.isnan(y_prob)), y_prob)
 
     m = metric(y_true, y_prob)
     m['model'] = 'IRT-BKT'
+
     return m
     # write_badcase(df_eva, df_train, df_test, item_info)
 
@@ -485,9 +603,18 @@ def run_standard_bkt(df_train, df_test, df_item_info):
     df_train['group'] = group
 
     models = train_standard_bkt(df_train, df_item_info)
+
     df_eva = test_standard_bkt(models, df_train, df_test, df_item_info)
+
+    # df_test
+    extend_predict(df_train, df_test)
+
+    # df_eva 中只包括模型成功预测的样本，没有包括模型无法覆盖的样本
     y_true = df_eva['answer'].values
     y_prob = df_eva['pred_prob'].values
+
+    # y_true = df_test['answer'].values
+    # y_prob = df_test['pred_prob'].values
 
     m = metric(y_true, y_prob)
     m['model'] = 'Standard-BKT'
@@ -520,8 +647,17 @@ def run_standard_bkt_individual(df_train, df_test, df_item_info):
 
     models = train_standard_bkt(df_train, df_item_info)
     df_eva = test_standard_bkt(models, df_train, df_test, df_item_info)
+
+    # df_test
+    extend_predict(df_train, df_test)
+
+    # df_eva 中只包括模型成功预测的样本，没有包括模型无法覆盖的样本
     y_true = df_eva['answer'].values
     y_prob = df_eva['pred_prob'].values
+
+    # y_true = df_test['answer'].values
+    # y_prob = df_test['pred_prob'].values
+
     m = metric(y_true, y_prob)
     m['model'] = 'Individual-Standard-BKT'
     return m
@@ -583,7 +719,29 @@ def load_tal_data():
     return df_train, df_test, item_info
 
 
+def kdd_challenge():
+    kdd = KddCup2010('/Users/zhangzhenhu/Documents/开源数据/kddcup2010/')
+
+    # algebra_2008_2009
+    df_train, df_test, df_item_info = preprocess(kdd.a89_train, kdd.a89_test)
+    df_test = df_test.head(5000).copy()
+    metric = run_irt_bkt(df_train, df_test, df_item_info)
+    df_test['Correct First Attempt'] = df_test['pred_prob']
+    df_test.index.name = "Row"
+    df_test[['Correct First Attempt']].to_csv("algebra_2008_2009_submission.txt", sep='\t')
+
+    # algebra_2008_2009
+    df_train, df_test, df_item_info = preprocess(kdd.ba89_train, kdd.ba89_test)
+    df_test = df_test.head(5000).copy()
+    metric = run_irt_bkt(df_train, df_test, df_item_info)
+    df_test['Correct First Attempt'] = df_test['pred_prob']
+    df_test.index.name = "Row"
+    df_test[['Correct First Attempt']].to_csv("bridge_to_algebra_2008_2009_submission.txt", sep='\t')
+
+
 def main(options):
+    kdd_challenge()
+    quit()
     kdd = KddCup2010('/Users/zhangzhenhu/Documents/开源数据/kddcup2010/')
     report = []
 
@@ -634,13 +792,10 @@ def main(options):
 
     # quit()
 
-
     print("=" * 20, 'individual standard bkt', '=' * 20)
     metric2 = run_standard_bkt_individual(df_train.copy(), df_test.copy(), df_item_info)
     metric2['data'] = "智能练习数据"
     report.append(metric2)
-
-
 
     # 打印表格报告
     import pytablewriter
