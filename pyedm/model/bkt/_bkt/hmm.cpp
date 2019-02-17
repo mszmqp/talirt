@@ -687,7 +687,12 @@ bool HMM::fit(int *x, int *lengths, int n_lengths, int max_iter, double tol) {
 
     }
 
-    free2D(fb_list,n_lengths);
+//    free2D(fb_list,n_lengths);
+    for (int i = 0; i < n_lengths; ++i) {
+        delete fb_list[i];
+
+    }
+    free(fb_list);
     this->iter = iter;
     this->log_likelihood = cur_log_likelihood;
 
@@ -999,7 +1004,7 @@ double HMM::posterior_distributed(double *out, int *x, int n_x) {
 
     double ll = this->posterior_distributed(fb, out);
 
-    free(fb);
+    delete fb;
     return ll;
 }
 
@@ -1028,96 +1033,6 @@ double HMM::posterior_distributed(FitBit *fb, double *out) {
         }
     }
 
-    /*
-    if (x == NULL || n_x == 0) {
-        return 0;
-    }
-    double log_likelihood = 0;
-
-    // 前向算法
-    double **fwdlattice = init2D<double>(n_x, this->n_stat);
-    double *cn = init1D<double>(n_x);
-
-    for (int i = 0; i < this->n_stat; i++) {
-//        fwdlattice[0][i] = this->PI[i] * this->emmit_pdf(i, x[0], 0);
-        fwdlattice[0][i] = this->PI[i] * this->emmit_pdf(fb, i, 0);
-
-    }
-    cn[0] = normalize1D<double>(fwdlattice[0], n_stat);
-    log_likelihood += log(cn[0]);
-
-    for (int t = 1; t < n_x; t++) {
-        for (int i = 0; i < this->n_stat; i++) {
-            fwdlattice[t][i] = 0;
-            for (int j = 0; j < this->n_stat; ++j) {
-                fwdlattice[t][i] += fwdlattice[t - 1][j] * this->A[j][i];
-            }
-//            fwdlattice[t][i] *= this->emmit_pdf(i, x[t], t);
-            fwdlattice[t][i] *= this->emmit_pdf(fb, i, t);
-//
-//            }
-        }
-        cn[t] = normalize1D<double>(fwdlattice[t], this->n_stat);
-
-//        if(isnan(cn[t])){
-//            std::cout<<"cn[t] t="<<t << " cn[t]=" << cn[t] <<std::endl;
-//        }
-
-        log_likelihood += log(cn[t]);
-    }
-
-    // 后向算法
-    double **backlattice = init2D<double>(n_x, this->n_stat);
-
-    for (int i = 0; i < this->n_stat; ++i) {
-        backlattice[n_x - 1][i] = 1 / cn[n_x - 1];
-//        backlattice[n_x - 1][i] = 1 ;
-//            if(isnan(cn[n_x - 1])){
-//                std::cout<<"cn[n_x - 1] "  << cn[n_x - 1] <<std::endl;
-//            }
-    }
-
-    for (int t = n_x - 2; t >= 0; --t) {
-        for (int i = 0; i < this->n_stat; ++i) {
-            backlattice[t][i] = 0;
-            for (int j = 0; j < this->n_stat; ++j) {
-                backlattice[t][i] +=
-//                        this->A[i][j] * this->emmit_pdf(j, x[t + 1], t) * backlattice[t + 1][j];
-                        this->A[i][j] * this->emmit_pdf(fb, j, t + 1) * backlattice[t + 1][j];
-            }
-            backlattice[t][i] /= cn[t];
-        }
-    }
-    double nor = 0;
-
-    // 后验概率分布,其实就是gamma
-    for (int t = 0; t < n_x; ++t) {
-        nor = 0;
-        for (int i = 0; i < this->n_stat; ++i) {
-//            posterior[t][i] = fwdlattice[t][i] * backlattice[t][i] * cn[t] ;
-            posterior[t][i] = fwdlattice[t][i] * backlattice[t][i];
-
-//            if(isnan(posterior[t][i])){
-//                std::cout<<"fwdlattice[t][i] "  << fwdlattice[t][i] <<std::endl;
-//                std::cout<<"backlattice[t][i] "  << backlattice[t][i] <<std::endl;
-//            }
-            nor += posterior[t][i];
-        }
-
-        for (int i = 0; i < this->n_stat; ++i) {
-            posterior[t][i] /= nor;
-        }
-//        cout<<"--t:"<<t <<" ll:"<< nor <<endl;
-
-//        print1D(posterior[t],n_stat);
-
-    }
-//    print2D(posterior)
-    free(cn);
-    free2D(fwdlattice, n_x);
-    free2D(backlattice, n_x);
-
-     */
 
     return fb->log_likelihood;
 }
@@ -1185,7 +1100,7 @@ double HMM::viterbi(int *out, int *x, int n_x) {
 
     free2D(delta, n_x);
     free2D(psi, n_x);
-    free(fb);
+    delete fb;
     return max_prob;
 }
 

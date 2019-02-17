@@ -64,7 +64,7 @@ public:
     /// 设置观测序列对应的题目id序列，在训练fit和预测前，都必须先传入对应的题目id序列。
     /// \param items_id 题目id序列的指针。注意，内部不会重新保存一份，所以请确保传入指针在使用期间不要被释放
     /// \param length 序列长度
-    void set_obs_items(int items_id[], int length);
+    void set_obs_items(int *items_id, int length);
 
     /// 预测下一个观测值。使用后验概率分布的算法。
     /// \param out [输出] 预测的每个观测状态的概率值

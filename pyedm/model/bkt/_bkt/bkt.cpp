@@ -159,7 +159,7 @@ void IRTBKT::set_items_info(double items_ptr[], int length) {
 }
 */
 
-void IRTBKT::set_obs_items(int items_id[], int length) {
+void IRTBKT::set_obs_items(int *items_id, int length) {
 //    if (this->items_id != NULL) {
 //        delete[] this->items_id;
 //    }

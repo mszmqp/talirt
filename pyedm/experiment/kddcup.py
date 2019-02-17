@@ -724,7 +724,7 @@ def kdd_challenge():
 
     # algebra_2008_2009
     df_train, df_test, df_item_info = preprocess(kdd.a89_train, kdd.a89_test)
-    df_test = df_test.head(5000).copy()
+    # df_test = df_test.head(5000).copy()
     metric = run_irt_bkt(df_train, df_test, df_item_info)
     df_test['Correct First Attempt'] = df_test['pred_prob']
     df_test.index.name = "Row"
@@ -732,7 +732,7 @@ def kdd_challenge():
 
     # algebra_2008_2009
     df_train, df_test, df_item_info = preprocess(kdd.ba89_train, kdd.ba89_test)
-    df_test = df_test.head(5000).copy()
+    # df_test = df_test.head(5000).copy()
     metric = run_irt_bkt(df_train, df_test, df_item_info)
     df_test['Correct First Attempt'] = df_test['pred_prob']
     df_test.index.name = "Row"
