@@ -137,7 +137,15 @@ cdef class StandardBKT:
     cdef _HMM *c_object
     cdef int n_stat
     cdef int n_obs
+
+    def __dealloc__(self):
+        del self.c_object
+        
     def __cinit__(self, int no_object=0, *argv, **kwargs):
+
+        if self.c_object != NULL:
+            del self.c_object
+
         if no_object == 0:
             self.c_object = <_HMM*> new _StandardBKT(2, 2)
         else:
@@ -447,8 +455,7 @@ cdef class StandardBKT:
         """
         return self.c_object.success
 
-    def __dealloc__(self):
-        del self.c_object
+
     @property
     def minimum_obs(self):
         """
@@ -709,6 +716,9 @@ cdef class TrainHelper:
     cdef int n_stat
     cdef int n_obs
     _results = []
+
+    def __dealloc__(self):
+        del self.c_object
 
     def __cinit__(self, int n_stat=2, int model_type=1):
         # print(n_stat)

@@ -187,18 +187,14 @@ double IRTBKT::emmit_pdf(FitBit *fb, int stat, int t) {
     int obs = fb->data[t];
 
     double prob = irt((double) stat + 0.2, item);
-    assert(prob > 0);
-    assert(prob < 1);
+
+    assert(prob > 0 && prob < 1);
+
     prob = obs ? prob : (1 - prob);
 
-    if (isnan(prob)) {
-//        std::cout<< "ptr_2 "<< this->items <<std::endl;
-//        std::cout<< "stat=" << stat << " obs="<<obs<<" t="<<t<<std::endl;
-//        std::cout<< "item_id=" << item_id << " a="<<item->slop<<" b="<<item->intercept<<" c="<<item->guess<<std::endl;
-//        this->debug();
-        throw "function:emmit_pdf irt prob is nan!";
-
-    }
+//    if (isnan(prob)) {
+//        throw "function:emmit_pdf irt prob is nan!";
+//    }
     return prob;
 //    return this->B[stat][obs];
 }
@@ -263,9 +259,7 @@ double IRTBKT::predict_by_posterior(double *out, int *x, int n_x, int item_id) {
         return 0;
     }
 
-//    FitBit *fb = new FitBit();
-//    fb->set_data(x, (UINT) n_x);
-//    fb->set_item(this->items_id, (UINT) n_x);
+
 
     // fwdlattice[-1]是最后时刻，隐状态的概率分布
     double *buffer = init1D<double>(n_x * this->n_stat);
@@ -294,10 +288,9 @@ double IRTBKT::predict_by_posterior(double *out, int *x, int n_x, int item_id) {
 
     }
 
-//    free2D(fwdlattice, n_x);
     free(predict_stat);
     free(buffer);
-//    free(fb);
+
     return ll;
 
 }

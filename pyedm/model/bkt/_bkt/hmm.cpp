@@ -733,11 +733,6 @@ void HMM::compute_param(FitBit **fb_list, int fb_length) {
     double **xi_sum = init2D<double>(this->n_stat, this->n_stat);
     double **gamma_obs_sum = init2D<double>(this->n_stat, this->n_obs);
 
-
-//    double *PI = init1D<double>(this->n_stat);
-//    double **A = init2D<double>(this->n_stat, this->n_stat);
-//    double **B = init2D<double>(this->n_stat, this->n_obs);
-
     // 计算新的模型参数
 
     toZero1D<double>(this->PI, this->n_stat);
@@ -834,16 +829,8 @@ void HMM::compute_param(FitBit **fb_list, int fb_length) {
 //    this->B.print();
 
 
-
-
-//    cpy2D(A, this->A, this->n_stat, this->n_stat);
-//    cpy2D(B, this->B, this->n_stat, this->n_obs);
     this->bounded();
 
-
-//    free(PI);
-//    free2D(A, this->n_stat);
-//    free2D(B, this->n_stat);
     free(gamma_sum_less);
     free(gamma_sum);
     free2D(gamma_obs_sum, this->n_stat);
@@ -1045,7 +1032,6 @@ double HMM::viterbi(int *out, int *x, int n_x) {
     double **delta = init2D<double>(n_x, this->n_stat);
     int **psi = init2D<int>(n_x, this->n_stat);
 
-//    int t = 0;
     for (int i = 0; i < this->n_stat; ++i) {
 
 //        delta[0][i] = this->PI[i] * this->emmit_pdf(i, x[0], 0);
