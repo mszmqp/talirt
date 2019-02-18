@@ -62,11 +62,11 @@ def preprocess(df_train: pd.DataFrame, df_test: pd.DataFrame):
     item_info = df_train.groupby('item_name').agg(
         {
             'Correct First Attempt': ['count', 'sum'],
-            'Incorrects': ['sum', 'mean'],
-            'Corrects': ['sum', 'mean'],
-            'Problem View': ['sum', 'mean'],
-            'Step Duration (sec)': ['sum', 'mean'],
-            'Hints': ['sum', 'mean'],
+            # 'Incorrects': ['sum', 'mean'],
+            # 'Corrects': ['sum', 'mean'],
+            # 'Problem View': ['sum', 'mean'],
+            # 'Step Duration (sec)': ['sum', 'mean'],
+            # 'Hints': ['sum', 'mean'],
             # 'Opportunity(SubSkills)': ['sum','mean'],
         })
     # groupby 之后，Dataframe 的 column 是m util index，不方便使用，这里转换一下
@@ -246,13 +246,11 @@ def test_irt_bkt(models, df_train, df_test, item_info):
     """"""
     # 所有题目的参数信息
     item_info_arr = item_info[['slop', 'difficulty', 'guess']].values.astype(np.float64, order="C")
-    # print(np.any(np.isnan(item_info_arr)))
-    # print(item_info_arr.flags['C_CONTIGUOUS'])
 
     # 需要找到当前数据对应的前置观测序列，也就是当前(学生,知识点)下的前置作答数据，作为已知观测序列
     df_train_g = df_train.groupby(['knowledge', 'user'])
     # df_eva = []
-    df_trace = df_train_g.agg({'trace': lambda x: x.iloc[0]})
+    # df_trace = df_train_g.agg({'trace': lambda x: x.iloc[0]})
 
     # predict_list = []
     df_test['pred_prob'] = np.nan
@@ -325,6 +323,7 @@ def test_irt_bkt(models, df_train, df_test, item_info):
         # df_eva.append(df_test.loc[index])
 
     df_eva = df_test.loc[~df_test['pred_prob'].isna()].copy()
+    print("irt_bkt: 全部测试集:%d 未召回数量:%d" % (df_test.shape[0], df_eva.shape[0]), file=sys.stderr)
 
     df_eva['pred_label'] = df_eva['pred_prob']
     df_eva.loc[df_eva['pred_label'] >= 0.5, 'pred_label'] = 1
@@ -337,12 +336,13 @@ def test_standard_bkt(models, df_train, df_test, item_info):
     # item_info_arr = item_info[['slop', 'difficulty', 'guess']].values.astype(np.float64)
     df_train_g = df_train.groupby(['knowledge', 'user'])
     df_eva = []
-    predict_list = []
+    # predict_list = []
+    df_test['pred_prob'] = np.nan
 
-    for _, row in tqdm(df_test.iterrows(), total=df_test.shape[0]):
+    for index, row in tqdm(df_test.iterrows(), total=df_test.shape[0]):
         # for _, row in df_test.iterrows():
         if row['knowledge'] is np.nan:  # 空知识点暂时不处理
-            predict_list.append(np.nan)
+            # predict_list.append(np.nan)
             continue
         # 找到当前（知识点，用户）的训练数据（以前的作答序列）
         key = (row['knowledge'], row['user'])
@@ -356,25 +356,25 @@ def test_standard_bkt(models, df_train, df_test, item_info):
             x = cur_train['answer'].values.astype(np.int32)  # 对应的 x
         except KeyError:
             # 没找到对应的作答序列 todo 首次作答的预测
-            predict_list.append(np.nan)
+            # predict_list.append(np.nan)
             continue
 
         model = models[trace_index]
         # 没有训练成功
         if not model.success:
-            predict_list.append(np.nan)
+            # predict_list.append(np.nan)
             continue
 
         result = model.predict_next(x, 'posterior')
+
+        df_test.loc[index, 'pred_prob'] = result[1]
+
         # 预测做正确的概率
         row['pred_prob'] = result[1]
         df_eva.append(row)
-        predict_list.append(result[1])
-        # break
-        # if len(df_eva) > 100:
-        #     break
-    df_test['pred_prob'] = predict_list
-    df_eva = pd.DataFrame(df_eva)
+
+    df_eva = df_test.loc[~df_test['pred_prob'].isna()].copy()
+    print("standard_bkt: 全部测试集:%d 未召回数量:%d" % (df_test.shape[0], df_eva.shape[0]), file=sys.stderr)
     # 预测的作答结果
     df_eva['pred_label'] = df_eva['pred_prob']
     df_eva.loc[df_eva['pred_label'] > 0.5, 'pred_label'] = 1
@@ -473,7 +473,8 @@ def extend_predict(df_train, df_test):
     rmse_i = 0
     rmse_final = 0
     count = 0
-    for index, row in df_test.iterrows():
+    print("补充召回...", file=sys.stderr)
+    for index, row in tqdm(df_test.iterrows(), total=df_test.shape[0]):
         if not np.isnan(row['pred_prob']):
             continue
 
@@ -493,7 +494,7 @@ def extend_predict(df_train, df_test):
             item_acc = 0.5
 
         answer = row['answer']
-        final_prob = user_acc
+        final_prob = knowledge_acc
 
         count += 1
         rmse_k += (answer - knowledge_acc) ** 2
@@ -723,12 +724,13 @@ def kdd_challenge():
     kdd = KddCup2010('/Users/zhangzhenhu/Documents/开源数据/kddcup2010/')
 
     # algebra_2008_2009
-    df_train, df_test, df_item_info = preprocess(kdd.a89_train, kdd.a89_test)
+    # df_train, df_test, df_item_info = preprocess(kdd.a89_train, kdd.a89_test)
     # df_test = df_test.head(5000).copy()
-    metric = run_irt_bkt(df_train, df_test, df_item_info)
-    df_test['Correct First Attempt'] = df_test['pred_prob']
-    df_test.index.name = "Row"
-    df_test[['Correct First Attempt']].to_csv("algebra_2008_2009_submission.txt", sep='\t')
+    # metric = run_irt_bkt(df_train, df_test, df_item_info)
+    # df_test['Correct First Attempt'] = df_test['pred_prob']
+    # df_test.index.name = "Row"
+    # df_test[['Correct First Attempt']].to_csv("algebra_2008_2009_submission.txt", sep='\t')
+    # df_test.index += 1
 
     # algebra_2008_2009
     df_train, df_test, df_item_info = preprocess(kdd.ba89_train, kdd.ba89_test)
@@ -736,12 +738,13 @@ def kdd_challenge():
     metric = run_irt_bkt(df_train, df_test, df_item_info)
     df_test['Correct First Attempt'] = df_test['pred_prob']
     df_test.index.name = "Row"
+    df_test.index += 1
     df_test[['Correct First Attempt']].to_csv("bridge_to_algebra_2008_2009_submission.txt", sep='\t')
 
 
 def main(options):
-    kdd_challenge()
-    quit()
+    # kdd_challenge()
+    # quit()
     kdd = KddCup2010('/Users/zhangzhenhu/Documents/开源数据/kddcup2010/')
     report = []
 
@@ -785,17 +788,17 @@ def main(options):
     metric1['data'] = "智能练习数据"
     report.append(metric1)
 
+    print("=" * 20, 'individual standard bkt', '=' * 20)
+    metric2 = run_standard_bkt_individual(df_train.copy(), df_test.copy(), df_item_info)
+    metric2['data'] = "智能练习数据"
+    report.append(metric2)
+
     print("=" * 20, 'standard bkt', '=' * 20)
     metric3 = run_standard_bkt(df_train, df_test, df_item_info)
     metric3['data'] = "智能练习数据"
     report.append(metric3)
 
     # quit()
-
-    print("=" * 20, 'individual standard bkt', '=' * 20)
-    metric2 = run_standard_bkt_individual(df_train.copy(), df_test.copy(), df_item_info)
-    metric2['data'] = "智能练习数据"
-    report.append(metric2)
 
     # 打印表格报告
     import pytablewriter

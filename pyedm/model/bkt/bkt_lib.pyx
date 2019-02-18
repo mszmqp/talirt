@@ -105,11 +105,11 @@ cdef extern from "_bkt/TrainHelper.cpp":
 cdef extern from "_bkt/TrainHelper.h" nogil:
     cdef cppclass _TrainHelper "TrainHelper":
         _TrainHelper(int n_stat, int n_obs, int model_type) except +
-        void init(double *pi, double *a, double *b)
-        void set_bound_pi(double *lower, double *upper)
-        void set_bound_a(double *lower, double *upper)
-        void set_bound_b(double lower[], double upper[])
-        void set_items_info(double items[], int length)
+        void init(double *pi, double *a, double *b, bool copy)
+        void set_bound_pi(double *lower, double *upper, bool copy)
+        void set_bound_a(double *lower, double *upper, bool copy)
+        void set_bound_b(double lower[], double upper[], bool copy)
+        void set_items_info(double items[], int length, bool copy)
         void fit(int trace[], int group[], int x[], int length, int item[], int max_iter, double tol)
         _HMM ** models
         int model_count
@@ -140,7 +140,7 @@ cdef class StandardBKT:
 
     def __dealloc__(self):
         del self.c_object
-        
+
     def __cinit__(self, int no_object=0, *argv, **kwargs):
 
         if self.c_object != NULL:
@@ -455,7 +455,6 @@ cdef class StandardBKT:
         """
         return self.c_object.success
 
-
     @property
     def minimum_obs(self):
         """
@@ -548,8 +547,13 @@ cdef class IRTBKT(StandardBKT):
 
     #
     # def __dealloc__(self):
-    #     self.items_info=NULL
-    #     del self.c_object
+    # __dealloc__ 函数子类不会覆盖基类的，两个都会被调用
+    # del self.items_info
+    # del self.train_items
+    # self.items_info = None
+    # self.train_items = None
+    # 父类已经释放了，基类不能再重复释放，会出问题
+    # del self.c_object
 
     def set_item_info(self, np.ndarray[cython.floating, ndim=2] items):
         """
@@ -568,9 +572,8 @@ cdef class IRTBKT(StandardBKT):
 
         # items=items.astype(np.float64)
         if not items.flags['C_CONTIGUOUS']:
-
             self.items_info = np.ascontiguousarray(items, dtype=np.float64)
-        elif items.dtype !=np.float64:
+        elif items.dtype != np.float64:
             self.items_info = items.astype(dtype=np.float64, order='C')
         else:
             self.items_info = items
@@ -599,7 +602,7 @@ cdef class IRTBKT(StandardBKT):
         # 这里使用 self.train_items 持久保存数据，避免被回收
         if not items.flags['C_CONTIGUOUS']:
             self.train_items = np.ascontiguousarray(items, dtype=np.int32)
-        elif items.dtype!=np.int32:
+        elif items.dtype != np.int32:
             self.train_items = items.astype(dtype=np.int32, order='C')
         else:
             self.train_items = items
@@ -725,7 +728,7 @@ cdef class TrainHelper:
         self.c_object = new _TrainHelper(n_stat, 2, model_type)
         # self.n_stat = n_stat
         # self.n_obs = n_obs
-        self.items_info = None
+        # self.items_info = None
 
     def __init__(self, int n_stat=2, int model_type=1):
         """
@@ -775,7 +778,7 @@ cdef class TrainHelper:
             emission = np.ascontiguousarray(emission, dtype=np.float64)
 
         self.c_object.init(<double*> get_pointer(start), <double*> get_pointer(transition),
-                           <double*> get_pointer(emission))
+                           <double*> get_pointer(emission),False)
 
     def set_bound_start(self, np.ndarray[cython.floating, ndim=1] lower=None,
                         np.ndarray[cython.floating, ndim=1] upper=None):
@@ -797,7 +800,7 @@ cdef class TrainHelper:
         if upper is not None:
             upper = np.ascontiguousarray(upper, dtype=np.float64)
 
-        self.c_object.set_bound_pi(<double *> get_pointer(lower), <double *> get_pointer(upper))
+        self.c_object.set_bound_pi(<double *> get_pointer(lower), <double *> get_pointer(upper),True)
 
     def set_bound_transition(self, np.ndarray[cython.floating, ndim=2] lower=None,
                              np.ndarray[cython.floating, ndim=2] upper=None):
@@ -817,7 +820,7 @@ cdef class TrainHelper:
             lower = np.ascontiguousarray(lower, dtype=np.float64)
         if upper is not None:
             upper = np.ascontiguousarray(upper, dtype=np.float64)
-        self.c_object.set_bound_a(<double *> get_pointer(lower), <double *> get_pointer(upper))
+        self.c_object.set_bound_a(<double *> get_pointer(lower), <double *> get_pointer(upper),True)
 
     def set_bound_emission(self, np.ndarray[cython.floating, ndim=2] lower=None,
                            np.ndarray[cython.floating, ndim=2] upper=None):
@@ -838,7 +841,7 @@ cdef class TrainHelper:
         if upper is not None:
             upper = np.ascontiguousarray(upper, dtype=np.float64)
 
-        self.c_object.set_bound_b(<double *> get_pointer(lower), <double *> get_pointer(upper))
+        self.c_object.set_bound_b(<double *> get_pointer(lower), <double *> get_pointer(upper),True)
 
     def set_item_info(self, np.ndarray[cython.floating, ndim=2] items):
         """
@@ -852,18 +855,18 @@ cdef class TrainHelper:
         -------
 
         """
-        assert items is not None and items.shape[1]==3
+        assert items is not None and items.shape[1] == 3
 
         if not items.flags['C_CONTIGUOUS']:
 
             self.items_info = np.ascontiguousarray(items, dtype=np.float64)
-        elif items.dtype !=np.float64:
+        elif items.dtype != np.float64:
             self.items_info = items.astype(dtype=np.float64, order='C')
         else:
             self.items_info = items
 
         # self.items_info = np.ascontiguousarray(items, dtype=np.float64)
-        self.c_object.set_items_info(<double *> get_pointer(self.items_info), items.shape[0])
+        self.c_object.set_items_info(<double *> get_pointer(self.items_info), items.shape[0],False)
 
     def fit(self, np.ndarray[cython.integral, ndim=1] trace,
             np.ndarray[cython.integral, ndim=1] group,
@@ -926,7 +929,7 @@ cdef class TrainHelper:
             pass
         else:
             raise ValueError("trace,group,x长度不一致")
-
+        # 注意，c++的TrainHelper 不会释放模型对象的内存
         self.c_object.fit(<int*> get_pointer(trace),
                           <int*> get_pointer(group),
                           <int*> get_pointer(x),

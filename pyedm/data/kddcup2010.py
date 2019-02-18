@@ -125,7 +125,9 @@ class KddCup2010:
         df_data = pd.read_csv(file_path, sep='\t', dtype={'Row': np.int32,
                                                           "Anon Student Id": np.string_,
                                                           "Problem Hierarchy": np.string_,
+                                                          "Problem Name": np.string_,
                                                           "Problem View": np.int32,
+                                                          "Step Name": np.string_,
                                                           "Step Duration (sec)": np.float64,
                                                           "Correct Step Duration (sec)": np.float64,
                                                           "Error Step Duration (sec)": np.float64,
@@ -137,14 +139,18 @@ class KddCup2010:
                                                           "Opportunity(SubSkills)": np.string_,
                                                           })
         df_data['item_name'] = df_data['Problem Name'] + ',' + df_data['Step Name']
-        return df_data
+        # less columns to save memory
+        return df_data[
+            ['Row', "Anon Student Id", "Problem Hierarchy", "Correct First Attempt", 'item_name']].copy()
 
     @staticmethod
     def read_test(file_path):
         df_data = pd.read_csv(file_path, sep='\t', dtype={'Row': np.int32,
                                                           "Anon Student Id": np.string_,
                                                           "Problem Hierarchy": np.string_,
+                                                          "Problem Name": np.string_,
                                                           "Problem View": np.int32,
+                                                          "Step Name": np.string_,
                                                           # "Step Duration (sec)": np.float64,
                                                           # "Correct Step Duration (sec)": np.float64,
                                                           # "Error Step Duration (sec)": np.float64,
@@ -156,7 +162,8 @@ class KddCup2010:
                                                           "Opportunity(SubSkills)": np.string_,
                                                           })
         df_data['item_name'] = df_data['Problem Name'] + ',' + df_data['Step Name']
-        return df_data
+        # less columns to save memory
+        return df_data[['Row', "Anon Student Id", "Problem Hierarchy", "Correct First Attempt", 'item_name']].copy()
 
 
 def init_option():
@@ -175,7 +182,29 @@ def init_option():
 
 
 def main(options):
-    pass
+    data = [
+        ["Algebra I 2005-2006", "575", "813,661", "809695", "3968"],
+        ["Algebra I 2006-2007", "1,840", "2,289,726", "2270384", "19342"],
+        ["Bridge to Algebra 2006-2007", "1,146", "3,656,871", "3679199", "7672"],
+
+        ["algebra_2008_2009", "3,310", "", "8,918,055", "508,913"],
+        ["bridge_to_algebra_2008_2009", "6,043", "", "20,012,499", "756,387"],
+    ]
+
+    columns = ["Data sets", "Students", "Steps", "Train Size", "Test Size", ]
+
+    rst_table(data[:3], columns)
+    rst_table(data[3:], columns)
+
+
+def rst_table(data, columns):
+    import pytablewriter
+    writer = pytablewriter.RstGridTableWriter()
+    writer.table_name = "Final Report"
+    writer.headers = columns
+    writer.value_matrix = data
+
+    writer.write_table()
 
 
 if __name__ == "__main__":
