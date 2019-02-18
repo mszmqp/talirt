@@ -28,6 +28,14 @@ import numpy as np
 import os
 
 
+def value2id(s: pd.Series):
+    df_left = pd.DataFrame({'value': s})
+    us = s.unique()
+    df_right = pd.DataFrame({'index': np.arange(len(us))}, index=us)
+    # df_right.reset_index(inplace=True)
+    return df_left.join(df_right, how='left', on='value')['index'].values
+
+
 class KddCup2010:
     """
     read the data of Kdd cup 2010,and return pandas.DataFrame
@@ -42,7 +50,9 @@ class KddCup2010:
             file_path = os.path.join(self.data_dir, 'algebra_2005_2006', 'algebra_2005_2006_train.txt')
         if not os.path.exists(file_path):
             raise ValueError("file not exists %s" % file_path)
-        return self.read(file_path)
+        df_data = self.read(file_path)
+        df_data['item_name'] = df_data['Problem Name'] + ',' + df_data['Step Name']
+        return df_data
 
     @property
     def a56_test(self, file_path=None):
@@ -50,7 +60,9 @@ class KddCup2010:
             file_path = os.path.join(self.data_dir, 'algebra_2005_2006', 'algebra_2005_2006_master.txt')
         if not os.path.exists(file_path):
             raise ValueError("file not exists %s" % file_path)
-        return self.read(file_path)
+        df_data = self.read_test(file_path)
+        df_data['item_name'] = df_data['Problem Name'] + ',' + df_data['Step Name']
+        return df_data
 
     @property
     def a67_train(self, file_path=None):
@@ -58,7 +70,9 @@ class KddCup2010:
             file_path = os.path.join(self.data_dir, 'algebra_2006_2007_new_20100409', 'algebra_2006_2007_train.txt')
         if not os.path.exists(file_path):
             raise ValueError("file not exists %s" % file_path)
-        return self.read(file_path)
+        df_data = self.read(file_path)
+        df_data['item_name'] = df_data['Problem Name'] + ',' + df_data['Step Name']
+        return df_data
 
     @property
     def a67_test(self, file_path=None):
@@ -66,7 +80,9 @@ class KddCup2010:
             file_path = os.path.join(self.data_dir, 'algebra_2006_2007_new_20100409', 'algebra_2006_2007_master.txt')
         if not os.path.exists(file_path):
             raise ValueError("file not exists %s" % file_path)
-        return self.read(file_path)
+        df_data = self.read_test(file_path)
+        df_data['item_name'] = df_data['Problem Name'] + ',' + df_data['Step Name']
+        return df_data
 
     @property
     def a89_train(self, file_path=None):
@@ -74,7 +90,17 @@ class KddCup2010:
             file_path = os.path.join(self.data_dir, 'algebra_2008_2009', 'algebra_2008_2009_train.txt')
         if not os.path.exists(file_path):
             raise ValueError("file not exists %s" % file_path)
-        return self.read(file_path)
+        df_data = self.read(file_path)
+
+        df_data['item_name'] = df_data['Problem Name'] + ',' + df_data['Step Name']
+        # df_data['item_id'] = value2id(df_data['item_name'])
+
+        columns = ["Anon Student Id", "Problem Hierarchy", "Correct First Attempt",
+                   'Problem Name', 'Step Name',
+                   'item_name']
+        df_data.set_index("Row", inplace=True)
+        # less columns to save memory
+        return df_data[columns].copy()
 
     @property
     def a89_test(self, file_path=None):
@@ -82,7 +108,14 @@ class KddCup2010:
             file_path = os.path.join(self.data_dir, 'algebra_2008_2009', 'algebra_2008_2009_test.txt')
         if not os.path.exists(file_path):
             raise ValueError("file not exists %s" % file_path)
-        return self.read_test(file_path)
+        df_data = self.read_test(file_path)
+        df_data['item_name'] = df_data['Problem Name'] + ',' + df_data['Step Name']
+        columns = ["Anon Student Id", "Problem Hierarchy", "Correct First Attempt",
+                   'Problem Name', 'Step Name',
+                   'item_name']
+        df_data.set_index("Row", inplace=True)
+        # less columns to save memory
+        return df_data[columns].copy()
 
     @property
     def ba67_train(self, file_path=None):
@@ -91,7 +124,10 @@ class KddCup2010:
                                      'bridge_to_algebra_2006_2007_train.txt')
         if not os.path.exists(file_path):
             raise ValueError("file not exists %s" % file_path)
-        return self.read(file_path)
+        df_data = self.read(file_path)
+        df_data['item_name'] = df_data['Problem Name'] + ',' + df_data['Step Name']
+
+        return df_data
 
     @property
     def ba67_test(self, file_path=None):
@@ -100,7 +136,9 @@ class KddCup2010:
                                      'bridge_to_algebra_2006_2007_master.txt')
         if not os.path.exists(file_path):
             raise ValueError("file not exists %s" % file_path)
-        return self.read(file_path)
+        df_data = self.read_test(file_path)
+        df_data['item_name'] = df_data['Problem Name'] + ',' + df_data['Step Name']
+        return df_data
 
     @property
     def ba89_train(self, file_path=None):
@@ -109,7 +147,15 @@ class KddCup2010:
                                      'bridge_to_algebra_2008_2009_train.txt')
         if not os.path.exists(file_path):
             raise ValueError("file not exists %s" % file_path)
-        return self.read(file_path)
+        df_data = self.read(file_path)
+        df_data['item_name'] = df_data['Problem Name'] + ',' + df_data['Step Name']
+        # df_data['item_id'] = value2id(df_data['item_name'])
+        # df_data["Anon Student Id"] = value2id(df_data["Anon Student Id"])
+        # df_data["Problem Hierarchy"] = value2id(df_data["Problem Hierarchy"]).astype(np.string_)
+
+        columns = ['Row', "Anon Student Id", "Problem Hierarchy", "Correct First Attempt", 'item_name']
+        # less columns to save memory
+        return df_data[columns].copy()
 
     @property
     def ba89_test(self, file_path=None):
@@ -118,7 +164,11 @@ class KddCup2010:
                                      'bridge_to_algebra_2008_2009_test.txt')
         if not os.path.exists(file_path):
             raise ValueError("file not exists %s" % file_path)
-        return self.read_test(file_path)
+        df_data = self.read_test(file_path)
+        df_data['item_name'] = df_data['Problem Name'] + ',' + df_data['Step Name']
+        columns = ['Row', "Anon Student Id", "Problem Hierarchy", "Correct First Attempt", 'item_name']
+        df_data.set_index("Row", inplace=True)
+        return df_data[columns].copy()
 
     @staticmethod
     def read(file_path):
@@ -138,10 +188,8 @@ class KddCup2010:
                                                           "KC(SubSkills)": np.string_,
                                                           "Opportunity(SubSkills)": np.string_,
                                                           })
-        df_data['item_name'] = df_data['Problem Name'] + ',' + df_data['Step Name']
-        # less columns to save memory
-        return df_data[
-            ['Row', "Anon Student Id", "Problem Hierarchy", "Correct First Attempt", 'item_name']].copy()
+
+        return df_data
 
     @staticmethod
     def read_test(file_path):
@@ -161,9 +209,16 @@ class KddCup2010:
                                                           "KC(SubSkills)": np.string_,
                                                           "Opportunity(SubSkills)": np.string_,
                                                           })
-        df_data['item_name'] = df_data['Problem Name'] + ',' + df_data['Step Name']
+        # df_data['item_name'] = df_data['Problem Name'] + ',' + df_data['Step Name']
         # less columns to save memory
-        return df_data[['Row', "Anon Student Id", "Problem Hierarchy", "Correct First Attempt", 'item_name']].copy()
+        return df_data[['Row',
+                        "Anon Student Id",
+                        "Problem Hierarchy",
+                        "Correct First Attempt",
+                        'Problem Name',
+                        'Step Name',
+
+                        ]]
 
 
 def init_option():
@@ -195,6 +250,14 @@ def main(options):
 
     rst_table(data[:3], columns)
     rst_table(data[3:], columns)
+
+    # challenge
+    columns = ['scores using', 'Overall Rank', 'Individual/Team Name', 'Algebra I 2008-2009',
+               'Bridge to Algebra 2008-2009',
+               'Total Score', 'Date'],
+    columns = ["Cup Scoring", "Leaderboard Scoring"]
+    data = [["0.309033", "0.316485"]]
+    rst_table(data, columns)
 
 
 def rst_table(data, columns):

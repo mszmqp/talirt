@@ -29,6 +29,10 @@ TrainHelper::TrainHelper(int n_stat, int n_obs, int model_type) {
 }
 
 TrainHelper::~TrainHelper() {
+    for(int i=0;i<this->model_count;i++)
+    {
+        delete this->models[i];
+    }
     free(this->models);
 
     if (free_param) {

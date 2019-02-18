@@ -254,11 +254,15 @@ def test_irt_bkt(models, df_train, df_test, item_info):
 
     # predict_list = []
     df_test['pred_prob'] = np.nan
-
+    n_k = 0
+    n_item = 0
+    n_model_not = 0
+    n_model_fail = 0
     for index, row in tqdm(df_test.iterrows(), total=df_test.shape[0]):
         # for _, row in df_test.iterrows():
         if row['knowledge'] is np.nan:  # 空知识点暂时不处理
             # predict_list.append(np.nan)
+            n_k += 1
             continue
         # 要预测的题目 必须在训练数据中出现过，否则没有题目的信息
         try:
@@ -267,6 +271,7 @@ def test_irt_bkt(models, df_train, df_test, item_info):
         except KeyError:
             # predict_list.append(np.nan)
             # 没找到对应的题目
+            n_item += 1
             continue
         # 找到当前（知识点，用户）的训练数据（以前的作答序列）
         key = (row['knowledge'], row['user'])
@@ -285,6 +290,7 @@ def test_irt_bkt(models, df_train, df_test, item_info):
             # predict_list.append(np.nan)
             # 没找到对应的作答序列
             # if cur_train.empty:
+            n_model_not += 1
             continue
 
         # train_items_id.
@@ -294,6 +300,7 @@ def test_irt_bkt(models, df_train, df_test, item_info):
 
         # 没有训练成功
         if not model.success:
+            n_model_fail += 1
             continue
 
         model.set_obs_items(train_items_id)
@@ -311,6 +318,8 @@ def test_irt_bkt(models, df_train, df_test, item_info):
         # sd = model.posterior_distributed(x)
 
         result = model.predict_next(x, predict_item_id, 'posterior')
+        if np.isnan(result[1]):
+            print(result)
         df_test.loc[index, 'pred_prob'] = result[1]
         # predict_list.append(result[1])
 
@@ -323,7 +332,13 @@ def test_irt_bkt(models, df_train, df_test, item_info):
         # df_eva.append(df_test.loc[index])
 
     df_eva = df_test.loc[~df_test['pred_prob'].isna()].copy()
-    print("irt_bkt: 全部测试集:%d 未召回数量:%d" % (df_test.shape[0], df_eva.shape[0]), file=sys.stderr)
+    print("irt_bkt: 全部测试集:%d 召回数量:%d 召回比例:%.4f n_k:%d n_item:%d n_model_not:%d n_model_fail:%d" % (
+        df_test.shape[0], df_eva.shape[0], float(df_eva.shape[0]) / df_test.shape[0],
+        n_k,
+        n_item,
+        n_model_not,
+        n_model_fail,
+    ), file=sys.stderr)
 
     df_eva['pred_label'] = df_eva['pred_prob']
     df_eva.loc[df_eva['pred_label'] >= 0.5, 'pred_label'] = 1
@@ -724,27 +739,26 @@ def kdd_challenge():
     kdd = KddCup2010('/Users/zhangzhenhu/Documents/开源数据/kddcup2010/')
 
     # algebra_2008_2009
-    # df_train, df_test, df_item_info = preprocess(kdd.a89_train, kdd.a89_test)
-    # df_test = df_test.head(5000).copy()
-    # metric = run_irt_bkt(df_train, df_test, df_item_info)
-    # df_test['Correct First Attempt'] = df_test['pred_prob']
-    # df_test.index.name = "Row"
-    # df_test[['Correct First Attempt']].to_csv("algebra_2008_2009_submission.txt", sep='\t')
-    # df_test.index += 1
-
-    # algebra_2008_2009
-    df_train, df_test, df_item_info = preprocess(kdd.ba89_train, kdd.ba89_test)
+    df_train, df_test, df_item_info = preprocess(kdd.a89_train, kdd.a89_test)
     # df_test = df_test.head(5000).copy()
     metric = run_irt_bkt(df_train, df_test, df_item_info)
     df_test['Correct First Attempt'] = df_test['pred_prob']
-    df_test.index.name = "Row"
-    df_test.index += 1
+    df_test[['Correct First Attempt']].to_csv("algebra_2008_2009_submission.txt", sep='\t')
+    quit()
+    # algebra_2008_2009
+    df_train, df_test, df_item_info = preprocess(kdd.ba89_train, kdd.ba89_test)
+    df_test = df_test.head(5000).copy()
+    metric = run_irt_bkt(df_train, df_test, df_item_info)
+    df_test['Correct First Attempt'] = df_test['pred_prob']
+
+    # df_test.index.name = "Row"
+    # df_test.index += 1
     df_test[['Correct First Attempt']].to_csv("bridge_to_algebra_2008_2009_submission.txt", sep='\t')
 
 
 def main(options):
-    # kdd_challenge()
-    # quit()
+    kdd_challenge()
+    quit()
     kdd = KddCup2010('/Users/zhangzhenhu/Documents/开源数据/kddcup2010/')
     report = []
 

@@ -778,7 +778,7 @@ cdef class TrainHelper:
             emission = np.ascontiguousarray(emission, dtype=np.float64)
 
         self.c_object.init(<double*> get_pointer(start), <double*> get_pointer(transition),
-                           <double*> get_pointer(emission),False)
+                           <double*> get_pointer(emission), False)
 
     def set_bound_start(self, np.ndarray[cython.floating, ndim=1] lower=None,
                         np.ndarray[cython.floating, ndim=1] upper=None):
@@ -800,7 +800,7 @@ cdef class TrainHelper:
         if upper is not None:
             upper = np.ascontiguousarray(upper, dtype=np.float64)
 
-        self.c_object.set_bound_pi(<double *> get_pointer(lower), <double *> get_pointer(upper),True)
+        self.c_object.set_bound_pi(<double *> get_pointer(lower), <double *> get_pointer(upper), True)
 
     def set_bound_transition(self, np.ndarray[cython.floating, ndim=2] lower=None,
                              np.ndarray[cython.floating, ndim=2] upper=None):
@@ -820,7 +820,7 @@ cdef class TrainHelper:
             lower = np.ascontiguousarray(lower, dtype=np.float64)
         if upper is not None:
             upper = np.ascontiguousarray(upper, dtype=np.float64)
-        self.c_object.set_bound_a(<double *> get_pointer(lower), <double *> get_pointer(upper),True)
+        self.c_object.set_bound_a(<double *> get_pointer(lower), <double *> get_pointer(upper), True)
 
     def set_bound_emission(self, np.ndarray[cython.floating, ndim=2] lower=None,
                            np.ndarray[cython.floating, ndim=2] upper=None):
@@ -828,9 +828,9 @@ cdef class TrainHelper:
         设置发射概率矩阵的约束，IRT变种BKT无需设置。
         Parameters
         ----------
-        lower : np.ndarray[double,ndim=2]
+        lower : np.ndarray[double, ndim=2]
             下限约束
-        upper : np.ndarray[double,ndim=2]
+        upper : np.ndarray[double, ndim=2]
             上限约束
         Returns
         -------
@@ -841,7 +841,7 @@ cdef class TrainHelper:
         if upper is not None:
             upper = np.ascontiguousarray(upper, dtype=np.float64)
 
-        self.c_object.set_bound_b(<double *> get_pointer(lower), <double *> get_pointer(upper),True)
+        self.c_object.set_bound_b(<double *> get_pointer(lower), <double *> get_pointer(upper), True)
 
     def set_item_info(self, np.ndarray[cython.floating, ndim=2] items):
         """
@@ -866,7 +866,7 @@ cdef class TrainHelper:
             self.items_info = items
 
         # self.items_info = np.ascontiguousarray(items, dtype=np.float64)
-        self.c_object.set_items_info(<double *> get_pointer(self.items_info), items.shape[0],False)
+        self.c_object.set_items_info(<double *> get_pointer(self.items_info), items.shape[0], False)
 
     def fit(self, np.ndarray[cython.integral, ndim=1] trace,
             np.ndarray[cython.integral, ndim=1] group,
@@ -929,7 +929,7 @@ cdef class TrainHelper:
             pass
         else:
             raise ValueError("trace,group,x长度不一致")
-        # 注意，c++的TrainHelper 不会释放模型对象的内存
+
         self.c_object.fit(<int*> get_pointer(trace),
                           <int*> get_pointer(group),
                           <int*> get_pointer(x),
@@ -958,7 +958,9 @@ cdef class TrainHelper:
             elif self.model_type == 2:
 
                 self._results.append(create_irt(self.n_stat, self.n_obs, <_IRTBKT*> self.c_object.models[i]))
-
+            # 这样确保C++的 TrainHelper 对象在析构时，不会同时释放模型的对象的指针。
+            # 因为我们已经把模型指针赋值给 cython 层的模型对象，交给 cython 层模型对象去处理。
+            self.c_object.models[i] = NULL
     @property
     def models(self):
         """
